@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # Backend - Spring Boot API
+  backend:
+    build:
+      context: ./backend_foodsave
+      dockerfile: Dockerfile
+    container_name: foodsave-backend
+    restart: unless-stopped
+    entrypoint: ["java", "-Djava.security.egd=file:/dev/./urandom", "-Djava.net.preferIPv4Stack=true", "-jar", "app.jar"]
+    ports:
+      - "8080:8080"
+    environment:
+      # Database - используем PostgreSQL контейнер
+      SPRING_DATASOURCE_URL: jdbc:postgresql://foodsave-postgres:5432/${POSTGRES_DB:-foodsave}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER:-behruz}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD:-234Bex456}
+      
+      # Redis - используем Redis контейнер  
+      SPRING_DATA_REDIS_HOST: foodsave-redis
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-STRONG_REDIS_PASSWORD}
+      
+      # Security
+      SECURITY_JWT_SECRET: ${JWT_SECRET:-yaWxiGHZ4K9i2rKFYZq3UcMCeB3vjpXWvLg+5bskQ5I=FoodSaveSecure2026Key}
+      
+      # App Base URL for file uploads
+      APP_BASE_URL: ${APP_BASE_URL:-https://foodsave.kz}
+      
+      # Telegram
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-7773680612:AAEusECkUXmf7mTpw1JmMLWE5KQGJ1spYMc}
+      TELEGRAM_MANAGER_BOT_TOKEN: ${TELEGRAM_MANAGER_BOT_TOKEN:-}
+      TELEGRAM_ORDER_NOTIFICATIONS_CHAT_IDS: ${TELEGRAM_ORDER_NOTIFICATIONS_CHAT_IDS:-}
+      TELEGRAM_MINIAPP_BASE_URL: ${MINIAPP_URL:-https://miniapp.foodsave.kz}
+      
+      # CORS
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001,https://miniapp.foodsave.kz,https://admin.foodsave.kz,https://vendor.foodsave.kz,https://web.telegram.org,https://t.me}
+      
+      # Sentry
+      SENTRY_DSN: ${SENTRY_DSN:-https://4248b08190536e7595d9747f14ce4c7f@o4510234395344896.ingest.de.sentry.io/4510726002049104}
+      
+      # JVM Options
+      JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
+    volumes:
+      - backend_uploads:/app/uploads
+    # Pin Telegram API to a known-reachable IPv4 — some other Telegram IPs
+    # are unreachable from this network and Java RestTemplate randomly picks
+    # one, causing connect timeouts on /sendMessage and /sendPhoto.
+    extra_hosts:
+      - "api.telegram.org:149.154.167.220"
+    networks:
+      - foodsave-network
+
+  # Mini App Frontend - Port 3000
+  miniapp:
+    build:
+      context: ./miniapps_update
+      dockerfile: Dockerfile
+    container_name: foodsave-miniapp
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://foodsave.kz}
+    networks:
+      - foodsave-network
+
+  # Admin Website - Port 3001
+  admin:
+    build:
+      context: ./admin_website
+      dockerfile: Dockerfile
+      args:
+        - CACHEBUST=${CACHEBUST:-1}
+    container_name: foodsave-admin
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    environment:
+      NODE_ENV: production
+      # ✅ Backend API URL - включает /api на конце
+      NEXT_PUBLIC_API_URL: https://foodsave.kz/api
+      # Base URL для админ-панели
+      NEXT_PUBLIC_BASE_URL: https://admin.foodsave.kz
+    extra_hosts:
+      - "localhost:127.0.0.1"
+    networks:
+      - foodsave-network
+    depends_on:
+      - backend
+
+networks:
+  foodsave-network:
+    name: foodsave_foodsave-db-network
+    external: true
+
+volumes:
+  backend_uploads:

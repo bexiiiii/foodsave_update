@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: foodsave-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: foodsave
+      POSTGRES_USER: behruz
+      POSTGRES_PASSWORD: 234Bex456
+      PGDATA: /var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d  # для инициализации БД
+    networks:
+      - foodsave-db-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U behruz -d foodsave"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=200"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=768MB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "checkpoint_completion_target=0.7"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+      - "-c"
+      - "log_timezone=Asia/Almaty"
+      - "-c"
+      - "timezone=Asia/Almaty"
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: foodsave-redis
+    restart: unless-stopped
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass STRONG_REDIS_PASSWORD
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - foodsave-db-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "STRONG_REDIS_PASSWORD", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  foodsave-db-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

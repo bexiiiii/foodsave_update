@@ -1,0 +1,7 @@
+.DS_Store
+
+# Nested repositories managed independently.
+admin_website/
+backend_foodsave/
+foodsave_landing/
+miniapps_update/
