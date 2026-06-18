@@ -1,0 +1,1 @@
+ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_type VARCHAR(20);

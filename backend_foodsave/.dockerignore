@@ -1,0 +1,47 @@
+# Build
+target/
+!target/classes/
+!target/*.jar
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Maven
+.mvn/
+mvnw
+mvnw.cmd
+
+# Logs
+*.log
+server.log
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git
+.gitignore
+
+# Docker
+Dockerfile*
+docker-compose*
+
+# Scripts
+*.sh
+
+# Test files
+*.java
+!src/**/*.java
+
+# Misc
+README.md
+*.md

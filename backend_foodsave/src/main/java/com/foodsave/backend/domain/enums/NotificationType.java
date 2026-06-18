@@ -1,0 +1,14 @@
+package com.foodsave.backend.domain.enums;
+
+public enum NotificationType {
+    ORDER_STATUS_CHANGED,
+    ORDER_CREATED,
+    ORDER_CANCELLED,
+    ORDER_DELIVERED,
+    PAYMENT_RECEIVED,
+    PAYMENT_FAILED,
+    STORE_UPDATED,
+    PRODUCT_UPDATED,
+    DISCOUNT_AVAILABLE,
+    SYSTEM_NOTIFICATION
+} 

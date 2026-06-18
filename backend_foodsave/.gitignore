@@ -1,0 +1,25 @@
+# Build output
+target/
+
+# Environment variables
+.env
+*.env
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
