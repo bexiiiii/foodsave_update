@@ -3,6 +3,7 @@ package com.foodsave.backend.service;
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
+import com.foodsave.backend.domain.enums.UserRole;
 import com.foodsave.backend.dto.OrderDTO;
 import com.foodsave.backend.dto.OrderItemDTO;
 import com.foodsave.backend.dto.OrderStatsDTO;
@@ -14,6 +15,7 @@ import com.foodsave.backend.entity.OrderItem;
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.repository.OrderRepository;
 import com.foodsave.backend.repository.ProductRepository;
+import com.foodsave.backend.exception.AccessDeniedException;
 import com.foodsave.backend.exception.InsufficientStockException;
 import com.foodsave.backend.exception.ResourceNotFoundException;
 import com.foodsave.backend.security.SecurityUtils;
@@ -126,9 +128,24 @@ public class OrderService {
     }
 
     public OrderDTO getOrderById(Long id) {
-        return orderRepository.findById(id)
-                .map(OrderDTO::fromEntity)
+        Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+
+        Long currentUserId = securityUtil.getCurrentUserId();
+        UserRole currentUserRole = securityUtil.getCurrentUserRole();
+        boolean isOrderOwner = currentUserId != null && order.getUser().getId().equals(currentUserId);
+        boolean isAdmin = currentUserRole == UserRole.SUPER_ADMIN;
+        boolean isStoreUser = currentUserRole == UserRole.STORE_OWNER || currentUserRole == UserRole.STORE_MANAGER;
+        boolean canAccessStoreOrder = isStoreUser && currentUserId != null && (
+                order.getStore().getOwner().getId().equals(currentUserId) ||
+                (order.getStore().getManager() != null && order.getStore().getManager().getId().equals(currentUserId))
+        );
+
+        if (!isOrderOwner && !isAdmin && !canAccessStoreOrder) {
+            throw new AccessDeniedException("Access denied to order with id: " + id);
+        }
+
+        return OrderDTO.fromEntity(order);
     }
 
     // Вспомогательные методы для кэширования

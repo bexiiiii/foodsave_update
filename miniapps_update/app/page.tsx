@@ -10,6 +10,8 @@ import { useFeaturedProducts, useOrders } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
 import { Product, isProductVisibleInMiniApp } from "../lib/api";
+import BottomNavigation from "../components/BottomNavigation";
+import { getStatusText, isActiveOrder, sortOrdersByCreatedAtDesc } from "../lib/orders";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -33,8 +35,7 @@ export default function HomePage() {
   const featuredProducts = safeArray(featuredProductsResponse?.content)
     .filter((product: Product) => isProductVisibleInMiniApp(product));
   
-  // Get latest order safely
-  const latestOrder = safeArray(orders)[0] || null;
+  const activeOrder = sortOrdersByCreatedAtDesc(safeArray(orders).filter(isActiveOrder))[0] || null;
 
   // Initialize Telegram authentication
   useEffect(() => {
@@ -141,8 +142,11 @@ export default function HomePage() {
       </div>
 
       {/* My Orders */}
-      <div className="px-4 mt-8">
-        <div className="bg-gray-100 rounded-2xl p-5 relative">
+      <div className="sticky top-0 z-30 px-4 mt-8 bg-white/95 py-2 shadow-sm backdrop-blur">
+        <Link
+          href={activeOrder ? `/orders/${activeOrder.id}` : "/orders"}
+          className="block bg-gray-100 rounded-2xl p-5 relative transition-transform active:scale-[0.99]"
+        >
           <p className="text-black/50 text-base font-medium font-inter">{t("myOrders")}</p>
           
           {ordersLoading ? (
@@ -150,20 +154,20 @@ export default function HomePage() {
               <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
               <div className="h-4 bg-gray-200 rounded mt-2 w-1/2 animate-pulse"></div>
             </div>
-          ) : latestOrder ? (
+          ) : activeOrder ? (
             <div className="mt-2">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-semibold text-black font-inter">
-                  {safeString(latestOrder.storeName)}
+                  {safeString(activeOrder.storeName)}
                 </h3>
                 <div className="bg-[#73be61] rounded-2xl px-4 py-1">
                   <span className="text-white text-sm font-medium font-inter">
-                    {latestOrder.status === 'CONFIRMED' ? t("reserved") : latestOrder.status}
+                    {getStatusText(activeOrder.status)}
                   </span>
                 </div>
               </div>
               <p className="text-sm text-black/60 font-inter mt-1">
-                {new Date(latestOrder.createdAt).toLocaleDateString()} • {latestOrder.totalAmount || latestOrder.total || 0}₸
+                {new Date(activeOrder.createdAt).toLocaleDateString()} • {activeOrder.totalAmount || activeOrder.total || 0}₸
               </p>
             </div>
           ) : (
@@ -173,10 +177,10 @@ export default function HomePage() {
             </div>
           )}
           
-          <Link href="/orders" className="absolute bottom-4 right-5 text-xs text-black/50 font-inter">
+          <span className="absolute bottom-4 right-5 text-xs text-black/50 font-inter">
             {t("allOrders")}
-          </Link>
-        </div>
+          </span>
+        </Link>
       </div>
 
       {/* Nearby boxes */}
@@ -244,42 +248,7 @@ export default function HomePage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
-        <div className="flex items-center justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-[#73be61] rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-              <svg className="w-6 h-6 text-white transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/markets" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/orders" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/profile" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </nav>
+      <BottomNavigation />
     </div>
   );
 }

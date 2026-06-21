@@ -1,4 +1,6 @@
 // API client configuration
+import { normalizeOrder } from "./orders";
+
 const getApiBaseUrl = (): string => {
   // Check if we have an explicit API URL
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -166,8 +168,11 @@ export interface OrderItem {
   productId: number;
   productName: string;
   quantity: number;
-  price: number;
+  price?: number;
+  unitPrice?: number;
   totalPrice?: number;
+  productImage?: string;
+  categoryName?: string;
 }
 
 // Authentication types
@@ -523,14 +528,7 @@ class ApiClient {
       }
       
       // Normalize order data to ensure all required fields are present
-      return response.map(order => ({
-        ...order,
-        orderItems: Array.isArray(order.orderItems) ? order.orderItems : 
-                   Array.isArray(order.items) ? order.items : [],
-        totalAmount: order.totalAmount || order.total || 0,
-        storeName: order.storeName || 'Unknown Store',
-        notes: order.notes || order.deliveryNotes || ''
-      }));
+      return response.map(normalizeOrder);
     } catch (error) {
       console.error('Failed to fetch orders:', error);
       return [];
@@ -538,7 +536,8 @@ class ApiClient {
   }
 
   async getOrderById(id: number): Promise<Order> {
-    return this.makeRequest<Order>(`/orders/${id}`);
+    const response = await this.makeRequest<Order>(`/orders/${id}`);
+    return normalizeOrder(response);
   }
 
   async cancelOrder(id: number): Promise<Order> {
@@ -591,7 +590,7 @@ class ApiClient {
     if (process.env.NODE_ENV === 'development') {
       console.log('Creating reservation with data:', reservationData);
     }
-    
+
     return this.makeRequest<Order>('/miniapp/reservations', {
       method: 'POST',
       body: JSON.stringify(reservationData),
