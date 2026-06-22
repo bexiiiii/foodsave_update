@@ -44,6 +44,7 @@ public class ProductService {
     private final com.foodsave.backend.repository.UserRepository userRepository;
     private final TelegramBotService telegramBotService;
     private final TaskExecutor telegramNotificationExecutor;
+    private final RedisLockService redisLockService;
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -51,7 +52,8 @@ public class ProductService {
                           SecurityUtil securityUtil,
                           com.foodsave.backend.repository.UserRepository userRepository,
                           TelegramBotService telegramBotService,
-                          @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor) {
+                          @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor,
+                          RedisLockService redisLockService) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -59,6 +61,7 @@ public class ProductService {
         this.userRepository = userRepository;
         this.telegramBotService = telegramBotService;
         this.telegramNotificationExecutor = telegramNotificationExecutor;
+        this.redisLockService = redisLockService;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -454,7 +457,8 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public Product reserveProductStock(Long productId, int quantity) {
-        return decreaseStockWithLock(productId, quantity);
+        // Redis-блокировка защищает от race condition при одновременном бронировании
+        return redisLockService.executeWithLock(productId, () -> decreaseStockWithLock(productId, quantity));
     }
 
     /**

@@ -32,6 +32,8 @@ public class NotificationService {
     private final SecurityUtils securityUtils;
     private final UserRepository userRepository;
     private final TelegramBotService telegramBotService;
+    private final TaskExecutor telegramNotificationExecutor;
+    private final NotificationRateLimiterService rateLimiterService;
 
     public List<NotificationDTO> getAllNotifications() {
         User currentUser = securityUtils.getCurrentUser();
@@ -136,9 +138,18 @@ public class NotificationService {
         String storedTitle = title != null ? title : "Telegram уведомление";
         String storedMessage = buildStoredMessage(message, buttonText, buttonUrl);
 
-        int recipients = userRepository.findByTelegramUserTrue().stream()
+        // Асинхронная отправка — не блокируем основной поток
+        List<User> recipientList = userRepository.findByTelegramUserTrue().stream()
                 .filter(user -> user.getTelegramUserId() != null)
-                .mapToInt(user -> {
+                .collect(java.util.stream.Collectors.toList());
+
+        int[] queued = {0};
+        for (User user : recipientList) {
+            final Long userId = user.getId();
+            final Long telegramId = user.getTelegramUserId();
+            String contextId = storedTitle;
+            if (!rateLimiterService.allowAndMark(userId, "BROADCAST", contextId)) continue;
+            telegramNotificationExecutor.execute(() -> {
                     telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
                     Notification notification = new Notification();
                     notification.setTitle(storedTitle);
