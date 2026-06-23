@@ -143,4 +143,17 @@ public class ProductController {
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(productService.hasSufficientStock(id, quantity));
     }
+
+    @GetMapping("/filter")
+    @Operation(summary = "Filter products with pagination, search, and dynamic criteria")
+    public ResponseEntity<Page<ProductDTO>> filterProducts(
+            @RequestParam(required = false) String query,
+            @RequestParam(required = false) String categoryName,
+            @RequestParam(required = false) Double minDiscount,
+            @RequestParam(required = false) java.math.BigDecimal minPrice,
+            @RequestParam(required = false) java.math.BigDecimal maxPrice,
+            @RequestParam(required = false) Boolean inStock,
+            Pageable pageable) {
+        return ResponseEntity.ok(productService.filterProducts(query, categoryName, minDiscount, minPrice, maxPrice, inStock, pageable));
+    }
 }

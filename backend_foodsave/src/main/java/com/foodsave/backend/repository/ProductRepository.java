@@ -158,4 +158,23 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
+
+    @Query("SELECT p FROM Product p WHERE p.active = true " +
+            "AND p.stockQuantity > 0 " +
+            "AND p.status = com.foodsave.backend.domain.enums.ProductStatus.AVAILABLE " +
+            "AND (p.expiryDate IS NULL OR p.expiryDate > CURRENT_TIMESTAMP) " +
+            "AND (:inStock IS NULL OR :inStock = :inStock) " +
+            "AND (CAST(:query AS string) IS NULL OR CAST(:query AS string) = '' OR LOWER(p.name) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%')) OR LOWER(p.description) LIKE LOWER(CONCAT('%', CAST(:query AS string), '%'))) " +
+            "AND (CAST(:categoryName AS string) IS NULL OR CAST(:categoryName AS string) = '' OR LOWER(p.category.name) = LOWER(CAST(:categoryName AS string))) " +
+            "AND (:minDiscount IS NULL OR p.discountPercentage >= :minDiscount) " +
+            "AND (:minPrice IS NULL OR p.price >= :minPrice) " +
+            "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
+            "ORDER BY p.createdAt DESC")
+    Page<Product> filterProducts(@Param("query") String query,
+                                 @Param("categoryName") String categoryName,
+                                 @Param("minDiscount") Double minDiscount,
+                                 @Param("minPrice") java.math.BigDecimal minPrice,
+                                 @Param("maxPrice") java.math.BigDecimal maxPrice,
+                                 @Param("inStock") Boolean inStock,
+                                 Pageable pageable);
 }

@@ -74,6 +74,11 @@ export default function HomePage() {
     return () => clearInterval(interval);
   }, [banners.length]);
 
+  const formatPrice = (price: number | null | undefined) => {
+    if (price === null || price === undefined) return "0 ₸";
+    return `${price.toLocaleString()} ₸`;
+  };
+
   return (
     <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
@@ -183,7 +188,7 @@ export default function HomePage() {
       <div className="px-4 mt-20">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-base font-semibold text-black font-inter">{t("nearbyBoxes")}</h3>
-          <Link href="/markets" className="text-base font-semibold text-[#73be61] font-inter">
+          <Link href="/boxes" className="text-base font-semibold text-[#73be61] font-inter">
             {t("seeAll")}
           </Link>
         </div>
@@ -191,30 +196,38 @@ export default function HomePage() {
         <div className="overflow-x-auto pb-2 -mx-4 px-4">
           <div className="flex gap-4">
             {featuredProducts.length > 0 ? featuredProducts.map((product: Product) => (
-              <Link key={product.id} href={`/details/${product.id}`} className="flex-shrink-0 w-[250px]">
-                <div className="bg-gray-100 rounded-2xl p-4">
-                  <h4 className="text-lg font-medium text-black font-inter">{safeString(product.name)}</h4>
-                  <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-black/60 font-inter">
-                    <span>{product.stockQuantity} {t("meals")}</span>
-                    <span>{safeString(product.storeName)}</span>
+                <Link key={product.id} href={`/details/${product.id}`} className="flex-shrink-0 w-[250px]">
+                  <div className="bg-gray-100 rounded-2xl p-4">
+                    <h4 className="text-lg font-medium text-black font-inter truncate">{safeString(product.name)}</h4>
+                    <div className="flex items-center justify-between mt-2 text-sm font-semibold text-black/60 font-inter">
+                      <span>{product.stockQuantity} {t("meals")}</span>
+                      <span className="truncate max-w-[120px]">{safeString(product.storeName)}</span>
+                    </div>
+                    {/* Вывод цены бокса */}
+                    <div className="mt-1 text-base font-bold text-[#73be61] font-inter">
+                      {formatPrice(product.price ?? product.discountedPrice ?? product.originalPrice ?? 0)}
+                    </div>
+                    <div className="bg-[#73be61] rounded-2xl h-32 mt-3 flex items-center justify-center overflow-hidden relative">
+                      {product.imageUrl ? (
+                          <img
+                              src={product.imageUrl}
+                              alt={safeString(product.name)}
+                              className="w-full h-full object-cover rounded-2xl"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/placeholder-food.jpg';
+                              }}
+                          />
+                      ) : (
+                          <div className="text-white text-sm font-inter">Фото</div>
+                      )}
+                      {product.discountPercentage && product.discountPercentage > 0 && (
+                          <div className="absolute top-2 left-2 bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-md font-inter">
+                            -{product.discountPercentage}%
+                          </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="bg-[#73be61] rounded-2xl h-32 mt-4 flex items-center justify-center overflow-hidden">
-                    {product.imageUrl ? (
-                      <img 
-                        src={product.imageUrl} 
-                        alt={safeString(product.name)}
-                        className="w-full h-full object-cover rounded-2xl"
-                        onError={(e) => {
-                          // Replace with placeholder on error
-                          (e.target as HTMLImageElement).src = '/placeholder-food.jpg';
-                        }}
-                      />
-                    ) : (
-                      <div className="text-white text-sm font-inter">Фото</div>
-                    )}
-                  </div>
-                </div>
-              </Link>
+                </Link>
             )) : !productsLoading ? (
               <div className="flex-shrink-0 w-[250px]">
                 <div className="bg-gray-100 rounded-2xl p-4">

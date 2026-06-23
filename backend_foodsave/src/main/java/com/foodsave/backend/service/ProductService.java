@@ -44,7 +44,6 @@ public class ProductService {
     private final com.foodsave.backend.repository.UserRepository userRepository;
     private final TelegramBotService telegramBotService;
     private final TaskExecutor telegramNotificationExecutor;
-    private final RedisLockService redisLockService;
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -52,8 +51,7 @@ public class ProductService {
                           SecurityUtil securityUtil,
                           com.foodsave.backend.repository.UserRepository userRepository,
                           TelegramBotService telegramBotService,
-                          @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor,
-                          RedisLockService redisLockService) {
+                          @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -61,7 +59,6 @@ public class ProductService {
         this.userRepository = userRepository;
         this.telegramBotService = telegramBotService;
         this.telegramNotificationExecutor = telegramNotificationExecutor;
-        this.redisLockService = redisLockService;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -457,8 +454,7 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public Product reserveProductStock(Long productId, int quantity) {
-        // Redis-блокировка защищает от race condition при одновременном бронировании
-        return redisLockService.executeWithLock(productId, () -> decreaseStockWithLock(productId, quantity));
+        return decreaseStockWithLock(productId, quantity);
     }
 
     /**
@@ -606,5 +602,12 @@ public class ProductService {
             return Math.max(requestedQuantity, 0);
         }
         return currentQuantity;
+    }
+
+    public Page<ProductDTO> filterProducts(String query, String categoryName, Double minDiscount,
+                                           BigDecimal minPrice, BigDecimal maxPrice, Boolean inStock,
+                                           Pageable pageable) {
+        return productRepository.filterProducts(query, categoryName, minDiscount, minPrice, maxPrice, inStock, pageable)
+                .map(this::convertToDTO);
     }
 }

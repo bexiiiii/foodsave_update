@@ -404,20 +404,8 @@ class ApiClient {
   // Product methods
   async getAllProducts(page = 0, size = 20): Promise<PaginationResponse<Product>> {
     try {
-      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products?page=${page}&size=${size}`);
-      // Ensure content is an array
-      if (!response || !Array.isArray(response.content)) {
-        return {
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
-          size: size,
-          number: page,
-          first: true,
-          last: true
-        };
-      }
-      return response;
+      // Используем правильный метод фильтрации через инстанс с базовым URL
+      return await this.filterProducts({ page, size });
     } catch (error) {
       console.error('Failed to fetch products:', error);
       return {
@@ -620,6 +608,49 @@ class ApiClient {
     }
     
     throw new Error('No items to order');
+  }
+
+  // Получение всех категорий
+  async getAllCategories(): Promise<string[]> {
+    try {
+      const response = await this.makePublicRequest<string[]>('/products/categories');
+      return Array.isArray(response) ? response : [];
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      return [];
+    }
+  }
+
+  // Комплексный поиск и фильтрация продуктов (БЕЗ ГЕО)
+  async filterProducts(params: {
+    query?: string;
+    categoryName?: string;
+    minDiscount?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+    page?: number;
+    size?: number;
+  }): Promise<PaginationResponse<Product>> {
+    const searchParams = new URLSearchParams();
+    if (params.query) searchParams.append('query', params.query);
+    if (params.categoryName) searchParams.append('categoryName', params.categoryName);
+    if (params.minDiscount !== undefined) searchParams.append('minDiscount', params.minDiscount.toString());
+    if (params.minPrice !== undefined) searchParams.append('minPrice', params.minPrice.toString());
+    if (params.maxPrice !== undefined) searchParams.append('maxPrice', params.maxPrice.toString());
+    if (params.inStock !== undefined) searchParams.append('inStock', params.inStock.toString());
+
+    const page = params.page || 0;
+    const size = params.size || 20;
+    searchParams.append('page', page.toString());
+    searchParams.append('size', size.toString());
+
+    try {
+      return await this.makePublicRequest<PaginationResponse<Product>>(`/products/filter?${searchParams.toString()}`);
+    } catch (error) {
+      console.error('Failed to filter products:', error);
+      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+    }
   }
 }
 
