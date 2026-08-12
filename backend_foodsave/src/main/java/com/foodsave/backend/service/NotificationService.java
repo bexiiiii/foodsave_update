@@ -14,6 +14,7 @@ import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -146,21 +147,22 @@ public class NotificationService {
         int[] queued = {0};
         for (User user : recipientList) {
             final Long userId = user.getId();
-            final Long telegramId = user.getTelegramUserId();
             String contextId = storedTitle;
             if (!rateLimiterService.allowAndMark(userId, "BROADCAST", contextId)) continue;
             telegramNotificationExecutor.execute(() -> {
-                    telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
-                    Notification notification = new Notification();
-                    notification.setTitle(storedTitle);
-                    notification.setMessage(storedMessage);
-                    notification.setType("TELEGRAM");
-                    notification.setRead(false);
-                    notification.setUser(user);
-                    notificationRepository.save(notification);
-                    return 1;
-                })
-                .sum();
+                telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
+                Notification notification = new Notification();
+                notification.setTitle(storedTitle);
+                notification.setMessage(storedMessage);
+                notification.setType("TELEGRAM");
+                notification.setRead(false);
+                notification.setUser(user);
+                notificationRepository.save(notification);
+            });
+            queued[0]++;
+        }
+
+        int recipients = queued[0];
 
         try {
             User currentUser = securityUtils.getCurrentUser();
