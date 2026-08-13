@@ -8,6 +8,7 @@ import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, isProductVisibleInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
 import { formatPrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
+import FavoriteToast from "../../components/FavoriteToast";
 
 function MarketsContent() {
   const { } = useTelegram(); // Initialize Telegram singleton
@@ -20,6 +21,31 @@ function MarketsContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [togglingStoreId, setTogglingStoreId] = useState<number | null>(null);
+
+  const toggleStoreFavorite = async (store: Store) => {
+    if (togglingStoreId === store.id) return;
+
+    const previousValue = !!store.isFavorite;
+    setTogglingStoreId(store.id);
+    setStores((prev) =>
+      prev.map((s) => (s.id === store.id ? { ...s, isFavorite: !previousValue } : s))
+    );
+    setToastMessage(
+      previousValue ? `«${store.name}» убрано из избранного` : `«${store.name}» добавлено в избранное`
+    );
+    try {
+      await apiClient.toggleFavoriteStore(store.id, previousValue);
+    } catch (error) {
+      console.error("Failed to toggle favorite store:", error);
+      setStores((prev) =>
+        prev.map((s) => (s.id === store.id ? { ...s, isFavorite: previousValue } : s))
+      );
+    } finally {
+      setTogglingStoreId(null);
+    }
+  };
 
   useEffect(() => {
     const loadStores = async () => {
@@ -113,25 +139,8 @@ function MarketsContent() {
   const regularStores = stores.filter((store) => !store.isFavorite);
 
   const StoreCard = ({ store }: { store: Store }) => {
-    const [isFavorite, setIsFavorite] = useState(!!store.isFavorite);
-    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
-
-    const toggleFavorite = async (event: React.MouseEvent) => {
-      event.stopPropagation();
-      if (isTogglingFavorite) return;
-
-      const previousValue = isFavorite;
-      setIsFavorite(!previousValue);
-      setIsTogglingFavorite(true);
-      try {
-        await apiClient.toggleFavoriteStore(store.id, previousValue);
-      } catch (error) {
-        console.error("Failed to toggle favorite store:", error);
-        setIsFavorite(previousValue);
-      } finally {
-        setIsTogglingFavorite(false);
-      }
-    };
+    const isFavorite = !!store.isFavorite;
+    const isTogglingFavorite = togglingStoreId === store.id;
 
     return (
       <article
@@ -181,7 +190,10 @@ function MarketsContent() {
               className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
                 isFavorite ? "bg-amber-50 text-amber-500" : "bg-white text-black/40"
               }`}
-              onClick={toggleFavorite}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleStoreFavorite(store);
+              }}
               type="button"
             >
               <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
@@ -331,6 +343,8 @@ function MarketsContent() {
           </Link>
         </div>
       </nav>
+
+      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   );
 }

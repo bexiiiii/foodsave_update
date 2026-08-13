@@ -8,6 +8,7 @@ import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, Product, Store, isProductVisibleInMiniApp } from "../../lib/api";
 import { formatPrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
+import FavoriteToast from "../../components/FavoriteToast";
 
 function BoxesContent() {
   const searchParams = useSearchParams();
@@ -20,6 +21,7 @@ function BoxesContent() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showClosingSoonBanner, setShowClosingSoonBanner] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const filterAvailableProducts = (items: Product[] = []) =>
     items.filter((product) => isProductVisibleInMiniApp(product));
@@ -76,6 +78,9 @@ function BoxesContent() {
     const previousValue = isFavorite;
     setIsFavorite(!previousValue);
     setIsTogglingFavorite(true);
+    setToastMessage(
+      previousValue ? `«${store.name}» убрано из избранного` : `«${store.name}» добавлено в избранное`
+    );
     try {
       await apiClient.toggleFavoriteStore(store.id, previousValue);
     } catch (error) {
@@ -103,6 +108,9 @@ function BoxesContent() {
       const previousValue = isProductFavorite;
       setIsProductFavorite(!previousValue);
       setIsTogglingProductFavorite(true);
+      setToastMessage(
+        previousValue ? `«${product.name}» убран из избранного` : `«${product.name}» добавлен в избранное`
+      );
       try {
         await apiClient.toggleFavoriteProduct(product.id, previousValue);
       } catch (error) {
@@ -325,6 +333,8 @@ function BoxesContent() {
           </div>
         </div>
       )}
+
+      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   );
 }

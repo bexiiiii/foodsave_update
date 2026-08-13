@@ -7,6 +7,7 @@ import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
+import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 
 type OrderModalState =
@@ -27,6 +28,7 @@ export default function ProductDetailsPage() {
   const [isReserving, setIsReserving] = useState(false);
   const [orderModal, setOrderModal] = useState<OrderModalState>(null);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   // Phone modal state
@@ -200,6 +202,9 @@ export default function ProductDetailsPage() {
     const previousValue = isFavorite;
     setIsFavorite(!previousValue);
     setIsTogglingFavorite(true);
+    setToastMessage(
+      previousValue ? `«${product.name}» убран из избранного` : `«${product.name}» добавлен в избранное`
+    );
     try {
       await apiClient.toggleFavoriteProduct(product.id, previousValue);
     } catch (error) {
@@ -570,6 +575,8 @@ export default function ProductDetailsPage() {
           </div>
         </div>
       )}
+
+      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   );
 }

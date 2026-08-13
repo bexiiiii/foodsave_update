@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
+import FavoriteToast from "../components/FavoriteToast";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { useTelegram } from "../hooks/useTelegram";
@@ -63,10 +64,37 @@ export default function HomePage() {
 
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProductsResponse, isLoading: productsLoading } = useFeaturedProducts(0, 100);
+  const [favoriteOverrides, setFavoriteOverrides] = useState<Record<number, boolean>>({});
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
   const featuredProducts = safeArray(featuredProductsResponse?.content)
-    .filter((product: Product) => isProductVisibleInMiniApp(product));
+    .filter((product: Product) => isProductVisibleInMiniApp(product))
+    .map((product) => ({
+      ...product,
+      isFavorite: favoriteOverrides[product.id] ?? product.isFavorite,
+    }))
+    .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite));
+
+  const toggleProductFavorite = async (product: Product) => {
+    if (togglingProductId === product.id) return;
+
+    const previousValue = !!product.isFavorite;
+    setTogglingProductId(product.id);
+    setFavoriteOverrides((prev) => ({ ...prev, [product.id]: !previousValue }));
+    setToastMessage(
+      previousValue ? `«${safeString(product.name)}» убран из избранного` : `«${safeString(product.name)}» добавлен в избранное`
+    );
+    try {
+      await apiClient.toggleFavoriteProduct(product.id, previousValue);
+    } catch (error) {
+      console.error("Failed to toggle favorite product:", error);
+      setFavoriteOverrides((prev) => ({ ...prev, [product.id]: previousValue }));
+    } finally {
+      setTogglingProductId(null);
+    }
+  };
 
   useEffect(() => {
     if (authLoading || user) return;
@@ -111,29 +139,11 @@ export default function HomePage() {
   };
 
   const FeaturedProductCard = ({ product, index }: { product: Product; index: number }) => {
-    const [isFavorite, setIsFavorite] = useState(!!product.isFavorite);
-    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+    const isFavorite = !!product.isFavorite;
+    const isTogglingFavorite = togglingProductId === product.id;
     const price = getCurrentPrice(product);
     const originalPrice = normalizePrice(product.originalPrice || price);
     const discount = originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : product.discountPercentage || 0;
-
-    const toggleFavorite = async (event: React.MouseEvent) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (isTogglingFavorite) return;
-
-      const previousValue = isFavorite;
-      setIsFavorite(!previousValue);
-      setIsTogglingFavorite(true);
-      try {
-        await apiClient.toggleFavoriteProduct(product.id, previousValue);
-      } catch (error) {
-        console.error("Failed to toggle favorite product:", error);
-        setIsFavorite(previousValue);
-      } finally {
-        setIsTogglingFavorite(false);
-      }
-    };
 
     return (
       <Link href={`/details/${product.id}`} className="min-w-0">
@@ -159,7 +169,11 @@ export default function HomePage() {
             <button
               aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
               disabled={isTogglingFavorite}
-              onClick={toggleFavorite}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleProductFavorite(product);
+              }}
               type="button"
               className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-transform active:scale-90"
             >
@@ -326,6 +340,7 @@ export default function HomePage() {
       </main>
 
       <BottomNav active="home" />
+      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
     </div>
   );
 }
