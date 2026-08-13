@@ -814,7 +814,17 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {getStatusBadge(product.status)}
+                                                    <div className="flex flex-col items-start gap-1">
+                                                        {getStatusBadge(product.status)}
+                                                        <Badge
+                                                            className={`border-0 ${product.active
+                                                                ? 'bg-green-100 text-green-800'
+                                                                : 'bg-gray-100 text-gray-600'
+                                                                }`}
+                                                        >
+                                                            {product.active ? 'Активен' : 'Скрыт'}
+                                                        </Badge>
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <p className="text-sm text-gray-600">
