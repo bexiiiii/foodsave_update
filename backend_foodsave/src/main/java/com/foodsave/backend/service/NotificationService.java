@@ -14,7 +14,6 @@ import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.task.TaskExecutor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,8 +32,6 @@ public class NotificationService {
     private final SecurityUtils securityUtils;
     private final UserRepository userRepository;
     private final TelegramBotService telegramBotService;
-    private final TaskExecutor telegramNotificationExecutor;
-    private final NotificationRateLimiterService rateLimiterService;
 
     public List<NotificationDTO> getAllNotifications() {
         User currentUser = securityUtils.getCurrentUser();
@@ -139,30 +136,20 @@ public class NotificationService {
         String storedTitle = title != null ? title : "Telegram уведомление";
         String storedMessage = buildStoredMessage(message, buttonText, buttonUrl);
 
-        // Асинхронная отправка — не блокируем основной поток
-        List<User> recipientList = userRepository.findByTelegramUserTrue().stream()
+        int recipients = userRepository.findByTelegramUserTrue().stream()
                 .filter(user -> user.getTelegramUserId() != null)
-                .collect(java.util.stream.Collectors.toList());
-
-        int[] queued = {0};
-        for (User user : recipientList) {
-            final Long userId = user.getId();
-            String contextId = storedTitle;
-            if (!rateLimiterService.allowAndMark(userId, "BROADCAST", contextId)) continue;
-            telegramNotificationExecutor.execute(() -> {
-                telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
-                Notification notification = new Notification();
-                notification.setTitle(storedTitle);
-                notification.setMessage(storedMessage);
-                notification.setType("TELEGRAM");
-                notification.setRead(false);
-                notification.setUser(user);
-                notificationRepository.save(notification);
-            });
-            queued[0]++;
-        }
-
-        int recipients = queued[0];
+                .mapToInt(user -> {
+                    telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
+                    Notification notification = new Notification();
+                    notification.setTitle(storedTitle);
+                    notification.setMessage(storedMessage);
+                    notification.setType("TELEGRAM");
+                    notification.setRead(false);
+                    notification.setUser(user);
+                    notificationRepository.save(notification);
+                    return 1;
+                })
+                .sum();
 
         try {
             User currentUser = securityUtils.getCurrentUser();

@@ -9,6 +9,7 @@ import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.SearchHistoryRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.UserRepository;
+import com.foodsave.backend.util.ProductAvailability;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -41,7 +42,8 @@ public class SearchService {
         PageRequest pageRequest = PageRequest.of(0, 10);
 
         // Search products
-        Page<Product> productPage = productRepository.searchProducts(query, pageRequest);
+        Page<Product> productPage = productRepository.searchProducts(
+                query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageRequest);
         List<Product> products = productPage.getContent();
 
         // Search stores

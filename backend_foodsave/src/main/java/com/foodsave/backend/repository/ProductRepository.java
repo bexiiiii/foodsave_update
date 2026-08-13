@@ -98,14 +98,32 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByStoreIdAndNameContainingIgnoreCaseAndCategoryNameContainingIgnoreCase(Long storeId, String name, String categoryName);
     List<Product> findByStoreIdAndNameContainingIgnoreCaseAndCategoryNameContainingIgnoreCaseAndStatus(Long storeId, String name, String categoryName, String status);
 
-    @Query("SELECT p FROM Product p WHERE " +
-           "LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(p.description) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
-           "LOWER(p.category) LIKE LOWER(CONCAT('%', :query, '%'))")
-    Page<Product> searchProducts(@Param("query") String query, Pageable pageable);
+    @EntityGraph(attributePaths = {"store", "category"})
+    @Query("SELECT p FROM Product p WHERE p.active = true AND p.status = 'AVAILABLE' " +
+           "AND COALESCE(p.stockQuantity, 0) > 0 " +
+           "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
+           "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
+           "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
+           "OR p.store.closingHours IS NULL OR TRIM(p.store.closingHours) = '' " +
+           "OR p.store.openingHours = p.store.closingHours " +
+           "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
+           "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
+           "AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(p.category.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
+           "OR LOWER(p.store.name) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "ORDER BY p.sortOrder ASC, p.createdAt DESC")
+    Page<Product> searchProducts(@Param("query") String query,
+                                 @Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                 @Param("currentTime") String currentTime,
+                                 Pageable pageable);
     
     Page<Product> findByDiscountPercentageGreaterThan(Double discountPercentage, Pageable pageable);
     
+    @EntityGraph(attributePaths = {"store", "category"})
+    @Query("SELECT p FROM Product p")
+    Page<Product> findAllWithStoreAndCategory(Pageable pageable);
+
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.active = true ORDER BY p.createdAt DESC")
     Page<Product> findAllActiveProducts(Pageable pageable);
@@ -114,15 +132,34 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
-           "AND (p.expiryDate IS NULL OR p.expiryDate > CURRENT_TIMESTAMP) ORDER BY p.createdAt DESC")
-    Page<Product> findAllActiveAvailableProducts(Pageable pageable);
+           "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
+           "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
+           "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
+           "OR p.store.closingHours IS NULL OR TRIM(p.store.closingHours) = '' " +
+           "OR p.store.openingHours = p.store.closingHours " +
+           "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
+           "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
+           "ORDER BY p.sortOrder ASC, p.createdAt DESC")
+    Page<Product> findAllActiveAvailableProducts(@Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                                 @Param("currentTime") String currentTime,
+                                                 Pageable pageable);
 
     // Find products by store with status AVAILABLE (exclude OUT_OF_STOCK and expired)
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
-           "AND (p.expiryDate IS NULL OR p.expiryDate > CURRENT_TIMESTAMP)")
-    Page<Product> findActiveAvailableByStoreId(@Param("storeId") Long storeId, Pageable pageable);
+           "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
+           "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
+           "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
+           "OR p.store.closingHours IS NULL OR TRIM(p.store.closingHours) = '' " +
+           "OR p.store.openingHours = p.store.closingHours " +
+           "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
+           "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
+           "ORDER BY p.sortOrder ASC, p.createdAt DESC")
+    Page<Product> findActiveAvailableByStoreId(@Param("storeId") Long storeId,
+                                               @Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                               @Param("currentTime") String currentTime,
+                                               Pageable pageable);
     
     Page<Product> findByStockQuantityLessThanEqual(Integer threshold, Pageable pageable);
     
@@ -158,4 +195,18 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
+
+    @EntityGraph(attributePaths = {"store", "category"})
+    @Query("SELECT p FROM Product p WHERE p.id IN :ids AND p.active = true AND p.status = 'AVAILABLE' " +
+           "AND COALESCE(p.stockQuantity, 0) > 0 " +
+           "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
+           "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
+           "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
+           "OR p.store.closingHours IS NULL OR TRIM(p.store.closingHours) = '' " +
+           "OR p.store.openingHours = p.store.closingHours " +
+           "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
+           "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours)))")
+    List<Product> findActiveAvailableByIds(@Param("ids") List<Long> ids,
+                                           @Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                           @Param("currentTime") String currentTime);
 }

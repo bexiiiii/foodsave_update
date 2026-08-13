@@ -3,6 +3,7 @@ package com.foodsave.backend.service;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.repository.ProductRepository;
+import com.foodsave.backend.util.ProductAvailability;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -22,10 +23,10 @@ public class ProductExpiryScheduler {
     private final ProductRepository productRepository;
 
     /**
-     * Runs every 10 minutes. Marks products whose expiryDate has passed as EXPIRED
+     * Runs every minute. Marks products whose expiryDate has passed as EXPIRED
      * and deactivates them so they no longer appear in the mini app.
      */
-    @Scheduled(fixedRate = 10 * 60 * 1000)
+    @Scheduled(fixedRate = 60 * 1000)
     @Transactional
     @Caching(evict = {
             @CacheEvict(value = "products", allEntries = true),
@@ -34,8 +35,8 @@ public class ProductExpiryScheduler {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public void expireProducts() {
-        LocalDateTime now = LocalDateTime.now();
-        List<Product> expired = productRepository.findByExpiryDateBefore(now).stream()
+        LocalDateTime cutoff = ProductAvailability.visibilityCutoff();
+        List<Product> expired = productRepository.findByExpiryDateBefore(cutoff).stream()
                 .filter(p -> p.getStatus() != ProductStatus.EXPIRED
                         && p.getStatus() != ProductStatus.DISCONTINUED)
                 .toList();
@@ -49,6 +50,6 @@ public class ProductExpiryScheduler {
             product.setActive(false);
         }
         productRepository.saveAll(expired);
-        log.info("Expired {} products with past expiryDate", expired.size());
+        log.info("Expired {} products whose expiry calendar date has started", expired.size());
     }
 }

@@ -1,12 +1,14 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.domain.enums.DeliveryType;
+import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.entity.Order;
 import com.foodsave.backend.entity.OrderItem;
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.User;
 import com.foodsave.backend.repository.OrderRepository;
+import com.foodsave.backend.repository.NotificationSettingsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +34,7 @@ public class TelegramOrderNotificationService {
 
     private final TelegramBotService telegramBotService;
     private final OrderRepository orderRepository;
+    private final NotificationSettingsRepository notificationSettingsRepository;
 
     @Value("${telegram.order-notifications.chat-ids:}")
     private String recipientChatIds;
@@ -73,6 +76,50 @@ public class TelegramOrderNotificationService {
 
         log.info("Telegram order notification for order {} sent to {} configured chat(s)",
                 resolveOrderNumber(notificationOrder), chatIds.size());
+    }
+
+    public void notifyStatusChanged(Order order, OrderStatus previous, OrderStatus current) {
+        if (order == null || previous == current) return;
+        Set<Long> chatIds = parseRecipientChatIds();
+        Long customerChatId = order.getUser() == null ? null : order.getUser().getTelegramUserId();
+        boolean customerNotificationsEnabled = order.getUser() != null
+                && notificationSettingsRepository.findByUser(order.getUser())
+                .map(com.foodsave.backend.entity.NotificationSettings::isOrderUpdates)
+                .orElse(true);
+        if (chatIds.isEmpty() && (customerChatId == null || !customerNotificationsEnabled)) return;
+        String message = "<b>Изменение заказа #" + html(resolveOrderNumber(order)) + "</b>\n"
+                + "Статус: " + html(statusLabel(previous)) + " → " + html(statusLabel(current));
+        for (Long chatId : chatIds) {
+            telegramBotService.sendManagerMessage(chatId,
+                    new TelegramBotService.TelegramMessagePayload(message, null, null, null));
+        }
+        if (customerChatId != null && customerNotificationsEnabled) {
+            telegramBotService.sendMessage(customerChatId,
+                    new TelegramBotService.TelegramMessagePayload(message, null, "Открыть заказ",
+                            telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
+        }
+    }
+
+    private String statusLabel(OrderStatus status) {
+        if (status == null) return "—";
+        return switch (status) {
+            case CREATED -> "Создан";
+            case PENDING -> "Ожидает подтверждения";
+            case CONFIRMED -> "Подтверждён";
+            case PREPARING -> "Готовится";
+            case READY_FOR_PICKUP -> "Готов к выдаче";
+            case PICKED_UP -> "Получен клиентом";
+            case COMPLETED -> "Завершён";
+            case OUT_FOR_DELIVERY -> "Передан в доставку";
+            case DELIVERED -> "Выдан";
+            case CANCELLED -> "Отменён";
+            case CANCELLED_BY_USER -> "Отменён пользователем";
+            case CANCELLED_BY_PARTNER -> "Отменён заведением";
+            case EXPIRED -> "Истёк";
+            case NO_SHOW -> "Клиент не пришёл";
+            case REJECTED -> "Отклонён";
+            case REFUNDED -> "Возврат";
+        };
     }
 
     private Order resolveNotificationOrder(Order order) {

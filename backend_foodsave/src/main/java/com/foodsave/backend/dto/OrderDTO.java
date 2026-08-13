@@ -5,6 +5,8 @@ import com.foodsave.backend.domain.enums.DeliveryType;
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
+import com.foodsave.backend.domain.enums.ReservationActorType;
+import com.foodsave.backend.domain.enums.ReservationCancellationReason;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -47,6 +49,25 @@ public class OrderDTO {
     private DeliveryType deliveryType;
     private String trackingNumber;
     private String estimatedDeliveryTime;
+    private ReservationCancellationReason cancellationReason;
+    private String cancellationComment;
+    private ReservationActorType statusActorType;
+    private Long statusChangedByUserId;
+    private LocalDateTime confirmedAt;
+    private LocalDateTime readyForPickupAt;
+    private LocalDateTime pickedUpAt;
+    private LocalDateTime completedAt;
+    private LocalDateTime cancelledAt;
+    private LocalDateTime expiredAt;
+    private LocalDateTime noShowAt;
+    private LocalDateTime rejectedAt;
+    private LocalDateTime customerArrivedAt;
+    private String acquisitionSource;
+    private String campaignId;
+    private Long notificationId;
+    private Long notificationGroupId;
+    private String telegramPostId;
+    private String startParam;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -80,6 +101,25 @@ public class OrderDTO {
                 .trackingNumber(order.getTrackingNumber())
                 .estimatedDeliveryTime(order.getEstimatedDeliveryTime() != null ?
                     order.getEstimatedDeliveryTime().toString() : null)
+                .cancellationReason(order.getCancellationReason())
+                .cancellationComment(order.getCancellationComment())
+                .statusActorType(order.getStatusActorType())
+                .statusChangedByUserId(order.getStatusChangedByUser() != null ? order.getStatusChangedByUser().getId() : null)
+                .confirmedAt(order.getConfirmedAt())
+                .readyForPickupAt(order.getReadyForPickupAt())
+                .pickedUpAt(order.getPickedUpAt())
+                .completedAt(order.getCompletedAt())
+                .cancelledAt(order.getCancelledAt())
+                .expiredAt(order.getExpiredAt())
+                .noShowAt(order.getNoShowAt())
+                .rejectedAt(order.getRejectedAt())
+                .customerArrivedAt(order.getCustomerArrivedAt())
+                .acquisitionSource(order.getAcquisitionSource())
+                .campaignId(order.getCampaignId())
+                .notificationId(order.getNotificationId())
+                .notificationGroupId(order.getNotificationGroupId())
+                .telegramPostId(order.getTelegramPostId())
+                .startParam(order.getStartParam())
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();

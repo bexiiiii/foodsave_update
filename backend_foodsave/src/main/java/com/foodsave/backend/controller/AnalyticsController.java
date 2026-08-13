@@ -1,8 +1,12 @@
 package com.foodsave.backend.controller;
 
 import com.foodsave.backend.dto.AnalyticsDTO;
+import com.foodsave.backend.dto.analytics.ProductEventRequest;
+import com.foodsave.backend.dto.analytics.ProductEventResponse;
 import com.foodsave.backend.service.AnalyticsService;
+import com.foodsave.backend.service.ProductEventService;
 import com.foodsave.backend.exception.ApiException;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
@@ -20,6 +24,13 @@ import java.util.Map;
 public class AnalyticsController {
 
     private final AnalyticsService analyticsService;
+    private final ProductEventService productEventService;
+
+    @PostMapping("/events")
+    public ResponseEntity<ProductEventResponse> trackProductEvent(@Valid @RequestBody ProductEventRequest request) {
+        productEventService.trackAsync(request);
+        return ResponseEntity.accepted().body(new ProductEventResponse(true));
+    }
 
     @GetMapping("/daily-sales")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('STORE_MANAGER') or hasRole('STORE_OWNER')")

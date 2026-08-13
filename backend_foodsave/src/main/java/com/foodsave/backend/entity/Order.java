@@ -4,6 +4,8 @@ import com.foodsave.backend.domain.enums.DeliveryType;
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
+import com.foodsave.backend.domain.enums.ReservationActorType;
+import com.foodsave.backend.domain.enums.ReservationCancellationReason;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -85,6 +87,67 @@ public class Order extends BaseEntity {
 
     @Column(name = "estimated_delivery_time")
     private LocalDateTime estimatedDeliveryTime;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "cancellation_reason")
+    private ReservationCancellationReason cancellationReason;
+
+    @Column(name = "cancellation_comment", columnDefinition = "TEXT")
+    private String cancellationComment;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status_actor_type")
+    private ReservationActorType statusActorType;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "status_changed_by_user_id")
+    @ToString.Exclude
+    private User statusChangedByUser;
+
+    @Column(name = "confirmed_at")
+    private LocalDateTime confirmedAt;
+
+    @Column(name = "ready_for_pickup_at")
+    private LocalDateTime readyForPickupAt;
+
+    @Column(name = "picked_up_at")
+    private LocalDateTime pickedUpAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "cancelled_at")
+    private LocalDateTime cancelledAt;
+
+    @Column(name = "expired_at")
+    private LocalDateTime expiredAt;
+
+    @Column(name = "no_show_at")
+    private LocalDateTime noShowAt;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "customer_arrived_at")
+    private LocalDateTime customerArrivedAt;
+
+    @Column(name = "acquisition_source")
+    private String acquisitionSource;
+
+    @Column(name = "campaign_id")
+    private String campaignId;
+
+    @Column(name = "notification_id")
+    private Long notificationId;
+
+    @Column(name = "notification_group_id")
+    private Long notificationGroupId;
+
+    @Column(name = "telegram_post_id")
+    private String telegramPostId;
+
+    @Column(name = "start_param")
+    private String startParam;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

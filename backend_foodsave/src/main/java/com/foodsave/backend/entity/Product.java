@@ -56,6 +56,10 @@ public class Product extends BaseEntity {
     @Column
     private Integer stockQuantity;
 
+    @Column(name = "sort_order", nullable = false)
+    @Builder.Default
+    private Integer sortOrder = 0;
+
     @NotNull(message = "Product status is required")
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

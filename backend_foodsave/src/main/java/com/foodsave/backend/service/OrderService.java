@@ -3,6 +3,8 @@ package com.foodsave.backend.service;
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
+import com.foodsave.backend.domain.enums.ReservationActorType;
+import com.foodsave.backend.dto.OrderStatusUpdateRequest;
 import com.foodsave.backend.dto.OrderDTO;
 import com.foodsave.backend.dto.OrderItemDTO;
 import com.foodsave.backend.dto.OrderStatsDTO;
@@ -25,6 +27,8 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.beans.factory.annotation.Qualifier;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -50,6 +54,10 @@ public class OrderService {
     private final com.foodsave.backend.repository.StoreRepository storeRepository;
     private final TelegramBotService telegramBotService;
     private final TelegramOrderNotificationService telegramOrderNotificationService;
+    @Qualifier("telegramNotificationExecutor")
+    private final TaskExecutor telegramNotificationExecutor;
+    private final RealtimeEventService realtimeEventService;
+    private final ReservationStatusService reservationStatusService;
 
     private static final String ORDER_NUMBER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int ORDER_NUMBER_LENGTH = 6;
@@ -191,7 +199,7 @@ public class OrderService {
         Order order = new Order();
         order.setUser(securityUtils.getCurrentUser());
         order.setOrderNumber(generateUniqueOrderNumber()); // Generate unique order number
-        order.setStatus(OrderStatus.PENDING);
+            order.setStatus(OrderStatus.CREATED);
         order.setPaymentMethod(orderDTO.getPaymentMethod());
         order.setContactPhone(orderDTO.getContactPhone());
         order.setDeliveryAddress(orderDTO.getDeliveryAddress());
@@ -342,6 +350,7 @@ public class OrderService {
     public OrderDTO updateOrder(Long id, OrderDTO orderDTO) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        OrderStatus previousStatus = order.getStatus();
         
         // Update basic order properties
         if (orderDTO.getContactPhone() != null) {
@@ -352,9 +361,7 @@ public class OrderService {
             order.setPaymentMethod(orderDTO.getPaymentMethod());
         }
         
-        if (orderDTO.getStatus() != null) {
-            order.setStatus(orderDTO.getStatus());
-        }
+        OrderStatus requestedStatus = orderDTO.getStatus();
         
         // Update order items if provided
         if (orderDTO.getItems() != null && !orderDTO.getItems().isEmpty()) {
@@ -385,7 +392,19 @@ public class OrderService {
             order.calculateTotals();
         }
         
-        return OrderDTO.fromEntity(orderRepository.save(order));
+        Order savedOrder = orderRepository.save(order);
+        if (requestedStatus != null && requestedStatus != previousStatus) {
+            savedOrder = reservationStatusService.changeStatus(savedOrder,
+                    new OrderStatusUpdateRequest(requestedStatus, ReservationActorType.ADMIN, null, null));
+        }
+        OrderDTO result = OrderDTO.fromEntity(savedOrder);
+        if (savedOrder.getStatus() != previousStatus) {
+            Order notificationOrder = savedOrder;
+            telegramNotificationExecutor.execute(() -> telegramOrderNotificationService.notifyStatusChanged(notificationOrder, previousStatus, notificationOrder.getStatus()));
+            realtimeEventService.publish(order.getUser().getId(), "order-status-changed", result);
+            realtimeEventService.publish(order.getStore().getOwner().getId(), "order-status-changed", result);
+        }
+        return result;
     }
 
     @Caching(evict = {
@@ -404,10 +423,29 @@ public class OrderService {
             @CacheEvict(value = "storeOrders", allEntries = true)
     })
     public OrderDTO updateOrderStatus(Long id, OrderStatus status) {
+        com.foodsave.backend.domain.enums.ReservationCancellationReason reason = switch (status) {
+            case CANCELLED, CANCELLED_BY_USER, CANCELLED_BY_PARTNER, EXPIRED, NO_SHOW, REJECTED ->
+                    com.foodsave.backend.domain.enums.ReservationCancellationReason.OTHER;
+            default -> null;
+        };
+        String comment = reason != null ? "Legacy status update" : null;
+        return updateOrderStatus(id, new OrderStatusUpdateRequest(status, ReservationActorType.ADMIN, reason, comment));
+    }
+
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "storeOrders", allEntries = true)
+    })
+    public OrderDTO updateOrderStatus(Long id, OrderStatusUpdateRequest request) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-        order.setStatus(status);
-        return OrderDTO.fromEntity(orderRepository.save(order));
+        OrderStatus previous = order.getStatus();
+        Order saved = reservationStatusService.changeStatus(order, request);
+        OrderDTO result = OrderDTO.fromEntity(saved);
+        telegramNotificationExecutor.execute(() -> telegramOrderNotificationService.notifyStatusChanged(saved, previous, request.status()));
+        realtimeEventService.publish(order.getUser().getId(), "order-status-changed", result);
+        realtimeEventService.publish(order.getStore().getOwner().getId(), "order-status-changed", result);
+        return result;
     }
 
     // Статистика заказов для всех заведений (только для админов)
@@ -492,7 +530,7 @@ public class OrderService {
         long totalOrders = orders.size();
         
         long pendingOrders = orders.stream()
-                .mapToLong(order -> order.getStatus() == OrderStatus.PENDING ? 1 : 0)
+                .mapToLong(order -> order.getStatus() == OrderStatus.PENDING || order.getStatus() == OrderStatus.CREATED ? 1 : 0)
                 .sum();
         
         long confirmedOrders = orders.stream()
@@ -508,11 +546,16 @@ public class OrderService {
                 .sum();
         
         long deliveredOrders = orders.stream()
-                .mapToLong(order -> order.getStatus() == OrderStatus.DELIVERED ? 1 : 0)
+                .mapToLong(order -> order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.COMPLETED ? 1 : 0)
                 .sum();
         
         long cancelledOrders = orders.stream()
-                .mapToLong(order -> order.getStatus() == OrderStatus.CANCELLED ? 1 : 0)
+                .mapToLong(order -> order.getStatus() == OrderStatus.CANCELLED
+                        || order.getStatus() == OrderStatus.CANCELLED_BY_USER
+                        || order.getStatus() == OrderStatus.CANCELLED_BY_PARTNER
+                        || order.getStatus() == OrderStatus.EXPIRED
+                        || order.getStatus() == OrderStatus.NO_SHOW
+                        || order.getStatus() == OrderStatus.REJECTED ? 1 : 0)
                 .sum();
         
         // Успешные заказы - это те, что доставлены

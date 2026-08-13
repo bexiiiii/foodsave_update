@@ -12,7 +12,14 @@ public record MiniAppReservationRequest(
         @Min(1) Integer quantity,
         String note,
         String contactPhone,
-        DeliveryType deliveryType
+        DeliveryType deliveryType,
+        String acquisitionSource,
+        String campaignId,
+        Long notificationId,
+        Long notificationGroupId,
+        String telegramPostId,
+        String startParam,
+        String sessionId
 ) {
     public int normalizedQuantity() {
         return quantity != null && quantity > 0 ? quantity : 1;

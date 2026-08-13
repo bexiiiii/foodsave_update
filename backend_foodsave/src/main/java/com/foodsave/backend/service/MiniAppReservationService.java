@@ -4,6 +4,10 @@ import com.foodsave.backend.domain.enums.DeliveryType;
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
+import com.foodsave.backend.domain.enums.ProductEventSource;
+import com.foodsave.backend.domain.enums.ProductEventType;
+import com.foodsave.backend.domain.enums.ReservationActorType;
+import com.foodsave.backend.dto.analytics.ProductEventRequest;
 import com.foodsave.backend.dto.OrderDTO;
 import com.foodsave.backend.dto.miniapp.MiniAppReservationRequest;
 import com.foodsave.backend.entity.Order;
@@ -45,6 +49,8 @@ public class MiniAppReservationService {
     private final TelegramBotService telegramBotService;
     private final TelegramOrderNotificationService telegramOrderNotificationService;
     private final UserRepository userRepository;
+    private final ProductEventService productEventService;
+    private final ReservationStatusService reservationStatusService;
 
     @Transactional
     @Caching(evict = {
@@ -73,6 +79,34 @@ public class MiniAppReservationService {
         log.info("User authenticated: userId={}, telegramId={}", 
             user.getId(), user.getTelegramUserId());
 
+        productEventService.trackAsync(new ProductEventRequest(
+                ProductEventType.RESERVATION_STARTED,
+                null,
+                user.getTelegramUserId(),
+                null,
+                null,
+                null,
+                productId,
+                null,
+                null,
+                resolveSource(request),
+                null,
+                request != null ? request.campaignId() : null,
+                request != null ? request.telegramPostId() : null,
+                request != null ? request.notificationId() : null,
+                request != null ? request.notificationGroupId() : null,
+                null,
+                request != null ? request.startParam() : null,
+                request != null ? request.sessionId() : null,
+                "miniapp",
+                null,
+                null,
+                null,
+                user.getTelegramLanguageCode(),
+                buildReservationEventKey("started", user.getId(), productId, request),
+                java.util.Map.of("quantity", quantity)
+        ));
+
         if (user.getTelegramUserId() == null) {
             log.warn("Mini-app reservation requested by user {} without linked telegram id", user.getId());
             throw new IllegalStateException("Не удалось найти ваш Telegram профиль. Откройте FoodSave Mini App из бота и попробуйте снова.");
@@ -97,9 +131,16 @@ public class MiniAppReservationService {
         order.setUser(user);
         order.setStore(product.getStore());
         order.setOrderNumber(generateUniqueOrderNumber());
-        order.setStatus(OrderStatus.PENDING);
+        order.setStatus(OrderStatus.CREATED);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setPaymentMethod(PaymentMethod.CASH);
+        order.setAcquisitionSource(request != null ? request.acquisitionSource() : null);
+        order.setCampaignId(request != null ? request.campaignId() : null);
+        order.setNotificationId(request != null ? request.notificationId() : null);
+        order.setNotificationGroupId(request != null ? request.notificationGroupId() : null);
+        order.setTelegramPostId(request != null ? request.telegramPostId() : null);
+        order.setStartParam(request != null ? request.startParam() : null);
+        order.setStatusActorType(ReservationActorType.USER);
         DeliveryType deliveryType = request.deliveryType() != null ? request.deliveryType() : DeliveryType.PICKUP;
         order.setDeliveryType(deliveryType);
 
@@ -129,8 +170,41 @@ public class MiniAppReservationService {
 
         log.info("Saving order: orderNumber={}", order.getOrderNumber());
         Order savedOrder = orderRepository.save(order);
+        reservationStatusService.recordInitialStatus(savedOrder, ReservationActorType.USER);
         log.info("Order saved: orderId={}, orderNumber={}", 
             savedOrder.getId(), savedOrder.getOrderNumber());
+
+        productEventService.trackAsync(new ProductEventRequest(
+                ProductEventType.RESERVATION_CREATED,
+                null,
+                user.getTelegramUserId(),
+                savedOrder.getId(),
+                product.getStore() != null ? product.getStore().getId() : null,
+                product.getStore() != null ? product.getStore().getId() : null,
+                product.getId(),
+                null,
+                null,
+                resolveSource(request),
+                null,
+                request != null ? request.campaignId() : null,
+                request != null ? request.telegramPostId() : null,
+                request != null ? request.notificationId() : null,
+                request != null ? request.notificationGroupId() : null,
+                null,
+                request != null ? request.startParam() : null,
+                request != null ? request.sessionId() : null,
+                "miniapp",
+                null,
+                null,
+                null,
+                user.getTelegramLanguageCode(),
+                buildReservationEventKey("created", user.getId(), productId, request),
+                java.util.Map.of(
+                        "quantity", quantity,
+                        "reservationStatus", savedOrder.getStatus().name(),
+                        "boxPrice", unitPrice
+                )
+        ));
         
         log.info("Mini-app reservation order {} created for user {} (product {} store {})",
                 savedOrder.getOrderNumber(), user.getId(), product.getId(),
@@ -296,5 +370,21 @@ public class MiniAppReservationService {
     private String generateOrderNumber() {
         int random = ThreadLocalRandom.current().nextInt(0, 1_000_000);
         return String.format("%06d", random);
+    }
+
+    private ProductEventSource resolveSource(MiniAppReservationRequest request) {
+        if (request == null || request.acquisitionSource() == null || request.acquisitionSource().isBlank()) {
+            return ProductEventSource.direct;
+        }
+        try {
+            return ProductEventSource.valueOf(request.acquisitionSource());
+        } catch (IllegalArgumentException ignored) {
+            return ProductEventSource.unknown;
+        }
+    }
+
+    private String buildReservationEventKey(String phase, Long userId, Long productId, MiniAppReservationRequest request) {
+        String session = request != null && request.sessionId() != null ? request.sessionId() : "nosession";
+        return "reservation-" + phase + "-" + userId + "-" + productId + "-" + session;
     }
 }

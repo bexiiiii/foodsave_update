@@ -7,6 +7,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.HttpClientErrorException;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -103,11 +104,19 @@ public class TelegramBotService {
         for (int attempt = 1; attempt <= 3; attempt++) {
             try {
                 ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
+                if (!response.getStatusCode().is2xxSuccessful()
+                        || response.getBody() == null
+                        || !response.getBody().contains("\"ok\":true")) {
+                    throw new IllegalStateException("Telegram rejected request: " + response.getBody());
+                }
                 log.debug("Telegram {} status: {} chatId={} attempt={}",
                         endpoint, response.getStatusCode().value(), chatId, attempt);
                 return true;
             } catch (Exception e) {
                 lastError = e;
+                if (isPermanentTelegramError(e)) {
+                    break;
+                }
                 if (attempt < 3) {
                     log.warn("Telegram {} failed for chatId={} attempt={}, retrying",
                             endpoint, chatId, attempt, e);
@@ -120,6 +129,14 @@ public class TelegramBotService {
         return false;
     }
 
+    private boolean isPermanentTelegramError(Exception error) {
+        if (!(error instanceof HttpClientErrorException clientError)) {
+            return false;
+        }
+        int status = clientError.getStatusCode().value();
+        return status == 400 || status == 403;
+    }
+
     private void sleepBeforeRetry(int attempt) {
         try {
             Thread.sleep(500L * attempt);
@@ -128,13 +145,17 @@ public class TelegramBotService {
         }
     }
 
-    public void sendVideo(Long chatId, String videoUrl, String caption) {
+    public boolean sendVideo(Long chatId, String videoUrl, String caption) {
+        return sendVideo(chatId, videoUrl, caption, null, null);
+    }
+
+    public boolean sendVideo(Long chatId, String videoUrl, String caption, String buttonText, String buttonUrl) {
         if (botToken == null || botToken.isBlank()) {
             log.warn("Telegram bot token is not configured");
-            return;
+            return false;
         }
         if (chatId == null || videoUrl == null || videoUrl.isBlank()) {
-            return;
+            return false;
         }
 
         String url = "https://api.telegram.org/bot" + botToken + "/sendVideo";
@@ -146,13 +167,17 @@ public class TelegramBotService {
             payload.put("parse_mode", "HTML");
         }
         payload.put("supports_streaming", true);
-
-        try {
-            ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
-            log.info("Telegram sendVideo status: {}", response.getStatusCode().value());
-        } catch (Exception e) {
-            log.error("Failed to send Telegram video to chatId={}, videoUrl={}", chatId, videoUrl, e);
+        if (buttonText != null && !buttonText.isBlank() && buttonUrl != null && !buttonUrl.isBlank()) {
+            payload.put("reply_markup", Map.of(
+                    "inline_keyboard",
+                    List.of(List.of(Map.of(
+                            "text", buttonText,
+                            "web_app", Map.of("url", ensureHttps(buttonUrl))
+                    )))
+            ));
         }
+
+        return postWithRetry(url, payload, "sendVideo", chatId);
     }
 
     public void sendWebAppMessage(Long chatId, String text, String buttonText, String webAppUrl) {
@@ -191,12 +216,7 @@ public class TelegramBotService {
 
         log.info("Sending WebApp message to chatId={}, webAppUrl={}, payload={}", chatId, webAppUrl, payload);
 
-        try {
-            ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
-            log.info("Telegram sendWebAppMessage status: {}, response: {}", response.getStatusCode().value(), response.getBody());
-        } catch (Exception e) {
-            log.error("Failed to send Telegram web app message", e);
-        }
+        postWithRetry(url, payload, "sendWebAppMessage", chatId);
     }
 
     public void sendMessageWithKeyboard(Long chatId,
@@ -238,12 +258,27 @@ public class TelegramBotService {
             payload.put("reply_markup", Map.of("inline_keyboard", inlineKeyboard));
         }
 
-        try {
-            ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
-            log.debug("Telegram sendMessageWithKeyboard status: {}", response.getStatusCode().value());
-        } catch (Exception e) {
-            log.error("Failed to send Telegram message with keyboard", e);
+        postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
+    }
+
+    private boolean postWithRetry(String url, Map<String, Object> payload, String operation, Long chatId) {
+        Exception lastError = null;
+        for (int attempt = 1; attempt <= 3; attempt++) {
+            try {
+                ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
+                if (!response.getStatusCode().is2xxSuccessful()
+                        || response.getBody() == null
+                        || !response.getBody().contains("\"ok\":true")) {
+                    throw new IllegalStateException("Telegram rejected request: " + response.getBody());
+                }
+                return true;
+            } catch (Exception e) {
+                lastError = e;
+                if (attempt < 3) sleepBeforeRetry(attempt);
+            }
         }
+        log.error("Telegram {} failed for chatId={} after retries", operation, chatId, lastError);
+        return false;
     }
 
     private String resolveManagerBotToken() {

@@ -200,12 +200,10 @@ public class TelegramWebhookService {
             return;
         }
 
-        // Fallback for any other text input
         String fallbackText = String.join("\n",
-                "Не удалось распознать команду.",
-                "Доступные команды:",
-                "• /start — открыть мини‑приложение",
-                "• /help — помощь и поддержка");
+                "Я не смог распознать сообщение.",
+                "",
+                "Чтобы посмотреть боксы или оформить заказ, пожалуйста, откройте Mini App.");
 
         telegramBotService.sendWebAppMessage(
                 chatId,
@@ -231,8 +229,22 @@ public class TelegramWebhookService {
         log.info("Sending welcome message to chatId={}, webAppUrl={}", chatId, webAppUrl);
 
         if (welcomeVideoUrl != null && !welcomeVideoUrl.isBlank()) {
-            telegramBotService.sendVideo(chatId, welcomeVideoUrl,
-                    "Короткая инструкция: как пользоваться FoodSave");
+            boolean videoSent = telegramBotService.sendVideo(
+                    chatId,
+                    welcomeVideoUrl,
+                    "Короткая инструкция: как пользоваться FoodSave",
+                    "Открыть FoodSave",
+                    webAppUrl
+            );
+            if (!videoSent) {
+                log.warn("Welcome video was not sent to chatId={}, url={}", chatId, welcomeVideoUrl);
+                telegramBotService.sendWebAppMessage(
+                        chatId,
+                        "Короткая инструкция доступна здесь: " + welcomeVideoUrl,
+                        "Открыть FoodSave",
+                        webAppUrl
+                );
+            }
         }
 
         telegramBotService.sendWebAppMessage(chatId, welcomeText, "Открыть FoodSave", webAppUrl);
