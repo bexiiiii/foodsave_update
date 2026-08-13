@@ -4,7 +4,9 @@ import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.Category;
 import com.foodsave.backend.dto.ProductDTO;
+import com.foodsave.backend.domain.enums.FavoriteType;
 import com.foodsave.backend.exception.InsufficientStockException;
+import com.foodsave.backend.repository.FavoriteRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
@@ -18,6 +20,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -28,6 +31,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -40,6 +44,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
+    private final FavoriteRepository favoriteRepository;
     private final SecurityUtil securityUtil;
     private final com.foodsave.backend.repository.UserRepository userRepository;
     private final TelegramBotService telegramBotService;
@@ -49,6 +54,7 @@ public class ProductService {
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
                           CategoryRepository categoryRepository,
+                          FavoriteRepository favoriteRepository,
                           SecurityUtil securityUtil,
                           com.foodsave.backend.repository.UserRepository userRepository,
                           TelegramBotService telegramBotService,
@@ -57,6 +63,7 @@ public class ProductService {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
+        this.favoriteRepository = favoriteRepository;
         this.securityUtil = securityUtil;
         this.userRepository = userRepository;
         this.telegramBotService = telegramBotService;
@@ -149,7 +156,13 @@ public class ProductService {
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        return convertToDTO(product);
+        ProductDTO dto = convertToDTO(product);
+
+        Long currentUserId = securityUtil.getCurrentUserId();
+        if (currentUserId != null) {
+            dto.setIsFavorite(favoriteRepository.existsByUserIdAndProductIdAndType(currentUserId, id, FavoriteType.PRODUCT));
+        }
+        return dto;
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
@@ -177,8 +190,22 @@ public class ProductService {
         }
         
         // For regular users, only show AVAILABLE products (exclude OUT_OF_STOCK)
-        return productRepository.findActiveAvailableByStoreId(storeId, pageable)
+        Page<ProductDTO> products = productRepository.findActiveAvailableByStoreId(storeId, pageable)
                 .map(this::convertToDTO);
+        return withFavoritesFirst(products, pageable);
+    }
+
+    private Page<ProductDTO> withFavoritesFirst(Page<ProductDTO> page, Pageable pageable) {
+        Long currentUserId = securityUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            return page;
+        }
+        Set<Long> favoriteProductIds = favoriteRepository.findFavoriteProductIds(currentUserId);
+        List<ProductDTO> sorted = page.getContent().stream()
+                .peek(dto -> dto.setIsFavorite(favoriteProductIds.contains(dto.getId())))
+                .sorted(Comparator.comparing(ProductDTO::getIsFavorite).reversed())
+                .toList();
+        return new PageImpl<>(sorted, pageable, page.getTotalElements());
     }
 
     @Cacheable(value = "categories", key = "'ALL'")
@@ -191,8 +218,9 @@ public class ProductService {
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getFeaturedProducts(Pageable pageable) {
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
-        return productRepository.findAllActiveAvailableProducts(pageable)
+        Page<ProductDTO> products = productRepository.findAllActiveAvailableProducts(pageable)
                 .map(this::convertToDTO);
+        return withFavoritesFirst(products, pageable);
     }
 
     @Caching(evict = {
@@ -532,6 +560,7 @@ public class ProductService {
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
+                .isFavorite(false)
                 .build();
     }
 

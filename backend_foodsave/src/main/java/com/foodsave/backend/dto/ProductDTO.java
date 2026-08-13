@@ -74,7 +74,8 @@ public class ProductDTO {
     private String expirationDate;
     private Boolean isFeatured;
     private Double rating;
-    
+    private Boolean isFavorite;
+
     private String createdAt;
     private String updatedAt;
     
@@ -120,6 +121,7 @@ public class ProductDTO {
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
+                .isFavorite(false)
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .build();

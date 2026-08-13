@@ -4,8 +4,10 @@ import com.foodsave.backend.dto.StoreDTO;
 import com.foodsave.backend.dto.UserDTO;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.User;
+import com.foodsave.backend.domain.enums.FavoriteType;
 import com.foodsave.backend.domain.enums.StoreStatus;
 import com.foodsave.backend.exception.ResourceNotFoundException;
+import com.foodsave.backend.repository.FavoriteRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.repository.ProductRepository;
@@ -22,8 +24,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -35,6 +40,7 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final FavoriteRepository favoriteRepository;
     private final SecurityUtils securityUtils;
     private final SecurityUtil securityUtil;
     private final PasswordEncoder passwordEncoder;
@@ -45,9 +51,16 @@ public class StoreService {
     }
 
     public List<StoreDTO> getActiveStores() {
+        Long currentUserId = securityUtil.getCurrentUserId();
+        Set<Long> favoriteStoreIds = currentUserId != null
+                ? favoriteRepository.findFavoriteStoreIds(currentUserId)
+                : Collections.emptySet();
+
         return storeRepository.findByActiveAndStatus(true, StoreStatus.ACTIVE)
                 .stream()
                 .map(this::convertToStoreDTO)
+                .peek(dto -> dto.setIsFavorite(favoriteStoreIds.contains(dto.getId())))
+                .sorted(Comparator.comparing(StoreDTO::getIsFavorite).reversed())
                 .toList();
     }
 
@@ -60,9 +73,15 @@ public class StoreService {
     }
 
     public StoreDTO getStoreById(Long id) {
-        return storeRepository.findById(id)
+        StoreDTO dto = storeRepository.findById(id)
                 .map(StoreDTO::fromEntity)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+
+        Long currentUserId = securityUtil.getCurrentUserId();
+        if (currentUserId != null) {
+            dto.setIsFavorite(favoriteRepository.existsByUserIdAndStoreIdAndType(currentUserId, id, FavoriteType.STORE));
+        }
+        return dto;
     }
 
     public StoreDTO createStore(StoreDTO storeDTO) {
