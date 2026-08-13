@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
+import FavoriteButton from "../../../components/FavoriteButton";
 
 type OrderModalState =
   | { type: "success"; order: Order }
@@ -185,7 +186,13 @@ export default function ProductDetailsPage() {
           <Link href="/boxes" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
            <ArrowLeft className="w-5 h-5 text-gray-800" />
           </Link>
-          <h1 className="text-xl font-bold text-black font-inter">Детали продукта</h1>
+          <h1 className="text-xl font-bold text-black font-inter flex-1">Детали продукта</h1>
+          <FavoriteButton
+            type="product"
+            id={product.id}
+            initialFavorite={product.isFavorite}
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 active:scale-90 transition-transform"
+          />
         </div>
       </div>
 

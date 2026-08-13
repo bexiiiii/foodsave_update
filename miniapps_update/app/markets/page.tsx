@@ -5,6 +5,7 @@ import { ArrowLeft, Clock } from "lucide-react";
 import Link from "next/link";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, Store } from "../../lib/api";
+import FavoriteButton from "../../components/FavoriteButton";
 
 export default function MarketsPage() {
   const { } = useTelegram(); // Initialize Telegram singleton
@@ -76,7 +77,7 @@ export default function MarketsPage() {
                   {/* Store Logo */}
                   <div className="w-16 h-16 bg-[#73be61] rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
                     {store.logo ? (
-                      <img 
+                      <img
                         src={store.logo}
                         alt={store.name}
                         className="w-16 h-16 rounded-full object-cover"
@@ -87,7 +88,7 @@ export default function MarketsPage() {
                       </span>
                     )}
                   </div>
-                  
+
                   {/* Store Info */}
                   <div className="flex-1 min-w-0">
                     <h3 className="text-lg font-semibold text-black font-inter mb-1 truncate">
@@ -102,8 +103,14 @@ export default function MarketsPage() {
                         {store.address}
                       </p>
                     )}
+                    {store.closingSoon && (
+                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-[#FF9500] bg-[#FF9500]/10 rounded-full px-2.5 py-1 font-inter">
+                        <Clock className="w-3 h-3" />
+                        Закрывается через час
+                      </span>
+                    )}
                   </div>
-                  
+
                   {/* Rating */}
                   {store.rating && (
                     <div className="flex items-center gap-1 bg-[#73be61] rounded-lg px-2 py-1">
@@ -113,6 +120,8 @@ export default function MarketsPage() {
                       <span className="text-white text-xs">★</span>
                     </div>
                   )}
+
+                  <FavoriteButton type="store" id={store.id} initialFavorite={store.isFavorite} />
                 </div>
               </Link>
             ))}

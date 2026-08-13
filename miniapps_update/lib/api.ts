@@ -100,6 +100,8 @@ export interface Store {
   productCount?: number;
   active?: boolean;
   coverImage?: string;
+  isFavorite?: boolean;
+  closingSoon?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -123,8 +125,14 @@ export interface Product {
   isAvailable?: boolean;
   active?: boolean;
   featured: boolean;
+  isFavorite?: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface FavoritesResponse {
+  stores: Store[];
+  products: Product[];
 }
 
 export interface Order {
@@ -259,8 +267,11 @@ class ApiClient {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
 
-        const data = await response.json();
-        return data;
+        if (response.status === 204) {
+          return undefined as T;
+        }
+        const text = await response.text();
+        return text ? JSON.parse(text) : (undefined as T);
       } catch (error) {
         console.error('API request failed:', {
           url,
@@ -281,7 +292,8 @@ class ApiClient {
     return requestPromise;
   }
 
-  // Helper method for public requests (no auth required)
+  // Helper method for public requests (auth not required, but attached when available
+  // so the backend can personalize the response, e.g. isFavorite flags)
   private async makePublicRequest<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -291,6 +303,10 @@ class ApiClient {
       'Content-Type': 'application/json',
       ...(options.headers as Record<string, string>),
     };
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`;
+    }
 
     const config: RequestInit = {
       ...options,
@@ -501,6 +517,52 @@ class ApiClient {
           last: true
         };
       }
+    }
+  }
+
+  // Favorites methods
+  async getFavorites(): Promise<FavoritesResponse> {
+    try {
+      const response = await this.makeRequest<FavoritesResponse>('/favorites');
+      return {
+        stores: Array.isArray(response?.stores) ? response.stores : [],
+        products: Array.isArray(response?.products) ? response.products : [],
+      };
+    } catch (error) {
+      console.error('Failed to fetch favorites:', error);
+      return { stores: [], products: [] };
+    }
+  }
+
+  async addFavoriteStore(storeId: number): Promise<void> {
+    await this.makeRequest<void>(`/favorites/store/${storeId}`, { method: 'POST' });
+  }
+
+  async removeFavoriteStore(storeId: number): Promise<void> {
+    await this.makeRequest<void>(`/favorites/store/${storeId}`, { method: 'DELETE' });
+  }
+
+  async addFavoriteProduct(productId: number): Promise<void> {
+    await this.makeRequest<void>(`/favorites/product/${productId}`, { method: 'POST' });
+  }
+
+  async removeFavoriteProduct(productId: number): Promise<void> {
+    await this.makeRequest<void>(`/favorites/product/${productId}`, { method: 'DELETE' });
+  }
+
+  async toggleFavoriteStore(storeId: number, isFavorite: boolean): Promise<void> {
+    if (isFavorite) {
+      await this.removeFavoriteStore(storeId);
+    } else {
+      await this.addFavoriteStore(storeId);
+    }
+  }
+
+  async toggleFavoriteProduct(productId: number, isFavorite: boolean): Promise<void> {
+    if (isFavorite) {
+      await this.removeFavoriteProduct(productId);
+    } else {
+      await this.addFavoriteProduct(productId);
     }
   }
 

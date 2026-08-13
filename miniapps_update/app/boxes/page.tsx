@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { ArrowLeft, Clock } from "lucide-react";
+import { ArrowLeft, Clock, Timer } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, Product, Store, isProductVisibleInMiniApp } from "../../lib/api";
+import FavoriteButton from "../../components/FavoriteButton";
 
 function BoxesContent() {
   const searchParams = useSearchParams();
@@ -15,6 +16,7 @@ function BoxesContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [store, setStore] = useState<Store | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [showClosingSoonBanner, setShowClosingSoonBanner] = useState(false);
 
   const filterAvailableProducts = (items: Product[] = []) =>
     items.filter((product) => isProductVisibleInMiniApp(product));
@@ -37,6 +39,9 @@ function BoxesContent() {
         const storeData = await apiClient.getStoreById(Number(storeId));
         if (isMounted) {
           setStore(storeData);
+          if (storeData.closingSoon) {
+            setShowClosingSoonBanner(true);
+          }
         }
 
         // Load products for this store
@@ -139,7 +144,15 @@ function BoxesContent() {
                       -{product.discountPercentage}%
                     </div>
                   )}
-                  
+
+                  {/* Favorite Star */}
+                  <FavoriteButton
+                    type="product"
+                    id={product.id}
+                    initialFavorite={product.isFavorite}
+                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
+                  />
+
                   {/* Stock Indicator */}
                   {product.stockQuantity <= 0 && (
                     <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
@@ -218,6 +231,46 @@ function BoxesContent() {
           </Link>
         </div>
       </nav>
+
+      {/* Closing Soon Banner */}
+      {showClosingSoonBanner && store && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 px-4 pb-6"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowClosingSoonBanner(false);
+          }}
+        >
+          <div className="w-full bg-white rounded-3xl p-6 shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 bg-[#FF9500] rounded-2xl flex items-center justify-center">
+                <Timer className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+            </div>
+
+            <h2 className="text-xl font-semibold text-black text-center font-inter mb-1.5">
+              Скоро закрытие
+            </h2>
+            <p className="text-[15px] leading-relaxed text-black/60 text-center font-inter mb-4">
+              <span className="font-medium text-black">{store.name}</span> закроется через час — успейте оформить заказ
+            </p>
+            {store.closingHours && (
+              <div className="flex justify-center mb-5">
+                <span className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black/70 bg-black/[0.05] rounded-full px-3 py-1.5">
+                  <Clock className="w-3.5 h-3.5" />
+                  Закрытие в {store.closingHours}
+                </span>
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowClosingSoonBanner(false)}
+              className="w-full bg-[#73be61] rounded-2xl h-[50px] flex items-center justify-center hover:bg-[#68a556] active:scale-[0.97] transition-transform"
+            >
+              <span className="text-[17px] font-semibold text-white font-inter">Понятно</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
