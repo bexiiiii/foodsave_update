@@ -10,6 +10,7 @@ import { useFeaturedProducts, useOrders } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
 import { Product, isProductVisibleInMiniApp } from "../lib/api";
+import FavoriteButton from "../components/FavoriteButton";
 
 export default function HomePage() {
   const { t } = useTranslation();
@@ -192,8 +193,14 @@ export default function HomePage() {
           <div className="flex gap-4">
             {featuredProducts.length > 0 ? featuredProducts.map((product: Product) => (
               <Link key={product.id} href={`/details/${product.id}`} className="flex-shrink-0 w-[250px]">
-                <div className="bg-gray-100 rounded-2xl p-4">
-                  <h4 className="text-lg font-medium text-black font-inter">{safeString(product.name)}</h4>
+                <div className="bg-gray-100 rounded-2xl p-4 relative">
+                  <FavoriteButton
+                    type="product"
+                    id={product.id}
+                    initialFavorite={product.isFavorite}
+                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
+                  />
+                  <h4 className="text-lg font-medium text-black font-inter pr-8">{safeString(product.name)}</h4>
                   <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-black/60 font-inter">
                     <span>{product.stockQuantity} {t("meals")}</span>
                     <span>{safeString(product.storeName)}</span>
