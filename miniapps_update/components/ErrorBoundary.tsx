@@ -100,7 +100,7 @@ const DefaultErrorFallback: React.FC<{ error?: Error; retry: () => void }> = ({ 
       )}
       <button
         onClick={retry}
-        className="bg-[#73be61] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#68a356] transition-colors"
+        className="bg-[#4CAD73] text-white px-6 py-3 rounded-xl font-medium hover:bg-[#429565] transition-colors"
       >
         Попробовать снова
       </button>

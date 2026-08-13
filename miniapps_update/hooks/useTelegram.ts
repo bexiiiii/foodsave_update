@@ -10,6 +10,7 @@ declare global {
         setBackgroundColor: (color: string) => void;
         initData: string;
         initDataUnsafe: {
+          start_param?: string;
           user?: {
             id: number;
             first_name?: string;
@@ -73,9 +74,17 @@ export const useTelegram = () => {
     return null;
   }, []);
 
+  const getTelegramStartParam = useCallback(() => {
+    if (typeof window !== "undefined" && window.Telegram?.WebApp?.initDataUnsafe?.start_param) {
+      return window.Telegram.WebApp.initDataUnsafe.start_param;
+    }
+    return null;
+  }, []);
+
   return {
     isAvailable: typeof window !== "undefined" && !!window.Telegram?.WebApp,
     getTelegramUser,
     getTelegramInitData,
+    getTelegramStartParam,
   };
 };

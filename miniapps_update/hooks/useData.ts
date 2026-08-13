@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import { apiClient, Product, Store, PaginationResponse, safeArray, safePaginationResponse } from '@/lib/api';
-import { withErrorBoundary, debounce } from '@/lib/utils';
+import { useState, useEffect, useCallback, useRef, type DependencyList } from 'react';
+import { apiClient, Product, Store, Category, PaginationResponse, safeArray } from '@/lib/api';
+import { debounce } from '@/lib/utils';
 
 // Hook for safe data fetching with error handling and caching
 export const useSafeQuery = <T>(
   queryFn: () => Promise<T>,
   defaultValue: T,
-  dependencies: any[] = [],
+  dependencies: DependencyList = [],
   options?: {
     enabled?: boolean;
     refetchOnMount?: boolean;
@@ -68,6 +68,18 @@ export const useStores = () => {
     [] as Store[],
     [],
     { cacheTime: 10 * 60 * 1000 } // Cache for 10 minutes
+  );
+};
+
+// Hook for fetching active categories with safe defaults
+export const useCategories = () => {
+  const queryFn = useCallback(() => apiClient.getActiveCategories(), []);
+
+  return useSafeQuery(
+    queryFn,
+    [] as Category[],
+    [],
+    { cacheTime: 10 * 60 * 1000 }
   );
 };
 
