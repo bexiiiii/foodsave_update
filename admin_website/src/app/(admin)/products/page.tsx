@@ -22,14 +22,14 @@ import { Textarea } from "@/components/ui/textarea";
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useModal } from '@/hooks/useModal';
 import { ProductService } from '@/services/productService';
-import { storeApi } from '@/services/api';
+import { communicationsApi, storeApi } from '@/services/api';
 import { categoryApi } from '@/services/api/categories';
 import { ProductDTO, ProductCreateRequest, ProductUpdateRequest, ProductStats } from '@/types/product';
 import { StoreDTO, CategoryDTO, PageableResponse } from '@/types/api';
 import { ValidationError } from '@/utils/validation';
 import { formatCurrency } from '@/utils/currency';
 import { FileUploadService } from '@/services/fileUploadService';
-import { PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { ClipboardDocumentIcon, PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Permission } from '@/types/permission';
 
@@ -55,6 +55,33 @@ const PRODUCT_STATUSES = [
     { value: 'PENDING', label: 'В ожидании', color: 'bg-yellow-100 text-yellow-800' }
 ];
 
+const getDefaultProductFormData = (): ProductFormData => ({
+    name: '',
+    description: '',
+    originalPrice: 0,
+    discountPercentage: 0,
+    stockQuantity: 1,
+    storeId: null,
+    categoryId: null,
+    images: [],
+    imageFiles: [],
+    expiryDate: '',
+    status: 'AVAILABLE',
+    active: true,
+});
+
+const calculateDiscountedPrice = (originalPrice: number, discountPercentage: number) => {
+    const discount = Math.min(Math.max(Number(discountPercentage) || 0, 0), 100);
+    return Math.round((Number(originalPrice) || 0) * (1 - discount / 100) * 100) / 100;
+};
+
+const formatExpiryDateForApi = (date: string) => {
+    if (!date) return undefined;
+
+    const expiryDate = new Date(`${date}T23:59:59.999`);
+    return Number.isNaN(expiryDate.getTime()) ? undefined : expiryDate.toISOString();
+};
+
 export default function ProductsPage() {
     const [mounted, setMounted] = useState(false);
     const [products, setProducts] = useState<ProductDTO[]>([]);
@@ -74,20 +101,7 @@ export default function ProductsPage() {
     const { isOpen, openModal, closeModal } = useModal();
     const [selectedProduct, setSelectedProduct] = useState<ProductDTO | undefined>();
 
-    const [formData, setFormData] = useState<ProductFormData>({
-        name: '',
-        description: '',
-        originalPrice: 0,
-        discountPercentage: 0,
-        stockQuantity: 0,
-        storeId: null,
-        categoryId: null,
-        images: [],
-        imageFiles: [],
-        expiryDate: '',
-        status: 'AVAILABLE',
-        active: true,
-    });
+    const [formData, setFormData] = useState<ProductFormData>(getDefaultProductFormData);
 
     const fetchStats = async () => {
         try {
@@ -218,10 +232,21 @@ export default function ProductsPage() {
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value, type } = e.target;
-        setFormData(prev => ({
-            ...prev,
-            [name]: type === 'number' ? Number(value) : value
-        }));
+        setFormData(prev => {
+            const nextValue = type === 'number' ? Number(value) : value;
+            const nextFormData = {
+                ...prev,
+                [name]: nextValue
+            };
+
+            if (name === 'stockQuantity') {
+                const stockQuantity = Number(nextValue) || 0;
+                nextFormData.status = stockQuantity > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK';
+                nextFormData.active = stockQuantity > 0;
+            }
+
+            return nextFormData;
+        });
         setErrors(prev => prev.filter(error => error.field !== name));
     };
 
@@ -352,21 +377,7 @@ export default function ProductsPage() {
             }
         });
         
-        setFormData({
-            name: '',
-            description: '',
-            price: 0,
-            originalPrice: 0,
-            discountPercentage: 0,
-            stockQuantity: 0,
-            storeId: null,
-            categoryId: null,
-            images: [],
-            imageFiles: [],
-            expiryDate: '',
-            status: 'AVAILABLE',
-            active: true,
-        });
+        setFormData(getDefaultProductFormData());
         setErrors([]);
         setSelectedProduct(undefined);
     };
@@ -389,11 +400,22 @@ export default function ProductsPage() {
             images: product.images && product.images.length > 0 ? product.images : [],
             imageFiles: [],
             expiryDate: product.expiryDate ? product.expiryDate.split('T')[0] : '',
-            status: product.status,
-            active: product.active,
+            status: PRODUCT_STATUSES.some((status) => status.value === product.status) ? product.status : 'AVAILABLE',
+            active: product.active !== false,
         });
         setErrors([]);
         openModal();
+    };
+
+    const handleCopyDeeplink = async (product: ProductDTO) => {
+        try {
+            const url = await communicationsApi.getDeeplink(`box_${product.id}`);
+            await navigator.clipboard.writeText(url);
+            toast.success(`Deeplink для "${product.name}" скопирован`);
+        } catch (error) {
+            console.error('Failed to copy product deeplink:', error);
+            toast.error('Не удалось скопировать deeplink');
+        }
     };
 
     const uploadImages = async (files: File[]): Promise<string[]> => {
@@ -458,17 +480,19 @@ export default function ProductsPage() {
 
             // Format the expiry date to include time if it exists
             // Convert null values to undefined for API compatibility
+            const price = calculateDiscountedPrice(formData.originalPrice, formData.discountPercentage);
             const formattedData: ProductUpdateRequest = {
                 name: formData.name,
                 description: formData.description,
+                price,
                 originalPrice: formData.originalPrice,
                 discountPercentage: formData.discountPercentage,
                 stockQuantity: formData.stockQuantity,
                 storeId: formData.storeId ?? undefined,
                 categoryId: formData.categoryId ?? undefined,
                 images: imageUrls,
-                expiryDate: formData.expiryDate ? `${formData.expiryDate}T00:00:00.000Z` : undefined,
-                status: formData.status,
+                expiryDate: formatExpiryDateForApi(formData.expiryDate),
+                status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
                 active: formData.active,
             };
 
@@ -480,14 +504,15 @@ export default function ProductsPage() {
                 const createData: ProductCreateRequest = {
                     name: formData.name,
                     description: formData.description,
+                    price,
                     originalPrice: formData.originalPrice,
                     discountPercentage: formData.discountPercentage,
                     stockQuantity: formData.stockQuantity,
                     storeId: formData.storeId ?? undefined,
                     categoryId: formData.categoryId ?? undefined,
                     images: imageUrls,
-                    expiryDate: formData.expiryDate ? `${formData.expiryDate}T00:00:00.000Z` : undefined,
-                    status: formData.status,
+                    expiryDate: formatExpiryDateForApi(formData.expiryDate),
+                    status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
                     active: formData.active,
                 };
                 await ProductService.createProduct(createData);
@@ -843,6 +868,15 @@ export default function ProductsPage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
+                                                            onClick={() => handleCopyDeeplink(product)}
+                                                            title="Скопировать deeplink"
+                                                            aria-label={`Скопировать deeplink для ${product.name}`}
+                                                        >
+                                                            <ClipboardDocumentIcon className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
                                                             onClick={() => handleEdit(product)}
                                                         >
                                                             Редактировать
@@ -1021,11 +1055,7 @@ export default function ProductsPage() {
                                         id="calculatedPrice"
                                         name="calculatedPrice"
                                         type="text"
-                                        value={
-                                            formData.originalPrice && formData.discountPercentage > 0
-                                                ? (formData.originalPrice * (1 - formData.discountPercentage / 100)).toFixed(2)
-                                                : formData.originalPrice.toFixed(2)
-                                        }
+                                        value={calculateDiscountedPrice(formData.originalPrice, formData.discountPercentage).toFixed(2)}
                                         readOnly
                                         disabled
                                         className="bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
@@ -1083,7 +1113,6 @@ export default function ProductsPage() {
                                         onChange={(e) => handleSelectChange('status', e.target.value)}
                                         className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${getFieldError('status') ? 'border-red-500' : 'border-input'}`}
                                     >
-                                        <option value="">Выберите статус</option>
                                         {PRODUCT_STATUSES.map((status) => (
                                             <option key={status.value} value={status.value}>
                                                 {status.label}
@@ -1181,18 +1210,33 @@ export default function ProductsPage() {
                             </div>
 
                             {/* Active Toggle */}
-                            <div className="flex items-center space-x-3">
-                                <input
-                                    id="active"
-                                    name="active"
-                                    type="checkbox"
-                                    checked={formData.active}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                                    className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                                />
-                                <Label htmlFor="active" className="text-sm font-medium text-gray-700">
-                                    Активен (товар будет виден покупателям)
-                                </Label>
+                            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-800 dark:bg-gray-800/50">
+                                <button
+                                    type="button"
+                                    aria-pressed={formData.active}
+                                    onClick={() => setFormData(prev => ({ ...prev, active: !prev.active }))}
+                                    className={`flex w-full items-center justify-between rounded-xl border px-4 py-3 text-left transition-colors ${
+                                        formData.active
+                                            ? 'border-green-200 bg-green-50 text-green-800'
+                                            : 'border-gray-200 bg-white text-gray-600 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300'
+                                    }`}
+                                >
+                                    <span>
+                                        <span className="block text-sm font-semibold">
+                                            {formData.active ? 'Товар активен' : 'Товар скрыт'}
+                                        </span>
+                                        <span className="mt-0.5 block text-xs opacity-75">
+                                            Активный товар будет виден покупателям в miniapp
+                                        </span>
+                                    </span>
+                                    <span
+                                        className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border-2 ${
+                                            formData.active ? 'border-green-600 bg-green-600 text-white' : 'border-gray-300 bg-white'
+                                        }`}
+                                    >
+                                        {formData.active ? '✓' : ''}
+                                    </span>
+                                </button>
                             </div>
 
                             {/* Validation Errors Summary */}

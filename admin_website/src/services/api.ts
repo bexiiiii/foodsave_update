@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { NotificationDTO, DiscountDTO, AnalyticsData, DailySalesAnalytics, DailySalesOrderDetail, LoginRequest, AuthResponse, OrderDTO, StoreDTO, StoreCreateRequest, StoreUpdateRequest, PageableResponse, UserDTO, UserCreateRequest, UserUpdateRequest, ReviewDTO, CartDTO, CartAddItemRequest, CartUpdateItemRequest, OrderStatsDTO, StoreOrderStatsDTO } from '@/types/api';
+import { NotificationDTO, DiscountDTO, AnalyticsData, DailySalesAnalytics, DailySalesOrderDetail, LoginRequest, AuthResponse, OrderDTO, StoreDTO, StoreCreateRequest, StoreUpdateRequest, PageableResponse, UserDTO, UserCreateRequest, UserUpdateRequest, ReviewDTO, CartDTO, CartAddItemRequest, CartUpdateItemRequest, OrderStatsDTO, StoreOrderStatsDTO, CommunicationsOverviewDTO, NotificationScheduleSettingDTO } from '@/types/api';
 import { BASE_URL, API_ENDPOINTS, DEFAULT_HEADERS } from '../config/api';
 import { safeLocalStorage } from '@/utils/storage';
 
@@ -419,6 +419,15 @@ export const analyticsApi = {
         api.get<DailySalesAnalytics[]>(`${API_ENDPOINTS.ANALYTICS.BASE}/daily-sales`, { params }).then(response => response.data),
     getDailySalesOrderDetails: (params: { startDate: string; endDate: string; storeId?: number }) =>
         api.get<DailySalesOrderDetail[]>(`${API_ENDPOINTS.ANALYTICS.BASE}/daily-sales/orders`, { params }).then(response => response.data),
+};
+
+export const communicationsApi = {
+    getOverview: () => api.get<CommunicationsOverviewDTO>('/admin/communications/overview').then(response => response.data),
+    getScheduleSettings: () => api.get<NotificationScheduleSettingDTO[]>('/admin/communications/schedule-settings').then(response => response.data),
+    updateScheduleSetting: (data: NotificationScheduleSettingDTO) =>
+        api.put<NotificationScheduleSettingDTO>('/admin/communications/schedule-settings', data).then(response => response.data),
+    getDeeplink: (startParam: string) =>
+        api.get<{ url: string }>('/admin/communications/deeplink', { params: { startParam } }).then(response => response.data.url),
 };
 
 // Product API  

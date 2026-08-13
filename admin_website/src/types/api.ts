@@ -162,6 +162,39 @@ export interface DailySalesOrderDetail {
     items: DailySalesOrderItem[];
 }
 
+export interface CommunicationsOverviewDTO {
+    sentToday: number;
+    deliveredToday: number;
+    openedToday: number;
+    miniAppOpenedToday: number;
+    boxViewedToday: number;
+    reservationsCreatedToday: number;
+    completedOrdersToday: number;
+    ctr: number;
+    notificationToReservationConversion: number;
+    notificationToCompletedConversion: number;
+    suppressedUsers: number;
+    averageMessagesPerUser: number;
+    attributedRevenue: number;
+    eventCounts: Record<string, number>;
+}
+
+export interface NotificationScheduleSettingDTO {
+    id?: number;
+    cityId?: number | null;
+    notificationWindowType: 'LUNCH' | 'EVENING' | 'LAST_CHANCE';
+    enabled: boolean;
+    startTime: string;
+    sendTime: string;
+    endTime: string;
+    minimumTotalBoxes: number;
+    minimumPartners: number;
+    maximumMessagesPerUserPerDay: number;
+    minimumHoursBetweenMessages: number;
+    quietHoursStart: string;
+    quietHoursEnd: string;
+}
+
 export interface ProductDTO {
     id: number;
     name: string;
@@ -422,6 +455,8 @@ export interface StoreCreateRequest {
     logo?: string;
     openingHours?: string;
     closingHours?: string;
+    latitude?: number | null;
+    longitude?: number | null;
     category?: string;
     active: boolean;
     status: 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
@@ -440,6 +475,8 @@ export interface StoreUpdateRequest {
     logo?: string;
     openingHours?: string;
     closingHours?: string;
+    latitude?: number | null;
+    longitude?: number | null;
     category?: string;
     active: boolean;
     status: 'PENDING' | 'ACTIVE' | 'INACTIVE' | 'SUSPENDED';
