@@ -65,7 +65,7 @@ export default function HomePage() {
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
   const { data: featuredProductsResponse, isLoading: productsLoading } = useFeaturedProducts(0, 100);
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<number, boolean>>({});
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
@@ -83,9 +83,10 @@ export default function HomePage() {
     const previousValue = !!product.isFavorite;
     setTogglingProductId(product.id);
     setFavoriteOverrides((prev) => ({ ...prev, [product.id]: !previousValue }));
-    setToastMessage(
-      previousValue ? `«${safeString(product.name)}» убран из избранного` : `«${safeString(product.name)}» добавлен в избранное`
-    );
+    setToast({
+      title: previousValue ? "Убрано из избранного" : "Добавлено в избранное",
+      itemName: safeString(product.name),
+    });
     try {
       await apiClient.toggleFavoriteProduct(product.id, previousValue);
     } catch (error) {
@@ -175,9 +176,12 @@ export default function HomePage() {
                 toggleProductFavorite(product);
               }}
               type="button"
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-transform active:scale-90"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center transition-transform active:scale-90"
             >
-              <Star className="h-4 w-4 text-amber-500" fill={isFavorite ? "currentColor" : "none"} />
+              <Star
+                className={`h-5 w-5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${isFavorite ? "text-amber-400" : "text-white"}`}
+                fill={isFavorite ? "currentColor" : "none"}
+              />
             </button>
           </div>
           <h3 className="mt-3 truncate text-base font-bold text-black font-inter">{safeString(product.name)}</h3>
@@ -340,7 +344,7 @@ export default function HomePage() {
       </main>
 
       <BottomNav active="home" />
-      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
+      <FavoriteToast title={toast?.title ?? null} itemName={toast?.itemName} onClose={() => setToast(null)} />
     </div>
   );
 }

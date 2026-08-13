@@ -21,7 +21,7 @@ function BoxesContent() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showClosingSoonBanner, setShowClosingSoonBanner] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
 
   const filterAvailableProducts = (items: Product[] = []) =>
     items.filter((product) => isProductVisibleInMiniApp(product));
@@ -78,9 +78,10 @@ function BoxesContent() {
     const previousValue = isFavorite;
     setIsFavorite(!previousValue);
     setIsTogglingFavorite(true);
-    setToastMessage(
-      previousValue ? `«${store.name}» убрано из избранного` : `«${store.name}» добавлено в избранное`
-    );
+    setToast({
+      title: previousValue ? "Убрано из избранного" : "Добавлено в избранное",
+      itemName: store.name,
+    });
     try {
       await apiClient.toggleFavoriteStore(store.id, previousValue);
     } catch (error) {
@@ -108,9 +109,10 @@ function BoxesContent() {
       const previousValue = isProductFavorite;
       setIsProductFavorite(!previousValue);
       setIsTogglingProductFavorite(true);
-      setToastMessage(
-        previousValue ? `«${product.name}» убран из избранного` : `«${product.name}» добавлен в избранное`
-      );
+      setToast({
+        title: previousValue ? "Убрано из избранного" : "Добавлено в избранное",
+        itemName: product.name,
+      });
       try {
         await apiClient.toggleFavoriteProduct(product.id, previousValue);
       } catch (error) {
@@ -152,9 +154,12 @@ function BoxesContent() {
             disabled={isTogglingProductFavorite}
             onClick={toggleProductFavorite}
             type="button"
-            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center active:scale-90 transition-transform z-10"
           >
-            <Star className="h-4 w-4 text-amber-500" fill={isProductFavorite ? "currentColor" : "none"} />
+            <Star
+              className={`h-5 w-5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${isProductFavorite ? "text-amber-400" : "text-white"}`}
+              fill={isProductFavorite ? "currentColor" : "none"}
+            />
           </button>
 
           {/* Stock Indicator */}
@@ -209,8 +214,8 @@ function BoxesContent() {
             <button
               aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
               disabled={isTogglingFavorite}
-              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-                isFavorite ? "bg-amber-50 text-amber-500" : "bg-gray-100 text-black/45"
+              className={`flex h-10 w-10 shrink-0 items-center justify-center transition-colors active:scale-90 ${
+                isFavorite ? "text-amber-500" : "text-black/45"
               }`}
               onClick={toggleFavorite}
               type="button"
@@ -334,7 +339,7 @@ function BoxesContent() {
         </div>
       )}
 
-      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
+      <FavoriteToast title={toast?.title ?? null} itemName={toast?.itemName} onClose={() => setToast(null)} />
     </div>
   );
 }

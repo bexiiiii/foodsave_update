@@ -28,7 +28,7 @@ export default function ProductDetailsPage() {
   const [isReserving, setIsReserving] = useState(false);
   const [orderModal, setOrderModal] = useState<OrderModalState>(null);
   const [isFavorite, setIsFavorite] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   // Phone modal state
@@ -202,9 +202,10 @@ export default function ProductDetailsPage() {
     const previousValue = isFavorite;
     setIsFavorite(!previousValue);
     setIsTogglingFavorite(true);
-    setToastMessage(
-      previousValue ? `«${product.name}» убран из избранного` : `«${product.name}» добавлен в избранное`
-    );
+    setToast({
+      title: previousValue ? "Убрано из избранного" : "Добавлено в избранное",
+      itemName: product.name,
+    });
     try {
       await apiClient.toggleFavoriteProduct(product.id, previousValue);
     } catch (error) {
@@ -250,8 +251,8 @@ export default function ProductDetailsPage() {
             disabled={isTogglingFavorite}
             onClick={toggleFavorite}
             type="button"
-            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
-              isFavorite ? "bg-amber-50 text-amber-500" : "bg-gray-100 text-black/45"
+            className={`flex h-10 w-10 shrink-0 items-center justify-center transition-colors active:scale-90 ${
+              isFavorite ? "text-amber-500" : "text-black/45"
             }`}
           >
             <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
@@ -576,7 +577,7 @@ export default function ProductDetailsPage() {
         </div>
       )}
 
-      <FavoriteToast message={toastMessage} onClose={() => setToastMessage(null)} />
+      <FavoriteToast title={toast?.title ?? null} itemName={toast?.itemName} onClose={() => setToast(null)} />
     </div>
   );
 }
