@@ -7,9 +7,6 @@ const getApiBaseUrl = (): string => {
   
   // In development, use localhost or the current host
   if (process.env.NODE_ENV === 'development') {
-    if (typeof window !== 'undefined') {
-      return `${window.location.origin}/api`;
-    }
     return 'https://foodsave.kz/api';
   }
   
@@ -76,6 +73,16 @@ export interface User {
   updatedAt: string;
 }
 
+export interface NotificationSettings {
+  id?: number;
+  emailEnabled: boolean;
+  pushEnabled: boolean;
+  smsEnabled: boolean;
+  orderUpdates: boolean;
+  promotions: boolean;
+  systemUpdates: boolean;
+}
+
 export interface Store {
   id: number;
   name: string;
@@ -106,6 +113,14 @@ export interface Store {
   updatedAt: string;
 }
 
+export interface Category {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl?: string | null;
+  active: boolean;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -116,6 +131,7 @@ export interface Product {
   discountedPrice?: number; // Alternative field name for compatibility
   discountPercentage?: number;
   stockQuantity: number;
+  sortOrder?: number;
   expirationDate?: string;
   storeId: number;
   storeName?: string;
@@ -144,7 +160,7 @@ export interface Order {
   storeLogo?: string;
   storePhone?: string;
   orderNumber: string;
-  status: 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
+  status: 'CREATED' | 'PENDING' | 'CONFIRMED' | 'PREPARING' | 'READY_FOR_PICKUP' | 'PICKED_UP' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'COMPLETED' | 'CANCELLED' | 'CANCELLED_BY_USER' | 'CANCELLED_BY_PARTNER' | 'EXPIRED' | 'NO_SHOW' | 'REJECTED' | 'REFUNDED';
   paymentMethod?: string;
   paymentStatus?: string;
   totalAmount?: number;
@@ -166,6 +182,68 @@ export interface Order {
   notes?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ReservationCancellationReason =
+  | 'USER_CHANGED_MIND'
+  | 'USER_TOO_FAR'
+  | 'USER_WRONG_TIME'
+  | 'USER_ORDERED_BY_MISTAKE'
+  | 'OTHER';
+
+export interface ProductEventPayload {
+  eventType: string;
+  sessionId?: string;
+  source?: string;
+  telegramPostId?: string;
+  campaignId?: string;
+  notificationId?: number;
+  notificationGroupId?: number;
+  partnerId?: number;
+  branchId?: number;
+  boxId?: number;
+  deepLink?: string;
+  startParam?: string;
+  platform?: string;
+  deviceType?: string;
+  appVersion?: string;
+  language?: string;
+  idempotencyKey?: string;
+  metadata?: Record<string, unknown>;
+}
+
+export interface NotificationGroup {
+  id: number;
+  status: string;
+  notificationType: string;
+  triggerType: string;
+  timeWindow: string;
+  totalPartners: number;
+  totalBoxes: number;
+  minimumPrice?: number;
+  maximumDiscount?: number;
+  deepLink?: string;
+  campaignId?: string;
+  scheduledAt?: string;
+  sentAt?: string;
+  openedAt?: string;
+  items: NotificationGroupItem[];
+}
+
+export interface NotificationGroupItem {
+  id: number;
+  partnerId: number;
+  partnerName: string;
+  branchId: number;
+  branchName: string;
+  boxId?: number;
+  boxName?: string;
+  boxImageUrl?: string;
+  availableQuantity: number;
+  price?: number;
+  originalPrice?: number;
+  discountPercent?: number;
+  pickupEndAt?: string;
 }
 
 export interface OrderItem {
@@ -292,8 +370,7 @@ class ApiClient {
     return requestPromise;
   }
 
-  // Helper method for public requests (auth not required, but attached when available
-  // so the backend can personalize the response, e.g. isFavorite flags)
+  // Helper method for public requests (no auth required)
   private async makePublicRequest<T>(
     endpoint: string,
     options: RequestInit = {}
@@ -417,6 +494,47 @@ class ApiClient {
     return this.makePublicRequest<Store>(`/stores/${id}`);
   }
 
+  async searchStores(query: string, page = 0, size = 20): Promise<PaginationResponse<Store>> {
+    try {
+      const response = await this.makePublicRequest<PaginationResponse<Store>>(
+        `/stores/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`
+      );
+      if (!response || !Array.isArray(response.content)) {
+        return {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size,
+          number: page,
+          first: true,
+          last: true
+        };
+      }
+      return response;
+    } catch (err) {
+      console.error('Failed to search stores:', err);
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        size,
+        number: page,
+        first: true,
+        last: true
+      };
+    }
+  }
+
+  async getActiveCategories(): Promise<Category[]> {
+    try {
+      const response = await this.makePublicRequest<Category[]>('/categories/active');
+      return Array.isArray(response) ? response : [];
+    } catch (err) {
+      console.error('Failed to fetch active categories:', err);
+      return [];
+    }
+  }
+
   // Product methods
   async getAllProducts(page = 0, size = 20): Promise<PaginationResponse<Product>> {
     try {
@@ -445,6 +563,21 @@ class ApiClient {
         first: true,
         last: true
       };
+    }
+  }
+
+  async searchProducts(query: string, page = 0, size = 50): Promise<PaginationResponse<Product>> {
+    try {
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(
+        `/products/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`
+      );
+      if (!response || !Array.isArray(response.content)) {
+        return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      }
+      return response;
+    } catch (error) {
+      console.error('Failed to search products:', error);
+      return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
     }
   }
 
@@ -480,44 +613,6 @@ class ApiClient {
 
   async getProductById(id: number): Promise<Product> {
     return this.makePublicRequest<Product>(`/products/${id}`);
-  }
-
-  async getFeaturedProducts(page = 0, size = 20): Promise<PaginationResponse<Product>> {
-    try {
-      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}`);
-      // Ensure content is an array
-      if (!response || !Array.isArray(response.content)) {
-        return {
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
-          size: size,
-          number: page,
-          first: true,
-          last: true
-        };
-      }
-      return response;
-    } catch (error) {
-      console.error('Failed to fetch featured products:', error);
-      
-      // Try fallback to all products if featured fails
-      try {
-        console.log('Trying fallback to all products...');
-        return await this.getAllProducts(page, size);
-      } catch (fallbackError) {
-        console.error('Fallback also failed:', fallbackError);
-        return {
-          content: [],
-          totalElements: 0,
-          totalPages: 0,
-          size: size,
-          number: page,
-          first: true,
-          last: true
-        };
-      }
-    }
   }
 
   // Favorites methods
@@ -566,6 +661,44 @@ class ApiClient {
     }
   }
 
+  async getFeaturedProducts(page = 0, size = 20): Promise<PaginationResponse<Product>> {
+    try {
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}`);
+      // Ensure content is an array
+      if (!response || !Array.isArray(response.content)) {
+        return {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size: size,
+          number: page,
+          first: true,
+          last: true
+        };
+      }
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch featured products:', error);
+      
+      // Try fallback to all products if featured fails
+      try {
+        console.log('Trying fallback to all products...');
+        return await this.getAllProducts(page, size);
+      } catch (fallbackError) {
+        console.error('Fallback also failed:', fallbackError);
+        return {
+          content: [],
+          totalElements: 0,
+          totalPages: 0,
+          size: size,
+          number: page,
+          first: true,
+          last: true
+        };
+      }
+    }
+  }
+
   // Order methods
   async getMyOrders(): Promise<Order[]> {
     try {
@@ -603,14 +736,19 @@ class ApiClient {
     return this.makeRequest<Order>(`/orders/${id}`);
   }
 
-  async cancelOrder(id: number): Promise<Order> {
+  async cancelOrder(id: number, cancellationReason: ReservationCancellationReason, cancellationComment?: string): Promise<Order> {
     if (!this.token) {
       throw new Error('Authentication required');
     }
 
     const response = await this.makeRequest<Order>(`/orders/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify('CANCELLED'),
+      body: JSON.stringify({
+        status: 'CANCELLED_BY_USER',
+        actorType: 'USER',
+        cancellationReason,
+        cancellationComment: cancellationComment?.trim() || undefined,
+      }),
     });
 
     return {
@@ -634,6 +772,43 @@ class ApiClient {
     });
   }
 
+  async getNotificationSettings(): Promise<NotificationSettings> {
+    return this.makeRequest<NotificationSettings>('/notifications/settings');
+  }
+
+  async updateNotificationSettings(data: NotificationSettings): Promise<NotificationSettings> {
+    return this.makeRequest<NotificationSettings>('/notifications/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  }
+
+  async trackEvent(payload: ProductEventPayload): Promise<void> {
+    try {
+      await this.makePublicRequest('/analytics/events', {
+        method: 'POST',
+        body: JSON.stringify({
+          platform: 'telegram_miniapp',
+          ...payload,
+        }),
+      });
+    } catch (error) {
+      console.warn('Analytics event ignored:', error);
+    }
+  }
+
+  async getNotificationGroup(id: number): Promise<NotificationGroup> {
+    return this.makePublicRequest<NotificationGroup>(`/notifications/groups/${id}`);
+  }
+
+  async markNotificationGroupOpened(id: number): Promise<void> {
+    try {
+      await this.makePublicRequest(`/notifications/groups/${id}/opened`, { method: 'POST' });
+    } catch (error) {
+      console.warn('Notification open event ignored:', error);
+    }
+  }
+
   // Mini App specific method for creating reservations
   async createReservation(orderData: {
     productId: number;
@@ -641,6 +816,13 @@ class ApiClient {
     note?: string;
     deliveryType?: 'PICKUP' | 'COURIER';
     contactPhone?: string;
+    acquisitionSource?: string;
+    campaignId?: string;
+    notificationId?: number;
+    notificationGroupId?: number;
+    telegramPostId?: string;
+    startParam?: string;
+    sessionId?: string;
   }): Promise<Order> {
     const reservationData = {
       productId: orderData.productId,
@@ -648,6 +830,13 @@ class ApiClient {
       note: orderData.note || 'Забронировано через мини-приложение Telegram',
       deliveryType: orderData.deliveryType || 'PICKUP',
       contactPhone: orderData.contactPhone,
+      acquisitionSource: orderData.acquisitionSource,
+      campaignId: orderData.campaignId,
+      notificationId: orderData.notificationId,
+      notificationGroupId: orderData.notificationGroupId,
+      telegramPostId: orderData.telegramPostId,
+      startParam: orderData.startParam,
+      sessionId: orderData.sessionId,
     };
     
     if (process.env.NODE_ENV === 'development') {
@@ -718,6 +907,23 @@ export const isProductVisibleInMiniApp = (product: Product | null | undefined): 
   if (!product) return false;
 
   if (product.active === false) return false;
+
+  const expiration = product.expirationDate;
+  if (expiration) {
+    // The expiry value is a calendar date: a box dated August 7 becomes
+    // unavailable at 00:00 on August 7 in Asia/Almaty, regardless of its time.
+    const expiryDate = expiration.slice(0, 10);
+    const dateParts = new Intl.DateTimeFormat('en', {
+      timeZone: 'Asia/Almaty',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(new Date());
+    const part = (type: 'year' | 'month' | 'day') =>
+      dateParts.find((item) => item.type === type)?.value || '';
+    const todayInAlmaty = `${part('year')}-${part('month')}-${part('day')}`;
+    if (expiryDate <= todayInAlmaty) return false;
+  }
 
   if (typeof product.isAvailable === 'boolean') {
     return product.isAvailable;

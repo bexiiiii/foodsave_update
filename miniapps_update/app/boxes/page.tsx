@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { ArrowLeft, Clock, Timer } from "lucide-react";
+import { ArrowLeft, Clock, Star, Timer } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, Product, Store, isProductVisibleInMiniApp } from "../../lib/api";
-import FavoriteButton from "../../components/FavoriteButton";
+import { formatPrice } from "../../lib/pricing";
+import BackButton from "../../components/BackButton";
 
 function BoxesContent() {
   const searchParams = useSearchParams();
@@ -16,6 +17,8 @@ function BoxesContent() {
   const [products, setProducts] = useState<Product[]>([]);
   const [store, setStore] = useState<Store | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showClosingSoonBanner, setShowClosingSoonBanner] = useState(false);
 
   const filterAvailableProducts = (items: Product[] = []) =>
@@ -39,6 +42,7 @@ function BoxesContent() {
         const storeData = await apiClient.getStoreById(Number(storeId));
         if (isMounted) {
           setStore(storeData);
+          setIsFavorite(!!storeData.isFavorite);
           if (storeData.closingSoon) {
             setShowClosingSoonBanner(true);
           }
@@ -66,8 +70,20 @@ function BoxesContent() {
     };
   }, [storeId]);
 
-  const formatPrice = (price: number) => {
-    return `${price.toLocaleString()} ₸`;
+  const toggleFavorite = async () => {
+    if (!store?.id || isTogglingFavorite) return;
+
+    const previousValue = isFavorite;
+    setIsFavorite(!previousValue);
+    setIsTogglingFavorite(true);
+    try {
+      await apiClient.toggleFavoriteStore(store.id, previousValue);
+    } catch (error) {
+      console.error("Failed to toggle favorite store:", error);
+      setIsFavorite(previousValue);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   const formatOpeningHours = (hours: string | undefined) => {
@@ -75,14 +91,104 @@ function BoxesContent() {
     return hours;
   };
 
+  const ProductCard = ({ product }: { product: Product }) => {
+    const [isProductFavorite, setIsProductFavorite] = useState(!!product.isFavorite);
+    const [isTogglingProductFavorite, setIsTogglingProductFavorite] = useState(false);
+
+    const toggleProductFavorite = async (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isTogglingProductFavorite) return;
+
+      const previousValue = isProductFavorite;
+      setIsProductFavorite(!previousValue);
+      setIsTogglingProductFavorite(true);
+      try {
+        await apiClient.toggleFavoriteProduct(product.id, previousValue);
+      } catch (error) {
+        console.error("Failed to toggle favorite product:", error);
+        setIsProductFavorite(previousValue);
+      } finally {
+        setIsTogglingProductFavorite(false);
+      }
+    };
+
+    return (
+      <Link
+        href={`/details/${product.id}`}
+        className="block hover:scale-105 transition-transform duration-200"
+      >
+        <div className="bg-gray-100 rounded-2xl p-3 aspect-square relative overflow-hidden">
+          {product.imageUrl ? (
+            <img
+              src={product.imageUrl}
+              alt={product.name}
+              className="w-full h-full object-cover rounded-xl"
+            />
+          ) : (
+            <div className="w-full h-full bg-[#4CAD73] rounded-xl flex items-center justify-center">
+              <span className="text-white text-xl font-bold font-inter">FS</span>
+            </div>
+          )}
+
+          {/* Discount Badge */}
+          {product.discountPercentage && product.discountPercentage > 0 && (
+            <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg font-inter">
+              -{product.discountPercentage}%
+            </div>
+          )}
+
+          {/* Favorite Star */}
+          <button
+            aria-label={isProductFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+            disabled={isTogglingProductFavorite}
+            onClick={toggleProductFavorite}
+            type="button"
+            className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
+          >
+            <Star className="h-4 w-4 text-amber-500" fill={isProductFavorite ? "currentColor" : "none"} />
+          </button>
+
+          {/* Stock Indicator */}
+          {product.stockQuantity <= 0 && (
+            <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold font-inter">Нет в наличии</span>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-2">
+          <p className="text-sm font-medium text-black font-inter line-clamp-2">{product.name}</p>
+          <div className="flex items-center gap-2 mt-1">
+            {product.discountPercentage && product.discountPercentage > 0 ? (
+              <>
+                <p className="text-base font-bold text-black font-inter">
+                  {formatPrice(product.price || product.discountedPrice || product.originalPrice)}
+                </p>
+                <p className="text-sm text-black/50 line-through font-inter">
+                  {formatPrice(product.originalPrice)}
+                </p>
+              </>
+            ) : (
+              <p className="text-base font-bold text-black font-inter">
+                {formatPrice(product.price || product.originalPrice)}
+              </p>
+            )}
+          </div>
+          <p className="text-xs text-black/50 font-inter mt-1">
+            Осталось: {product.stockQuantity}
+          </p>
+        </div>
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/markets" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
-           <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton fallback="/markets" />
           <h1 className="text-xl font-bold text-black font-inter">Продукты</h1>
         </div>
       </div>
@@ -90,8 +196,19 @@ function BoxesContent() {
       {/* Store Info */}
       {store && (
         <div className="px-4 mt-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-black font-inter">{store.name}</h2>
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="min-w-0 flex-1 truncate text-xl font-bold text-black font-inter">{store.name}</h2>
+            <button
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+              disabled={isTogglingFavorite}
+              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+                isFavorite ? "bg-amber-50 text-amber-500" : "bg-gray-100 text-black/45"
+              }`}
+              onClick={toggleFavorite}
+              type="button"
+            >
+              <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
+            </button>
             <div className="flex items-center gap-2 text-sm text-black/60 font-inter">
               <Clock className="w-4 h-4" />
               <span>
@@ -120,70 +237,7 @@ function BoxesContent() {
         ) : (
           <div className="grid grid-cols-2 gap-4">
             {products.map((product) => (
-              <Link
-                key={product.id}
-                href={`/details/${product.id}`}
-                className="block hover:scale-105 transition-transform duration-200"
-              >
-                <div className="bg-gray-100 rounded-2xl p-3 aspect-square relative overflow-hidden">
-                  {product.imageUrl ? (
-                    <img 
-                      src={product.imageUrl}
-                      alt={product.name}
-                      className="w-full h-full object-cover rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#73be61] rounded-xl flex items-center justify-center">
-                      <span className="text-white text-xl font-bold font-inter">FS</span>
-                    </div>
-                  )}
-                  
-                  {/* Discount Badge */}
-                  {product.discountPercentage && product.discountPercentage > 0 && (
-                    <div className="absolute top-2 left-2 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-lg font-inter">
-                      -{product.discountPercentage}%
-                    </div>
-                  )}
-
-                  {/* Favorite Star */}
-                  <FavoriteButton
-                    type="product"
-                    id={product.id}
-                    initialFavorite={product.isFavorite}
-                    className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
-                  />
-
-                  {/* Stock Indicator */}
-                  {product.stockQuantity <= 0 && (
-                    <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-                      <span className="text-white font-bold font-inter">Нет в наличии</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div className="mt-2">
-                  <p className="text-sm font-medium text-black font-inter line-clamp-2">{product.name}</p>
-                  <div className="flex items-center gap-2 mt-1">
-                    {product.discountPercentage && product.discountPercentage > 0 ? (
-                      <>
-                        <p className="text-base font-bold text-black font-inter">
-                          {formatPrice(product.price || product.discountedPrice || product.originalPrice)}
-                        </p>
-                        <p className="text-sm text-black/50 line-through font-inter">
-                          {formatPrice(product.originalPrice)}
-                        </p>
-                      </>
-                    ) : (
-                      <p className="text-base font-bold text-black font-inter">
-                        {formatPrice(product.price || product.originalPrice)}
-                      </p>
-                    )}
-                  </div>
-                  <p className="text-xs text-black/50 font-inter mt-1">
-                    Осталось: {product.stockQuantity}
-                  </p>
-                </div>
-              </Link>
+              <ProductCard key={product.id} product={product} />
             ))}
             
             {products.length === 0 && (
@@ -264,7 +318,7 @@ function BoxesContent() {
 
             <button
               onClick={() => setShowClosingSoonBanner(false)}
-              className="w-full bg-[#73be61] rounded-2xl h-[50px] flex items-center justify-center hover:bg-[#68a556] active:scale-[0.97] transition-transform"
+              className="w-full bg-[#4CAD73] rounded-2xl h-[50px] flex items-center justify-center hover:opacity-90 active:scale-[0.97] transition-transform"
             >
               <span className="text-[17px] font-semibold text-white font-inter">Понятно</span>
             </button>

@@ -1,292 +1,331 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Bell, ArrowUpRight } from "lucide-react";
+import { FormEvent, useEffect, useState } from "react";
+import {
+  ChevronRight,
+  MapPin,
+  Star,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import BottomNav from "../components/BottomNav";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { useTelegram } from "../hooks/useTelegram";
-import { useFeaturedProducts, useOrders } from "../hooks/useData";
+import { useCategories, useFeaturedProducts } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
-import { Product, isProductVisibleInMiniApp } from "../lib/api";
-import FavoriteButton from "../components/FavoriteButton";
+import { apiClient, Category, Product, isProductVisibleInMiniApp } from "../lib/api";
+import { formatPrice, normalizePrice } from "../lib/pricing";
+
+const getCurrentPrice = (product: Partial<Product>) =>
+  normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
+
+const categoryImages = [
+  { keywords: ["ресторан", "restaurant", "мейрамхана"], image: "/categories/рестораны.png" },
+  { keywords: ["коф", "coffee"], image: "/categories/кофейня.png" },
+  { keywords: ["кондитер", "confection"], image: "/categories/кондитер.png" },
+  { keywords: ["пекар", "bakery", "наубай"], image: "/categories/пекарня.png" },
+  { keywords: ["клубник", "strawber", "құлпынай"], image: "/categories/клубника в шоколаде.png" },
+  { keywords: ["слад", "sweet", "тәтті"], image: "/categories/сладости.png" },
+  { keywords: ["быстро", "fast", "жылдам"], image: "/categories/быстро.png" },
+];
+
+const getCategoryImage = (name?: string) => {
+  const normalizedName = safeString(name).normalize("NFC").toLowerCase();
+  return (
+    categoryImages.find((category) =>
+      category.keywords.some((keyword) => normalizedName.includes(keyword.normalize("NFC").toLowerCase())),
+    )?.image || "/categories/быстро.png"
+  );
+};
+
+const getCategoryTranslationKey = (name?: string) => {
+  const normalizedName = safeString(name).normalize("NFC").toLowerCase();
+
+  if (["ресторан", "restaurant", "мейрамхана"].some((keyword) => normalizedName.includes(keyword))) return "categoryRestaurants";
+  if (["коф", "coffee"].some((keyword) => normalizedName.includes(keyword))) return "categoryCoffee";
+  if (["кондитер", "confection"].some((keyword) => normalizedName.includes(keyword))) return "categoryConfectionery";
+  if (["пекар", "bakery", "наубай"].some((keyword) => normalizedName.includes(keyword))) return "categoryBakery";
+  if (["клубник", "strawber", "құлпынай"].some((keyword) => normalizedName.includes(keyword))) return "categoryStrawberry";
+  if (["слад", "sweet", "тәтті"].some((keyword) => normalizedName.includes(keyword))) return "categorySweets";
+  if (["быстро", "fast", "жылдам"].some((keyword) => normalizedName.includes(keyword))) return "categoryFastFood";
+
+  return null;
+};
 
 export default function HomePage() {
+  const router = useRouter();
   const { t } = useTranslation();
   const { user, isLoading: authLoading, login, error: authError } = useAuth();
-  const { getTelegramUser, getTelegramInitData } = useTelegram();
-  const [currentBanner, setCurrentBanner] = useState(0);
-  const [userName, setUserName] = useState("");
-  const [authInitialized, setAuthInitialized] = useState(false);
+  const { getTelegramInitData } = useTelegram();
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Use safe hooks for data fetching
-  const { data: featuredProductsResponse, isLoading: productsLoading } = useFeaturedProducts(0, 5);
-  const { orders, isLoading: ordersLoading } = useOrders();
+  const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
+  const { data: featuredProductsResponse, isLoading: productsLoading } = useFeaturedProducts(0, 100);
 
-  const banners = [
-    { id: 1, title: t("foodWithDiscount"), subtitle: t("upTo80"), color: "#de8a08" },
-    { id: 2, title: t("freeDelivery"), subtitle: t("from2000"), color: "#73be61" },
-    { id: 3, title: t("newRestaurants"), subtitle: t("everyDay"), color: "#ff6b6b" },
-  ];
-
-  // Get featured products safely
+  const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
   const featuredProducts = safeArray(featuredProductsResponse?.content)
     .filter((product: Product) => isProductVisibleInMiniApp(product));
-  
-  // Get latest order safely
-  const latestOrder = safeArray(orders)[0] || null;
 
-  // Initialize Telegram authentication
   useEffect(() => {
-    if (authInitialized || authLoading) return;
+    if (authLoading || user) return;
 
-    const initializeAuth = async () => {
-      // Get user name from Telegram
-      const telegramUser = getTelegramUser();
-      if (telegramUser) {
-        const fullName = `${safeString(telegramUser.first_name)} ${safeString(telegramUser.last_name)}`.trim();
-        setUserName(fullName || safeString(telegramUser.username) || 'Пользователь');
+    const initData = getTelegramInitData();
+    if (!initData) return;
+
+    login(initData).catch((error) => {
+      console.error("Telegram authentication failed:", error);
+    });
+  }, [authLoading, user, getTelegramInitData, login]);
+
+  useEffect(() => {
+    const sessionId = sessionStorage.getItem("foodsaveSessionId") || crypto.randomUUID();
+    sessionStorage.setItem("foodsaveSessionId", sessionId);
+    apiClient.trackEvent({
+      eventType: "MINI_APP_OPENED",
+      sessionId,
+      source: "direct",
+      idempotencyKey: `mini-app-opened-${sessionId}`,
+    });
+    apiClient.trackEvent({
+      eventType: "HOME_VIEWED",
+      sessionId,
+      source: "direct",
+      idempotencyKey: `home-viewed-${sessionId}-${Date.now()}`,
+    });
+  }, []);
+
+  const handleSearch = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    const query = searchQuery.trim();
+    const sessionId = sessionStorage.getItem("foodsaveSessionId") || undefined;
+    apiClient.trackEvent({
+      eventType: "SEARCH_PERFORMED",
+      sessionId,
+      source: "search",
+      metadata: { searchQuery: query },
+    });
+    router.push(query ? `/markets?query=${encodeURIComponent(query)}` : "/markets");
+  };
+
+  const FeaturedProductCard = ({ product, index }: { product: Product; index: number }) => {
+    const [isFavorite, setIsFavorite] = useState(!!product.isFavorite);
+    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+    const price = getCurrentPrice(product);
+    const originalPrice = normalizePrice(product.originalPrice || price);
+    const discount = originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : product.discountPercentage || 0;
+
+    const toggleFavorite = async (event: React.MouseEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (isTogglingFavorite) return;
+
+      const previousValue = isFavorite;
+      setIsFavorite(!previousValue);
+      setIsTogglingFavorite(true);
+      try {
+        await apiClient.toggleFavoriteProduct(product.id, previousValue);
+      } catch (error) {
+        console.error("Failed to toggle favorite product:", error);
+        setIsFavorite(previousValue);
+      } finally {
+        setIsTogglingFavorite(false);
       }
-
-      // Authenticate user with Telegram (only if not already authenticated)
-      const initData = getTelegramInitData();
-      if (initData && !user) {
-        try {
-          await login(initData);
-        } catch (error) {
-          console.error('Telegram authentication failed:', error);
-          // Don't throw error, app should still work without auth
-        }
-      }
-
-      setAuthInitialized(true);
     };
 
-    initializeAuth();
-  }, [authInitialized, authLoading, user, getTelegramUser, getTelegramInitData, login]);
-
-  // Banner auto-scroll
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentBanner((prev) => (prev + 1) % banners.length);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [banners.length]);
+    return (
+      <Link href={`/details/${product.id}`} className="min-w-0">
+        <article>
+          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
+            {product.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={product.imageUrl}
+                alt={safeString(product.name)}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-[#4CAD73]">
+                <span className="text-xl font-bold text-white font-inter">FS</span>
+              </div>
+            )}
+            {discount > 0 && (
+              <div className="absolute left-2 top-2 rounded-full bg-[#E5484D] px-3 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-red-500/25 backdrop-blur font-inter">
+                -{discount}%
+              </div>
+            )}
+            <button
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+              disabled={isTogglingFavorite}
+              onClick={toggleFavorite}
+              type="button"
+              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-full bg-white/90 shadow-sm transition-transform active:scale-90"
+            >
+              <Star className="h-4 w-4 text-amber-500" fill={isFavorite ? "currentColor" : "none"} />
+            </button>
+          </div>
+          <h3 className="mt-3 truncate text-base font-bold text-black font-inter">{safeString(product.name)}</h3>
+          <p className="mt-1 truncate text-sm text-black/50 font-inter">
+            {safeString(product.storeName) || "FoodSave"} • {["0.8", "1.2", "0.5", "1.8"][index % 4]} km
+          </p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-base font-bold text-[#15551F] font-inter">{formatPrice(price)}</span>
+            {originalPrice > price && (
+              <span className="text-sm text-black/35 line-through font-inter">{formatPrice(originalPrice)}</span>
+            )}
+          </div>
+        </article>
+      </Link>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-      {/* Header */}
-      <div className="px-4 pt-4">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-sm text-black/50 font-medium font-inter">{t("welcome")}</p>
-            <h1 className="text-lg font-bold text-black mt-1 font-inter">
-              {userName || safeString(user?.firstName) || safeString(user?.telegramUsername) || t("userName")}
-            </h1>
-          </div>
-          <Link href="/notifications" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-            <Bell className="w-5 h-5" />
+    <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <header className="px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <Link href="/" className="flex items-center">
+            <span className="text-2xl font-bold text-[#15551F] font-inter">FoodSave</span>
           </Link>
-        </div>
-      </div>
 
-      {/* Auth Error Display */}
-      {authError && (
-        <div className="px-4 mt-2">
-          <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-            <p className="text-red-600 text-sm">{authError}</p>
+          <div className="flex items-center gap-3">
+            <Link href="/notifications" className="relative flex h-11 w-11 items-center justify-center rounded-2xl bg-gray-100">
+              <svg className="h-6 w-6 text-black/70" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a3 3 0 006 0" />
+              </svg>
+              <span className="absolute right-3 top-3 h-2 w-2 rounded-full bg-[#ff6b6b]" />
+            </Link>
           </div>
         </div>
-      )}
 
-      {/* Discount Banner - Carousel */}
-      <div className="px-4 mt-6">
-        <div className="relative overflow-hidden rounded-2xl h-[100px]">
-          <div 
-            className="flex transition-transform duration-500 ease-in-out h-full"
-            style={{ transform: `translateX(-${currentBanner * 100}%)` }}
-          >
-            {banners.map((banner) => (
-              <div
-                key={banner.id}
-                className="min-w-full h-full rounded-2xl p-5 relative overflow-hidden flex-shrink-0"
-                style={{ backgroundColor: banner.color }}
-              >
-                <h2 className="text-white text-xl font-semibold leading-tight font-inter">
-                  {banner.title}<br />{banner.subtitle}
-                </h2>
-                <button className="absolute top-4 right-4">
-                  <ArrowUpRight className="w-5 h-5 text-white" />
-                </button>
+        <form onSubmit={handleSearch} className="mt-5 flex h-14 items-center gap-3 rounded-2xl bg-gray-100 px-4">
+          <button type="submit" className="flex h-8 w-8 items-center justify-center" aria-label={t("search")}>
+            <svg className="h-6 w-6 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </button>
+          <input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-base font-medium text-black outline-none placeholder:text-black/45 font-inter"
+            placeholder={t("searchPlaceholder")}
+            type="search"
+          />
+        </form>
+
+        {authError && (
+          <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3">
+            <p className="text-sm text-red-600">{authError}</p>
+          </div>
+        )}
+      </header>
+
+      <section className="mt-6 border-y border-gray-100 bg-[#F7F8F7] py-5">
+        <div className="overflow-x-auto px-4 pb-1">
+          <div className="flex min-w-max gap-5">
+            {categoriesLoading
+              ? [1, 2, 3].map((item) => (
+                  <div key={item} className="flex w-[68px] flex-col items-center gap-2">
+                    <div className="h-14 w-14 animate-pulse rounded-2xl bg-white" />
+                    <div className="h-4 w-14 animate-pulse rounded bg-white" />
+                  </div>
+                ))
+              : categories.map((category) => {
+                  const translatedCategoryKey = getCategoryTranslationKey(category.name);
+                  const categoryLabel = translatedCategoryKey ? t(translatedCategoryKey) : safeString(category.name);
+
+                  return (
+                    <Link key={category.id} href={`/markets?categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
+                      <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={getCategoryImage(category.name)}
+                          alt={categoryLabel}
+                          className="h-full w-full object-cover"
+                        />
+                      </div>
+                      <span className="w-full truncate text-center text-sm font-medium text-black/80 font-inter">
+                        {categoryLabel}
+                      </span>
+                    </Link>
+                  );
+                })}
+          </div>
+        </div>
+      </section>
+
+      <main className="px-4 pt-5">
+        <Link
+          href="/map"
+          className="block overflow-hidden rounded-3xl bg-[#FFF1F1] p-3 shadow-sm"
+        >
+          <div className="relative h-32 overflow-hidden rounded-2xl">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-r from-white/35 via-white/5 to-transparent" />
+            <div className="relative flex h-full items-end justify-end p-3">
+              <div className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#E5484D] shadow-lg shadow-black/10 font-inter">
+                <MapPin className="h-4 w-4" />
+                {t("map")}
               </div>
-            ))}
-          </div>
-          
-          {/* Carousel Indicators */}
-          <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex gap-1">
-            {banners.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => setCurrentBanner(index)}
-                className={`h-1 rounded-full transition-all ${
-                  index === currentBanner 
-                    ? 'w-4 bg-white' 
-                    : 'w-1 bg-white/50'
-                }`}
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* My Orders */}
-      <div className="px-4 mt-8">
-        <div className="bg-gray-100 rounded-2xl p-5 relative">
-          <p className="text-black/50 text-base font-medium font-inter">{t("myOrders")}</p>
-          
-          {ordersLoading ? (
-            <div className="mt-4">
-              <div className="h-6 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 bg-gray-200 rounded mt-2 w-1/2 animate-pulse"></div>
             </div>
-          ) : latestOrder ? (
-            <div className="mt-2">
-              <div className="flex items-center justify-between">
-                <h3 className="text-xl font-semibold text-black font-inter">
-                  {safeString(latestOrder.storeName)}
-                </h3>
-                <div className="bg-[#73be61] rounded-2xl px-4 py-1">
-                  <span className="text-white text-sm font-medium font-inter">
-                    {latestOrder.status === 'CONFIRMED' ? t("reserved") : latestOrder.status}
-                  </span>
+          </div>
+        </Link>
+
+        <section className="mt-8">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-xl font-bold text-black font-inter">{t("recommendedForYou")}</h2>
+            <Link href="/markets" className="flex items-center gap-1 text-base font-semibold text-[#15551F] font-inter">
+              {t("seeAll")}
+              <ChevronRight className="h-5 w-5" />
+            </Link>
+          </div>
+
+          {productsLoading ? (
+            <div className="grid grid-cols-2 gap-4">
+              {[1, 2, 3, 4].map((item) => (
+                <div key={item} className="animate-pulse">
+                  <div className="h-36 rounded-2xl bg-gray-100" />
+                  <div className="mt-3 h-5 rounded bg-gray-100" />
+                  <div className="mt-2 h-4 w-2/3 rounded bg-gray-100" />
                 </div>
-              </div>
-              <p className="text-sm text-black/60 font-inter mt-1">
-                {new Date(latestOrder.createdAt).toLocaleDateString()} • {latestOrder.totalAmount || latestOrder.total || 0}₸
+              ))}
+            </div>
+          ) : featuredProducts.length === 0 ? (
+            <div className="rounded-2xl bg-gray-100 p-5">
+              <p className="text-base font-semibold text-black font-inter">{t("nearbyBoxes")}</p>
+              <p className="mt-1 text-sm text-black/50 font-inter">
+                {t("noBoxesAvailable")}
               </p>
             </div>
           ) : (
-            <div className="mt-2">
-              <h3 className="text-lg text-black/60 font-inter">{t("noOrders")}</h3>
-              <p className="text-sm text-black/40 font-inter mt-1">{t("makeFirstOrder")}</p>
+            <div className="grid grid-cols-2 gap-4">
+              {featuredProducts.map((product, index) => (
+                <FeaturedProductCard key={product.id} product={product} index={index} />
+              ))}
             </div>
           )}
-          
-          <Link href="/orders" className="absolute bottom-4 right-5 text-xs text-black/50 font-inter">
-            {t("allOrders")}
-          </Link>
-        </div>
-      </div>
+        </section>
 
-      {/* Nearby boxes */}
-      <div className="px-4 mt-20">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-semibold text-black font-inter">{t("nearbyBoxes")}</h3>
-          <Link href="/markets" className="text-base font-semibold text-[#73be61] font-inter">
-            {t("seeAll")}
-          </Link>
-        </div>
-        
-        <div className="overflow-x-auto pb-2 -mx-4 px-4">
-          <div className="flex gap-4">
-            {featuredProducts.length > 0 ? featuredProducts.map((product: Product) => (
-              <Link key={product.id} href={`/details/${product.id}`} className="flex-shrink-0 w-[250px]">
-                <div className="bg-gray-100 rounded-2xl p-4 relative">
-                  <FavoriteButton
-                    type="product"
-                    id={product.id}
-                    initialFavorite={product.isFavorite}
-                    className="absolute top-3 right-3 w-8 h-8 flex items-center justify-center rounded-full bg-white/90 shadow-sm active:scale-90 transition-transform z-10"
-                  />
-                  <h4 className="text-lg font-medium text-black font-inter pr-8">{safeString(product.name)}</h4>
-                  <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-black/60 font-inter">
-                    <span>{product.stockQuantity} {t("meals")}</span>
-                    <span>{safeString(product.storeName)}</span>
-                  </div>
-                  <div className="bg-[#73be61] rounded-2xl h-32 mt-4 flex items-center justify-center overflow-hidden">
-                    {product.imageUrl ? (
-                      <img 
-                        src={product.imageUrl} 
-                        alt={safeString(product.name)}
-                        className="w-full h-full object-cover rounded-2xl"
-                        onError={(e) => {
-                          // Replace with placeholder on error
-                          (e.target as HTMLImageElement).src = '/placeholder-food.jpg';
-                        }}
-                      />
-                    ) : (
-                      <div className="text-white text-sm font-inter">Фото</div>
-                    )}
-                  </div>
-                </div>
-              </Link>
-            )) : !productsLoading ? (
-              <div className="flex-shrink-0 w-[250px]">
-                <div className="bg-gray-100 rounded-2xl p-4">
-                  <h4 className="text-lg font-medium text-black font-inter">{t("donerNaAbaya")}</h4>
-                  <div className="flex items-center gap-4 mt-2 text-sm font-semibold text-black/60 font-inter">
-                    <span>15 {t("meals")}</span>
-                    <span>{t("kabanbayBatyra")}</span>
-                  </div>
-                  <div className="bg-[#73be61] rounded-2xl h-32 mt-4"></div>
-                </div>
-              </div>
-            ) : (
-              // Loading skeleton
-              <div className="flex gap-4">
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="flex-shrink-0 w-[250px]">
-                    <div className="bg-gray-100 rounded-2xl p-4 animate-pulse">
-                      <div className="h-6 bg-gray-200 rounded"></div>
-                      <div className="h-4 bg-gray-200 rounded mt-2 w-3/4"></div>
-                      <div className="bg-gray-200 rounded-2xl h-32 mt-4"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        <a
+          href="https://t.me/FoodSave_kz"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#15551F] px-4 py-3.5 text-white shadow-sm active:scale-[0.99] transition-transform"
+        >
+          <div className="min-w-0">
+            <p className="text-base font-bold font-inter">{t("becomePartner")}</p>
+            <p className="mt-0.5 truncate text-xs font-medium text-white/70 font-inter">
+              {t("partnerDescription")}
+            </p>
           </div>
-        </div>
-      </div>
+          <ChevronRight className="h-5 w-5 shrink-0 text-white/80" />
+        </a>
+      </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
-        <div className="flex items-center justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-[#73be61] rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95">
-              <svg className="w-6 h-6 text-white transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/markets" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/orders" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/profile" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 group-hover:bg-gray-50">
-              <svg className="w-6 h-6 text-black transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </nav>
+      <BottomNav active="home" />
     </div>
   );
 }

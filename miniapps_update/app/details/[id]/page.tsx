@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, MapPin, Minus, Plus, Phone, Truck, XCircle } from "lucide-react";
-import Link from "next/link";
+import { ArrowLeft, CheckCircle, MapPin, Minus, Plus, Phone, Star, Truck, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
-import FavoriteButton from "../../../components/FavoriteButton";
+import { formatPrice, normalizePrice } from "../../../lib/pricing";
+import BackButton from "../../../components/BackButton";
+import { readAttribution } from "../../../components/StartParamRouter";
 
 type OrderModalState =
   | { type: "success"; order: Order }
@@ -25,6 +26,8 @@ export default function ProductDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isReserving, setIsReserving] = useState(false);
   const [orderModal, setOrderModal] = useState<OrderModalState>(null);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
 
   // Phone modal state
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -53,6 +56,26 @@ export default function ProductDetailsPage() {
         const productData = await apiClient.getProductById(Number(productId));
         if (isMounted) {
           setProduct(productData);
+          setIsFavorite(!!productData.isFavorite);
+          const attribution = readAttribution();
+          apiClient.trackEvent({
+            eventType: "BOX_VIEWED",
+            sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
+            source: String(attribution.source || "direct"),
+            notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
+            campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
+            telegramPostId: typeof attribution.telegramPostId === "string" ? attribution.telegramPostId : undefined,
+            startParam: typeof attribution.startParam === "string" ? attribution.startParam : undefined,
+            partnerId: productData.storeId,
+            branchId: productData.storeId,
+            boxId: productData.id,
+            metadata: {
+              availableQuantity: productData.stockQuantity,
+              boxPrice: productData.price || productData.discountedPrice || productData.originalPrice,
+              originalPrice: productData.originalPrice,
+              discountPercent: productData.discountPercentage,
+            },
+          });
         }
         if (productData?.storeId) {
           try {
@@ -92,6 +115,19 @@ export default function ProductDetailsPage() {
 
     setIsReserving(true);
     try {
+      const attribution = readAttribution();
+      apiClient.trackEvent({
+        eventType: "RESERVATION_BUTTON_CLICKED",
+        sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
+        source: String(attribution.source || "direct"),
+        notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
+        campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
+        telegramPostId: typeof attribution.telegramPostId === "string" ? attribution.telegramPostId : undefined,
+        startParam: typeof attribution.startParam === "string" ? attribution.startParam : undefined,
+        partnerId: product.storeId,
+        branchId: product.storeId,
+        boxId: product.id,
+      });
       const reservationData = {
         productId: product.id,
         quantity: quantity,
@@ -100,6 +136,13 @@ export default function ProductDetailsPage() {
           : `Забронировано через Telegram. Количество: ${quantity}`,
         deliveryType,
         contactPhone,
+        acquisitionSource: String(attribution.source || "direct"),
+        campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
+        notificationId: typeof attribution.notificationId === "number" ? attribution.notificationId : undefined,
+        notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
+        telegramPostId: typeof attribution.telegramPostId === "string" ? attribution.telegramPostId : undefined,
+        startParam: typeof attribution.startParam === "string" ? attribution.startParam : undefined,
+        sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
       };
 
       const order = await apiClient.createReservation(reservationData);
@@ -145,14 +188,26 @@ export default function ProductDetailsPage() {
     handleReserve('COURIER', phoneNumber.trim());
   };
 
-  const formatPrice = (price: number) => {
-    return `${price.toLocaleString()} ₸`;
-  };
-
   const calculateTotalPrice = () => {
     if (!product) return 0;
     const price = product.price || product.discountedPrice || product.originalPrice;
-    return price * quantity;
+    return normalizePrice(price) * quantity;
+  };
+
+  const toggleFavorite = async () => {
+    if (!product || isTogglingFavorite) return;
+
+    const previousValue = isFavorite;
+    setIsFavorite(!previousValue);
+    setIsTogglingFavorite(true);
+    try {
+      await apiClient.toggleFavoriteProduct(product.id, previousValue);
+    } catch (error) {
+      console.error("Failed to toggle favorite product:", error);
+      setIsFavorite(previousValue);
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   if (isLoading) {
@@ -170,10 +225,10 @@ export default function ProductDetailsPage() {
     );
   }
 
-  if (!product) {
+  if (!product || !isProductVisibleInMiniApp(product)) {
     return (
       <div className="min-h-screen bg-white pb-24 flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <p className="text-black/50 font-inter">Продукт не найден</p>
+        <p className="px-6 text-center text-black/50 font-inter">Бокс больше недоступен</p>
       </div>
     );
   }
@@ -183,16 +238,19 @@ export default function ProductDetailsPage() {
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/boxes" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
-           <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton fallback={product.storeId ? `/boxes?storeId=${product.storeId}` : "/markets"} />
           <h1 className="text-xl font-bold text-black font-inter flex-1">Детали продукта</h1>
-          <FavoriteButton
-            type="product"
-            id={product.id}
-            initialFavorite={product.isFavorite}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 active:scale-90 transition-transform"
-          />
+          <button
+            aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+            disabled={isTogglingFavorite}
+            onClick={toggleFavorite}
+            type="button"
+            className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors ${
+              isFavorite ? "bg-amber-50 text-amber-500" : "bg-gray-100 text-black/45"
+            }`}
+          >
+            <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
+          </button>
         </div>
       </div>
 
@@ -222,7 +280,7 @@ export default function ProductDetailsPage() {
               className="w-full h-full object-cover"
             />
           ) : (
-            <div className="w-full h-full bg-[#73be61] flex items-center justify-center">
+            <div className="w-full h-full bg-[#4CAD73] flex items-center justify-center">
               <span className="text-white text-4xl font-bold">FS</span>
             </div>
           )}
@@ -250,13 +308,13 @@ export default function ProductDetailsPage() {
 
       {/* Price Section */}
       <div className="px-4 mt-6">
-        <div className="bg-[#73be61] rounded-2xl p-6">
+        <div className="bg-[#4CAD73] rounded-2xl p-6">
           <div className="flex items-center justify-between">
             <div>
               {product.discountPercentage && product.discountPercentage > 0 && (
                 <div className="flex items-center gap-3 mb-2">
                   <div className="bg-white rounded-xl px-3 py-1">
-                    <span className="text-[#73be61] text-sm font-bold font-inter">
+                    <span className="text-[#4CAD73] text-sm font-bold font-inter">
                       -{product.discountPercentage}%
                     </span>
                   </div>
@@ -333,7 +391,7 @@ export default function ProductDetailsPage() {
           <button
             onClick={() => handleReserve('PICKUP', phoneNumber || undefined)}
             disabled={product.stockQuantity <= 0 || isReserving}
-            className="flex-1 bg-[#73be61] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#68a556] transition-colors"
+            className="flex-1 bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#429565] transition-colors"
           >
             <span className="text-lg font-medium text-white font-inter">
               {isReserving ? 'Бронирование...' : 'Забронировать'}
@@ -346,10 +404,10 @@ export default function ProductDetailsPage() {
           <button
             onClick={handleCourierClick}
             disabled={product.stockQuantity <= 0 || isReserving}
-            className="w-full bg-white border-2 border-[#73be61] rounded-xl h-12 flex items-center justify-center gap-2 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-[#73be61]/5 active:scale-95 transition-all"
+            className="w-full bg-white border-2 border-[#4CAD73] rounded-xl h-12 flex items-center justify-center gap-2 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-[#4CAD73]/5 active:scale-95 transition-all"
           >
-            <Truck className="w-5 h-5 text-[#73be61]" />
-            <span className="text-base font-medium text-[#73be61] font-inter">
+            <Truck className="w-5 h-5 text-[#4CAD73]" />
+            <span className="text-base font-medium text-[#4CAD73] font-inter">
               Хочу через курьера
             </span>
           </button>
@@ -367,8 +425,8 @@ export default function ProductDetailsPage() {
           <div className="w-full bg-white rounded-3xl p-6 shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
             {/* Icon */}
             <div className="flex justify-center mb-4">
-              <div className="w-16 h-16 bg-[#73be61]/10 rounded-full flex items-center justify-center">
-                <Phone className="w-8 h-8 text-[#73be61]" />
+              <div className="w-16 h-16 bg-[#4CAD73]/10 rounded-full flex items-center justify-center">
+                <Phone className="w-8 h-8 text-[#4CAD73]" />
               </div>
             </div>
 
@@ -389,7 +447,7 @@ export default function ProductDetailsPage() {
                   setPhoneNumber(e.target.value);
                   setPhoneError("");
                 }}
-                className="w-full h-12 px-4 rounded-xl border-2 border-gray-200 focus:border-[#73be61] outline-none text-base font-inter text-black transition-colors"
+                className="w-full h-12 px-4 rounded-xl border-2 border-gray-200 focus:border-[#4CAD73] outline-none text-base font-inter text-black transition-colors"
                 autoFocus
               />
               {phoneError && (
@@ -402,7 +460,7 @@ export default function ProductDetailsPage() {
               <button
                 onClick={handlePhoneSubmit}
                 disabled={isReserving}
-                className="w-full bg-[#73be61] rounded-xl h-12 flex items-center justify-center gap-2 hover:bg-[#68a556] active:scale-95 transition-all disabled:bg-gray-300"
+                className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center gap-2 hover:bg-[#429565] active:scale-95 transition-all disabled:bg-gray-300"
               >
                 <Truck className="w-5 h-5 text-white" />
                 <span className="text-base font-semibold text-white font-inter">
@@ -435,8 +493,8 @@ export default function ProductDetailsPage() {
               <>
                 {/* Success icon */}
                 <div className="flex justify-center mb-4">
-                  <div className="w-20 h-20 bg-[#73be61]/10 rounded-full flex items-center justify-center">
-                    <CheckCircle className="w-10 h-10 text-[#73be61]" />
+                  <div className="w-20 h-20 bg-[#4CAD73]/10 rounded-full flex items-center justify-center">
+                    <CheckCircle className="w-10 h-10 text-[#4CAD73]" />
                   </div>
                 </div>
 
@@ -449,10 +507,10 @@ export default function ProductDetailsPage() {
                 </p>
 
                 {/* Bot info block */}
-                <div className="mt-4 bg-[#73be61]/10 rounded-2xl p-4">
+                <div className="mt-4 bg-[#4CAD73]/10 rounded-2xl p-4">
                   <p className="text-sm text-black/70 font-inter text-center leading-relaxed">
                     Детали заказа и обновления статуса{"\n"}появятся в чате с ботом{" "}
-                    <span className="font-semibold text-[#4a9e38]">FoodSave</span>.
+                    <span className="font-semibold text-[#3F8F5F]">FoodSave</span>.
                   </p>
                 </div>
 
@@ -460,7 +518,7 @@ export default function ProductDetailsPage() {
                 <div className="mt-5 flex flex-col gap-3">
                   <button
                     onClick={() => router.push('/orders')}
-                    className="w-full bg-[#73be61] rounded-xl h-12 flex items-center justify-center hover:bg-[#68a556] active:scale-95 transition-all"
+                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#429565] active:scale-95 transition-all"
                   >
                     <span className="text-base font-semibold text-white font-inter">Мои заказы</span>
                   </button>
@@ -496,7 +554,7 @@ export default function ProductDetailsPage() {
                 <div className="mt-5 flex flex-col gap-3">
                   <button
                     onClick={() => setOrderModal(null)}
-                    className="w-full bg-[#73be61] rounded-xl h-12 flex items-center justify-center hover:bg-[#68a556] active:scale-95 transition-all"
+                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#429565] active:scale-95 transition-all"
                   >
                     <span className="text-base font-semibold text-white font-inter">Попробовать снова</span>
                   </button>

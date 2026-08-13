@@ -1,22 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Clock } from "lucide-react";
+import { Suspense, useEffect, useState } from "react";
+import { ArrowLeft, Clock, Star } from "lucide-react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
-import { apiClient, Store } from "../../lib/api";
-import FavoriteButton from "../../components/FavoriteButton";
+import { apiClient, isProductVisibleInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
+import { formatPrice } from "../../lib/pricing";
+import BackButton from "../../components/BackButton";
 
-export default function MarketsPage() {
+function MarketsContent() {
   const { } = useTelegram(); // Initialize Telegram singleton
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const query = searchParams.get("query")?.trim() || "";
+  const categoryId = searchParams.get("categoryId")?.trim() || "";
+  const notificationGroupId = searchParams.get("notificationGroupId")?.trim() || "";
   const [stores, setStores] = useState<Store[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const loadStores = async () => {
       try {
+        setIsLoading(true);
+        if (notificationGroupId) {
+          const group = await apiClient.getNotificationGroup(Number(notificationGroupId));
+          setNotificationGroup(group);
+          await apiClient.markNotificationGroupOpened(Number(notificationGroupId));
+          const groupedStores = new Map<number, Store>();
+          group.items.forEach((item) => {
+            if (!groupedStores.has(item.partnerId)) {
+              groupedStores.set(item.partnerId, {
+                id: item.partnerId,
+                name: item.partnerName,
+                address: "",
+                phone: "",
+                status: "ACTIVE",
+                ownerId: 0,
+                active: true,
+                createdAt: "",
+                updatedAt: "",
+              });
+            }
+          });
+          setStores(Array.from(groupedStores.values()));
+          setProducts(group.items.filter((item) => item.boxId).map((item) => ({
+            id: item.boxId!,
+            name: item.boxName || "FoodSave box",
+            imageUrl: item.boxImageUrl,
+            originalPrice: item.originalPrice || item.price || 0,
+            price: item.price,
+            discountPercentage: item.discountPercent,
+            stockQuantity: item.availableQuantity,
+            storeId: item.partnerId,
+            storeName: item.partnerName,
+            status: "AVAILABLE",
+            featured: true,
+            createdAt: "",
+            updatedAt: "",
+          })).filter(isProductVisibleInMiniApp));
+          apiClient.trackEvent({
+            eventType: "NOTIFICATION_DEEPLINK_OPENED",
+            sessionId: sessionStorage.getItem("foodsaveSessionId") || undefined,
+            source: "telegram_notification",
+            notificationGroupId: Number(notificationGroupId),
+            startParam: `notification_${notificationGroupId}`,
+            idempotencyKey: `notification-deeplink-${notificationGroupId}-${sessionStorage.getItem("foodsaveSessionId") || ""}`,
+          });
+          return;
+        }
+
+        if (query) {
+          const [storesResult, productsResult] = await Promise.all([
+            apiClient.searchStores(query, 0, 50),
+            apiClient.searchProducts(query, 0, 50),
+          ]);
+          setStores(storesResult.content);
+          setProducts(productsResult.content.filter(isProductVisibleInMiniApp));
+          return;
+        }
+
         const storesData = await apiClient.getActiveStores();
-        setStores(storesData);
+        setProducts([]);
+        setStores(
+          categoryId
+            ? storesData.filter((store) => String(store.category || "") === categoryId)
+            : storesData
+        );
       } catch (error) {
         console.error('Failed to load stores:', error);
       } finally {
@@ -25,7 +97,7 @@ export default function MarketsPage() {
     };
 
     loadStores();
-  }, []);
+  }, [query, categoryId, notificationGroupId]);
 
   const formatOpeningHours = (store: Store) => {
     if (store.openingHours && store.closingHours) {
@@ -37,15 +109,106 @@ export default function MarketsPage() {
     return "9:00 - 22:00";
   };
 
+  const favoriteStores = stores.filter((store) => store.isFavorite);
+  const regularStores = stores.filter((store) => !store.isFavorite);
+
+  const StoreCard = ({ store }: { store: Store }) => {
+    const [isFavorite, setIsFavorite] = useState(!!store.isFavorite);
+    const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+
+    const toggleFavorite = async (event: React.MouseEvent) => {
+      event.stopPropagation();
+      if (isTogglingFavorite) return;
+
+      const previousValue = isFavorite;
+      setIsFavorite(!previousValue);
+      setIsTogglingFavorite(true);
+      try {
+        await apiClient.toggleFavoriteStore(store.id, previousValue);
+      } catch (error) {
+        console.error("Failed to toggle favorite store:", error);
+        setIsFavorite(previousValue);
+      } finally {
+        setIsTogglingFavorite(false);
+      }
+    };
+
+    return (
+      <article
+        className="block cursor-pointer rounded-2xl bg-gray-100 p-4 transition-colors hover:bg-gray-200"
+        onClick={() => router.push(`/boxes?storeId=${store.id}`)}
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 bg-[#4CAD73] rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
+            {store.logo ? (
+              <img
+                src={store.logo}
+                alt={store.name}
+                className="w-16 h-16 rounded-full object-cover"
+              />
+            ) : (
+              <span className="text-white font-bold text-lg font-inter">
+                {store.name.charAt(0).toUpperCase()}
+              </span>
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <h3 className="text-lg font-semibold text-black font-inter mb-1 truncate">
+              {store.name}
+            </h3>
+            <div className="flex items-center gap-2 text-sm text-black/60 font-inter">
+              <Clock className="w-4 h-4" />
+              <span>{formatOpeningHours(store)}</span>
+            </div>
+            {store.address && (
+              <p className="text-xs text-black/50 font-inter mt-1 truncate">
+                {store.address}
+              </p>
+            )}
+            {store.closingSoon && (
+              <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-[#FF9500] bg-[#FF9500]/10 rounded-full px-2.5 py-1 font-inter">
+                <Clock className="w-3 h-3" />
+                Закрывается через час
+              </span>
+            )}
+          </div>
+
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <button
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+              disabled={isTogglingFavorite}
+              className={`flex h-9 w-9 items-center justify-center rounded-xl transition-colors ${
+                isFavorite ? "bg-amber-50 text-amber-500" : "bg-white text-black/40"
+              }`}
+              onClick={toggleFavorite}
+              type="button"
+            >
+              <Star className="h-5 w-5" fill={isFavorite ? "currentColor" : "none"} />
+            </button>
+            {store.rating && (
+              <div className="flex items-center gap-1 bg-[#4CAD73] rounded-lg px-2 py-1">
+                <span className="text-white text-sm font-medium font-inter">
+                  {store.rating.toFixed(1)}
+                </span>
+                <span className="text-white text-xs">★</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </article>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
-          <h1 className="text-xl font-bold text-black font-inter">Заведения</h1>
+          <BackButton fallback="/" />
+          <h1 className="text-xl font-bold text-black font-inter">
+            {notificationGroup ? "Подборка FoodSave" : query ? `Поиск: ${query}` : "Заведения"}
+          </h1>
         </div>
       </div>
 
@@ -67,68 +230,65 @@ export default function MarketsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {stores.map((store) => (
-              <Link 
-                key={store.id} 
-                href={`/boxes?storeId=${store.id}`}
-                className="block bg-gray-100 rounded-2xl p-4 hover:bg-gray-200 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  {/* Store Logo */}
-                  <div className="w-16 h-16 bg-[#73be61] rounded-full flex items-center justify-center flex-shrink-0 overflow-hidden">
-                    {store.logo ? (
-                      <img
-                        src={store.logo}
-                        alt={store.name}
-                        className="w-16 h-16 rounded-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-white font-bold text-lg font-inter">
-                        {store.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Store Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-lg font-semibold text-black font-inter mb-1 truncate">
-                      {store.name}
-                    </h3>
-                    <div className="flex items-center gap-2 text-sm text-black/60 font-inter">
-                      <Clock className="w-4 h-4" />
-                      <span>{formatOpeningHours(store)}</span>
-                    </div>
-                    {store.address && (
-                      <p className="text-xs text-black/50 font-inter mt-1 truncate">
-                        {store.address}
-                      </p>
-                    )}
-                    {store.closingSoon && (
-                      <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-[#FF9500] bg-[#FF9500]/10 rounded-full px-2.5 py-1 font-inter">
-                        <Clock className="w-3 h-3" />
-                        Закрывается через час
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Rating */}
-                  {store.rating && (
-                    <div className="flex items-center gap-1 bg-[#73be61] rounded-lg px-2 py-1">
-                      <span className="text-white text-sm font-medium font-inter">
-                        {store.rating.toFixed(1)}
-                      </span>
-                      <span className="text-white text-xs">★</span>
-                    </div>
-                  )}
-
-                  <FavoriteButton type="store" id={store.id} initialFavorite={store.isFavorite} />
-                </div>
-              </Link>
+            {stores.length > 0 && query && (
+              <h2 className="pt-1 text-lg font-bold text-black font-inter">Заведения</h2>
+            )}
+            {notificationGroup && (
+              <div className="rounded-2xl bg-[#FFF1F1] p-4">
+                <p className="text-sm font-semibold text-[#E5484D] font-inter">Доступно сейчас</p>
+                <h2 className="mt-1 text-xl font-bold text-black font-inter">
+                  {notificationGroup.totalBoxes} боксов со скидкой до {notificationGroup.maximumDiscount || 0}%
+                </h2>
+              </div>
+            )}
+            {favoriteStores.length > 0 && (
+              <>
+                <h2 className="pt-1 text-lg font-bold text-black font-inter">Избранное</h2>
+                {favoriteStores.map((store) => (
+                  <StoreCard key={store.id} store={store} />
+                ))}
+                {regularStores.length > 0 && (
+                  <h2 className="pt-3 text-lg font-bold text-black font-inter">Все заведения</h2>
+                )}
+              </>
+            )}
+            {regularStores.map((store) => (
+              <StoreCard key={store.id} store={store} />
             ))}
+
+            {products.length > 0 && (
+              <>
+                <h2 className="pt-3 text-lg font-bold text-black font-inter">Боксы</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {products.map((product) => {
+                    const price = product.price || product.discountedPrice || product.originalPrice || 0;
+                    return (
+                      <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
+                        <article>
+                          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
+                            {product.imageUrl ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="flex h-full items-center justify-center bg-[#4CAD73] text-xl font-bold text-white">FS</div>
+                            )}
+                          </div>
+                          <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
+                          <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>
+                          <p className="mt-1 text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</p>
+                        </article>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </>
+            )}
             
-            {stores.length === 0 && (
+            {stores.length === 0 && products.length === 0 && (
               <div className="text-center py-12">
-                <p className="text-black/50 font-inter">Заведения не найдены</p>
+                <p className="text-black/50 font-inter">
+                  {query ? "По вашему запросу ничего не найдено" : "Заведения не найдены"}
+                </p>
               </div>
             )}
           </div>
@@ -147,7 +307,7 @@ export default function MarketsPage() {
           </Link>
           
           <Link href="/markets" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-[#73be61] rounded-xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-[#4CAD73] rounded-xl flex items-center justify-center">
               <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -172,5 +332,41 @@ export default function MarketsPage() {
         </div>
       </nav>
     </div>
+  );
+}
+
+function MarketsLoading() {
+  return (
+    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="px-4 pt-4 pb-4 border-b border-gray-100">
+        <div className="flex items-center gap-4">
+          <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
+            <ArrowLeft className="w-5 h-5 text-gray-800" />
+          </Link>
+          <div className="h-7 w-32 animate-pulse rounded bg-gray-100" />
+        </div>
+      </div>
+      <div className="px-4 mt-6 space-y-4">
+        {[1, 2, 3, 4, 5].map((i) => (
+          <div key={i} className="bg-gray-100 rounded-2xl p-4 animate-pulse">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-300 rounded-full" />
+              <div className="flex-1">
+                <div className="h-4 bg-gray-300 rounded mb-2" />
+                <div className="h-3 bg-gray-300 rounded w-2/3" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+export default function MarketsPage() {
+  return (
+    <Suspense fallback={<MarketsLoading />}>
+      <MarketsContent />
+    </Suspense>
   );
 }
