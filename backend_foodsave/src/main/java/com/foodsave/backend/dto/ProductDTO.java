@@ -2,6 +2,7 @@ package com.foodsave.backend.dto;
 
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.domain.enums.ProductStatus;
+import com.foodsave.backend.util.ProductAvailability;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -42,6 +43,8 @@ public class ProductDTO {
     
     @PositiveOrZero(message = "Stock quantity must be 0 or greater")
     private Integer stockQuantity;
+
+    private Integer sortOrder;
     
     @NotNull(message = "Store ID is required")
     private Long storeId;
@@ -92,7 +95,7 @@ public class ProductDTO {
         BigDecimal originalPrice = product.getOriginalPrice();
         Double discountPercentage = product.getDiscountPercentage();
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
-        boolean isActive = Boolean.TRUE.equals(product.getActive());
+        boolean isAvailable = ProductAvailability.isAvailable(product);
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -102,6 +105,7 @@ public class ProductDTO {
                 .originalPrice(originalPrice)
                 .discountPercentage(discountPercentage)
                 .stockQuantity(stockQuantity)
+                .sortOrder(product.getSortOrder())
                 .storeId(product.getStore().getId())
                 .storeName(product.getStore().getName())
                 .storeLogo(product.getStore().getLogo())
@@ -113,9 +117,7 @@ public class ProductDTO {
                 .status(product.getStatus())
                 .active(product.getActive())
                 // Computed properties for frontend compatibility
-                .isAvailable(isActive &&
-                           product.getStatus() == ProductStatus.AVAILABLE &&
-                           stockQuantity > 0)
+                .isAvailable(isAvailable)
                 .availableQuantity(stockQuantity)
                 .imageUrl(!imagesCopy.isEmpty() ? imagesCopy.get(0) : null)
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)

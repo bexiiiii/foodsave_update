@@ -99,6 +99,8 @@ public class StoreService {
         store.setLogo(storeDTO.getLogo());
         store.setOpeningHours(storeDTO.getOpeningHours());
         store.setClosingHours(storeDTO.getClosingHours());
+        store.setLatitude(storeDTO.getLatitude());
+        store.setLongitude(storeDTO.getLongitude());
         store.setCategory(storeDTO.getCategory());
         store.setActive(storeDTO.isActive());
         
@@ -184,6 +186,8 @@ public class StoreService {
         store.setLogo(storeDTO.getLogo());
         store.setOpeningHours(storeDTO.getOpeningHours());
         store.setClosingHours(storeDTO.getClosingHours());
+        store.setLatitude(storeDTO.getLatitude());
+        store.setLongitude(storeDTO.getLongitude());
         store.setCategory(storeDTO.getCategory());
         store.setActive(storeDTO.isActive());
         store.setStatus(storeDTO.getStatus());

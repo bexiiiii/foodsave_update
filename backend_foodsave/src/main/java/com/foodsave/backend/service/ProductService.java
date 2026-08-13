@@ -10,8 +10,10 @@ import com.foodsave.backend.repository.FavoriteRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
+import com.foodsave.backend.repository.NotificationSettingsRepository;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.util.SecurityUtil;
+import com.foodsave.backend.util.ProductAvailability;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -49,7 +51,9 @@ public class ProductService {
     private final com.foodsave.backend.repository.UserRepository userRepository;
     private final TelegramBotService telegramBotService;
     private final TaskExecutor telegramNotificationExecutor;
-    private final RedisLockService redisLockService;
+    private final NotificationSettingsRepository notificationSettingsRepository;
+    private final RealtimeEventService realtimeEventService;
+    private final NotificationGroupService notificationGroupService;
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -59,7 +63,9 @@ public class ProductService {
                           com.foodsave.backend.repository.UserRepository userRepository,
                           TelegramBotService telegramBotService,
                           @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor,
-                          RedisLockService redisLockService) {
+                          NotificationSettingsRepository notificationSettingsRepository,
+                          RealtimeEventService realtimeEventService,
+                          NotificationGroupService notificationGroupService) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -68,7 +74,9 @@ public class ProductService {
         this.userRepository = userRepository;
         this.telegramBotService = telegramBotService;
         this.telegramNotificationExecutor = telegramNotificationExecutor;
-        this.redisLockService = redisLockService;
+        this.notificationSettingsRepository = notificationSettingsRepository;
+        this.realtimeEventService = realtimeEventService;
+        this.notificationGroupService = notificationGroupService;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -78,7 +86,7 @@ public class ProductService {
         if (securityUtil.isCurrentUserAdmin()) {
             // Super admins see all products
             log.info("DEBUG: User is admin, fetching all products");
-            Page<Product> products = productRepository.findAll(pageable);
+            Page<Product> products = productRepository.findAllWithStoreAndCategory(pageable);
             log.info("DEBUG: Found {} products in database", products.getTotalElements());
             return products.map(this::convertToDTO);
         } else {
@@ -190,7 +198,8 @@ public class ProductService {
         }
         
         // For regular users, only show AVAILABLE products (exclude OUT_OF_STOCK)
-        Page<ProductDTO> products = productRepository.findActiveAvailableByStoreId(storeId, pageable)
+        Page<ProductDTO> products = productRepository.findActiveAvailableByStoreId(
+                        storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
         return withFavoritesFirst(products, pageable);
     }
@@ -218,7 +227,8 @@ public class ProductService {
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getFeaturedProducts(Pageable pageable) {
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
-        Page<ProductDTO> products = productRepository.findAllActiveAvailableProducts(pageable)
+        Page<ProductDTO> products = productRepository.findAllActiveAvailableProducts(
+                        ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
         return withFavoritesFirst(products, pageable);
     }
@@ -242,6 +252,7 @@ public class ProductService {
         product.setCategory(category);
         ProductDTO saved = convertToDTO(productRepository.save(product));
         scheduleNewProductNotification(saved);
+        realtimeEventService.broadcast("new-box", saved);
         return saved;
     }
 
@@ -265,17 +276,22 @@ public class ProductService {
 
     private void executeNewProductNotification(ProductDTO product) {
         try {
-            telegramNotificationExecutor.execute(() -> sendNewProductNotification(product));
+            telegramNotificationExecutor.execute(() -> notificationGroupService.collectNewProduct(product));
         } catch (Exception e) {
-            log.error("Failed to enqueue new product notification for product id={}, sending inline",
+            log.error("Failed to enqueue new product notification group collection for product id={}, collecting inline",
                     product.getId(), e);
-            sendNewProductNotification(product);
+            notificationGroupService.collectNewProduct(product);
         }
     }
 
     private void sendNewProductNotification(ProductDTO product) {
         if (product == null) return;
         try {
+            if (!isProductStillAvailableForNotification(product.getId())) {
+                log.info("Skipping stale new product notification for product id={}", product.getId());
+                return;
+            }
+
             java.util.List<com.foodsave.backend.entity.User> telegramUsers = userRepository.findByTelegramUserTrue();
             if (telegramUsers.isEmpty()) return;
 
@@ -285,9 +301,9 @@ public class ProductService {
             String storeName = product.getStoreName() != null ? product.getStoreName() : "";
 
             StringBuilder text = new StringBuilder();
-            text.append("<b>").append(product.getName()).append("</b>\n");
+            text.append("<b>").append(escapeTelegramHtml(product.getName())).append("</b>\n");
             if (storeName != null && !storeName.isBlank()) {
-                text.append(storeName).append("\n");
+                text.append(escapeTelegramHtml(storeName)).append("\n");
             }
             text.append("\n");
 
@@ -305,19 +321,25 @@ public class ProductService {
                 text.append("Цена: ").append(formatNotifPrice(discountedPrice)).append("\n");
             }
 
-                String imageUrl = product.getImageUrl();
             String productUrl = telegramBotService.resolveButtonUrl("/details/" + product.getId());
 
             int sentCount = 0;
             int failedCount = 0;
+            int eligibleCount = 0;
 
             for (com.foodsave.backend.entity.User user : telegramUsers) {
                 if (user.getTelegramUserId() == null) continue;
+                if (!notificationSettingsRepository.findByUser(user)
+                        .map(com.foodsave.backend.entity.NotificationSettings::isPromotions)
+                        .orElse(true)) continue;
+                eligibleCount++;
                 try {
+                    // Product image URLs are not consistently fetchable by Telegram.
+                    // Send the notification as text so a broken image cannot drop it.
                     boolean sent = telegramBotService.sendMessage(
                             user.getTelegramUserId(),
                             new TelegramBotService.TelegramMessagePayload(
-                                    text.toString(), imageUrl, "Забронировать", productUrl
+                                    text.toString(), null, "Забронировать", productUrl
                             )
                     );
                     if (sent) {
@@ -330,11 +352,34 @@ public class ProductService {
                     log.warn("Failed to notify user {} about new product", user.getTelegramUserId(), e);
                 }
             }
-            log.info("New product notification for product {} finished: sent={}, failed={}, telegramUsers={}",
-                    product.getId(), sentCount, failedCount, telegramUsers.size());
+            log.info("New product notification for product {} finished: eligible={}, sent={}, failed={}, telegramUsers={}",
+                    product.getId(), eligibleCount, sentCount, failedCount, telegramUsers.size());
         } catch (Exception e) {
             log.error("Failed to send new product notifications", e);
         }
+    }
+
+    private boolean isProductStillAvailableForNotification(Long productId) {
+        if (productId == null) {
+            return false;
+        }
+
+        return productRepository.findById(productId)
+                .map(currentProduct ->
+                        Boolean.TRUE.equals(currentProduct.getActive()) &&
+                        currentProduct.getStatus() == ProductStatus.AVAILABLE &&
+                        currentProduct.getStockQuantity() != null &&
+                        currentProduct.getStockQuantity() > 0 &&
+                        (currentProduct.getExpiryDate() == null || currentProduct.getExpiryDate().isAfter(java.time.LocalDateTime.now()))
+                )
+                .orElse(false);
+    }
+
+    private String escapeTelegramHtml(String value) {
+        if (value == null) return "";
+        return value.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private String formatNotifPrice(BigDecimal value) {
@@ -372,7 +417,8 @@ public class ProductService {
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> searchProducts(String query, Pageable pageable) {
-        return productRepository.searchProducts(query, pageable)
+        return productRepository.searchProducts(
+                        query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
     }
 
@@ -485,8 +531,7 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public Product reserveProductStock(Long productId, int quantity) {
-        // Redis-блокировка защищает от race condition при одновременном бронировании
-        return redisLockService.executeWithLock(productId, () -> decreaseStockWithLock(productId, quantity));
+        return decreaseStockWithLock(productId, quantity);
     }
 
     /**
@@ -495,6 +540,9 @@ public class ProductService {
     public boolean hasSufficientStock(Long productId, Integer requiredQuantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        if (!ProductAvailability.isAvailable(product)) {
+            return false;
+        }
         int requested = requiredQuantity != null ? requiredQuantity : 0;
         int available = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         return available >= requested;
@@ -508,8 +556,9 @@ public class ProductService {
         Product product = productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        // Check if product is active
-        if (!Boolean.TRUE.equals(product.getActive())) {
+        // Re-check all availability rules while holding the row lock so a stale
+        // mini-app screen cannot reserve an expired box or a box after closing.
+        if (!ProductAvailability.isAvailable(product)) {
             throw new IllegalStateException("Этот продукт недоступен для бронирования");
         }
 
@@ -531,7 +580,7 @@ public class ProductService {
         Double discountPercentage = product.getDiscountPercentage();
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
-        boolean isActive = Boolean.TRUE.equals(product.getActive());
+        boolean isAvailable = ProductAvailability.isAvailable(product);
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -541,6 +590,7 @@ public class ProductService {
                 .originalPrice(originalPrice)
                 .discountPercentage(discountPercentage)
                 .stockQuantity(stockQuantity)
+                .sortOrder(product.getSortOrder())
                 .storeId(product.getStore().getId())
                 .storeName(product.getStore().getName())
                 .storeLogo(product.getStore().getLogo())
@@ -552,9 +602,7 @@ public class ProductService {
                 .status(product.getStatus())
                 .active(product.getActive())
                 // Computed properties for frontend compatibility
-                .isAvailable(isActive &&
-                        product.getStatus() == ProductStatus.AVAILABLE &&
-                        stockQuantity > 0)
+                .isAvailable(isAvailable)
                 .availableQuantity(stockQuantity)
                 .imageUrl(!images.isEmpty() ? images.get(0) : null)
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)
@@ -598,6 +646,11 @@ public class ProductService {
         product.setPrice(calculatedPrice);
         
         product.setStockQuantity(resolveStockQuantity(dto.getStockQuantity(), product.getStockQuantity()));
+        if (dto.getSortOrder() != null) {
+            product.setSortOrder(Math.max(dto.getSortOrder(), 0));
+        } else if (product.getSortOrder() == null) {
+            product.setSortOrder(0);
+        }
         if (dto.getImages() != null) {
             product.setImages(dto.getImages());
         } else if (product.getImages() == null) {
