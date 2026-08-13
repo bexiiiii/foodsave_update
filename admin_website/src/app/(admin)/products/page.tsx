@@ -753,19 +753,36 @@ export default function ProductsPage() {
                                             <TableRow key={product.id}>
                                                 <TableCell>
                                                     <div className="flex items-center space-x-3">
-                                                        {product.images && product.images[0] ? (
-                                                            <img
-                                                                src={product.images[0]}
-                                                                alt={product.name}
-                                                                className="w-10 h-10 rounded-lg object-cover"
-                                                            />
-                                                        ) : (
-                                                            <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                                                                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                                                </svg>
-                                                            </div>
-                                                        )}
+                                                        <div className="relative w-10 h-10 flex-shrink-0">
+                                                            {product.images && product.images[0] ? (
+                                                                <img
+                                                                    src={product.images[0]}
+                                                                    alt={product.name}
+                                                                    className="w-10 h-10 rounded-lg object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
+                                                                    <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                </div>
+                                                            )}
+                                                            <span
+                                                                title={product.active ? 'Активен' : 'Скрыт'}
+                                                                className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow ${product.active ? 'bg-green-500' : 'bg-red-500'
+                                                                    }`}
+                                                            >
+                                                                {product.active ? (
+                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                                                    </svg>
+                                                                ) : (
+                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                                                                    </svg>
+                                                                )}
+                                                            </span>
+                                                        </div>
                                                         <div>
                                                             <p className="font-medium text-gray-900">{product.name}</p>
                                                             <p className="text-sm text-gray-500 truncate max-w-[200px]">
@@ -814,17 +831,7 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-col items-start gap-1">
-                                                        {getStatusBadge(product.status)}
-                                                        <Badge
-                                                            className={`border-0 ${product.active
-                                                                ? 'bg-green-100 text-green-800'
-                                                                : 'bg-gray-100 text-gray-600'
-                                                                }`}
-                                                        >
-                                                            {product.active ? 'Активен' : 'Скрыт'}
-                                                        </Badge>
-                                                    </div>
+                                                    {getStatusBadge(product.status)}
                                                 </TableCell>
                                                 <TableCell>
                                                     <p className="text-sm text-gray-600">
