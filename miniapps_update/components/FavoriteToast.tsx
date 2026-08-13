@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { Heart, X } from "lucide-react";
+import { Star, X } from "lucide-react";
 
 interface FavoriteToastProps {
   title: string | null;
@@ -25,7 +25,7 @@ export default function FavoriteToast({ title, itemName, onClose }: FavoriteToas
         style={{ fontFamily: "Inter, system-ui, sans-serif" }}
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-500/20">
-          <Heart className="h-4 w-4 text-amber-400" fill="currentColor" />
+          <Star className="h-4 w-4 text-amber-400" fill="currentColor" />
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-sm font-semibold text-white">{title}</p>
