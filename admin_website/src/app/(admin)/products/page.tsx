@@ -560,6 +560,12 @@ export default function ProductsPage() {
         );
     };
 
+    // Whether the product actually shows up for customers in the mini app right
+    // now — not just the "active" toggle, but also stock/status, matching the
+    // mini app's own visibility check.
+    const isVisibleInMiniApp = (product: ProductDTO) =>
+        product.active !== false && product.status === 'AVAILABLE' && (product.stockQuantity ?? 0) > 0;
+
     const filteredProducts = products.filter(product => {
         const matchesSearch = !searchQuery ||
             product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -793,11 +799,11 @@ export default function ProductsPage() {
                                                                 </div>
                                                             )}
                                                             <span
-                                                                title={product.active ? 'Активен' : 'Скрыт'}
-                                                                className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow ${product.active ? 'bg-green-500' : 'bg-red-500'
+                                                                title={isVisibleInMiniApp(product) ? 'Виден в мини-аппе' : 'Не виден в мини-аппе'}
+                                                                className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow ${isVisibleInMiniApp(product) ? 'bg-green-500' : 'bg-red-500'
                                                                     }`}
                                                             >
-                                                                {product.active ? (
+                                                                {isVisibleInMiniApp(product) ? (
                                                                     <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
                                                                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                                                                     </svg>

@@ -11,10 +11,14 @@ import com.foodsave.backend.util.ProductAvailability;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.time.*;
@@ -41,8 +45,8 @@ public class NotificationGroupService {
     private final TelegramBotService telegramBotService;
     private final ProductEventService productEventService;
     private final JdbcTemplate jdbcTemplate;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
     public void collectNewProduct(ProductDTO productDTO) {
         if (productDTO == null || productDTO.getId() == null) return;
         Product product = productRepository.findById(productDTO.getId()).orElse(null);
@@ -54,20 +58,53 @@ public class NotificationGroupService {
         NotificationScheduleSetting setting = resolveSetting(NotificationWindowType.LUNCH, null);
         LocalDateTime scheduledAt = resolveNextScheduledAt(setting);
 
+        // Each user is collected in its own REQUIRES_NEW transaction so that a
+        // duplicate idempotency_key race for one user (two products created close
+        // together both trying to create that user's group) can't roll back the
+        // items already collected for every other user in this batch.
         for (User user : users) {
-            if (!isMarketingEnabled(user)) continue;
-            UserNotificationPreferences prefs = getOrCreatePreferences(user);
-            if (!prefs.isTelegramNotificationsEnabled() || !prefs.isLunchDigestEnabled()) continue;
+            try {
+                collectForUser(user, setting, scheduledAt, product, true);
+            } catch (DataIntegrityViolationException e) {
+                // Lost the race to create the group — someone else just committed it,
+                // retry once against the group that now exists.
+                try {
+                    collectForUser(user, setting, scheduledAt, product, false);
+                } catch (Exception retryEx) {
+                    log.warn("Failed to collect product {} into notification group for user {} after retry",
+                            product.getId(), user.getId(), retryEx);
+                }
+            } catch (Exception e) {
+                log.warn("Failed to collect product {} into notification group for user {}",
+                        product.getId(), user.getId(), e);
+            }
+        }
+    }
 
-            NotificationGroup group = groupRepository
+    private void collectForUser(User user, NotificationScheduleSetting setting, LocalDateTime scheduledAt,
+                                 Product product, boolean allowCreate) {
+        TransactionTemplate perUserTransaction = new TransactionTemplate(transactionManager);
+        perUserTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+        perUserTransaction.executeWithoutResult(status -> {
+            if (!isMarketingEnabled(user)) return;
+            UserNotificationPreferences prefs = getOrCreatePreferences(user);
+            if (!prefs.isTelegramNotificationsEnabled() || !prefs.isLunchDigestEnabled()) return;
+
+            Optional<NotificationGroup> existing = groupRepository
                     .findFirstByUserAndTimeWindowAndScheduledAtAndStatusIn(
                             user,
                             setting.getNotificationWindowType(),
                             scheduledAt,
                             List.of(NotificationGroupStatus.COLLECTING, NotificationGroupStatus.SCHEDULED)
-                    )
-                    .orElseGet(() -> createGroup(user, setting, scheduledAt));
-            if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) continue;
+                    );
+            NotificationGroup group = existing.orElseGet(() -> {
+                if (!allowCreate) {
+                    throw new IllegalStateException(
+                            "Notification group vanished during retry for user " + user.getId());
+                }
+                return createGroup(user, setting, scheduledAt);
+            });
+            if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) return;
 
             NotificationGroupItem item = new NotificationGroupItem();
             item.setNotificationGroup(group);
@@ -82,7 +119,7 @@ public class NotificationGroupService {
             group.getItems().add(item);
             recalculateGroup(group);
             groupRepository.save(group);
-        }
+        });
     }
 
     @Transactional(readOnly = true)
