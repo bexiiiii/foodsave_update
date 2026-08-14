@@ -21,4 +21,13 @@ public class NotificationGroupScheduler {
             log.error("Notification group scheduler failed", e);
         }
     }
+
+    @Scheduled(fixedDelayString = "${notifications.scheduler.fixed-delay-ms:300000}")
+    public void collectPeriodicWindows() {
+        try {
+            notificationGroupService.collectPeriodicWindows();
+        } catch (Exception e) {
+            log.error("Periodic notification collection scheduler failed", e);
+        }
+    }
 }

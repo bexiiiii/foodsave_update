@@ -57,38 +57,98 @@ public class NotificationGroupService {
 
         NotificationScheduleSetting setting = resolveSetting(NotificationWindowType.LUNCH, null);
         LocalDateTime scheduledAt = resolveNextScheduledAt(setting);
+        List<Product> products = List.of(product);
 
-        // Each user is collected in its own REQUIRES_NEW transaction so that a
-        // duplicate idempotency_key race for one user (two products created close
-        // together both trying to create that user's group) can't roll back the
-        // items already collected for every other user in this batch.
+        collectForUsers(users, setting, scheduledAt, products);
+    }
+
+    /**
+     * EVENING and LAST_CHANCE aren't tied to a single product being created like
+     * LUNCH is — they need to sweep whatever boxes are available right now during
+     * each window's collection period. Runs on the same interval as
+     * {@link #processDueGroups()}; re-running mid-window is safe and cheap since
+     * already-attached items are skipped.
+     */
+    public void collectPeriodicWindows() {
+        for (NotificationWindowType type : List.of(NotificationWindowType.EVENING, NotificationWindowType.LAST_CHANCE)) {
+            try {
+                collectWindow(type);
+            } catch (Exception e) {
+                log.error("Periodic notification collection failed for window {}", type, e);
+            }
+        }
+    }
+
+    private void collectWindow(NotificationWindowType type) {
+        NotificationScheduleSetting setting = resolveSetting(type, null);
+        if (!setting.isEnabled()) return;
+
+        LocalTime now = LocalTime.now(DEFAULT_ZONE);
+        if (!isWithinRange(now, setting.getStartTime(), setting.getSendTime())) return;
+
+        List<User> users = userRepository.findByTelegramUserTrue();
+        if (users.isEmpty()) return;
+
+        List<Product> availableProducts = productRepository.findAllActiveAvailableProducts(
+                        ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(),
+                        PageRequest.of(0, 1000))
+                .getContent();
+        if (availableProducts.isEmpty()) return;
+
+        LocalDateTime scheduledAt = LocalDateTime.of(LocalDate.now(DEFAULT_ZONE), setting.getSendTime());
+        collectForUsers(users, setting, scheduledAt, availableProducts);
+    }
+
+    private boolean isWithinRange(LocalTime now, LocalTime start, LocalTime end) {
+        if (start == null || end == null) return false;
+        if (start.isBefore(end)) {
+            return !now.isBefore(start) && now.isBefore(end);
+        }
+        return !now.isBefore(start) || now.isBefore(end);
+    }
+
+    private boolean isDigestEnabledForWindow(UserNotificationPreferences prefs, NotificationWindowType type) {
+        return switch (type) {
+            case LUNCH -> prefs.isLunchDigestEnabled();
+            case EVENING -> prefs.isEveningDigestEnabled();
+            case LAST_CHANCE -> prefs.isLastChanceEnabled();
+        };
+    }
+
+    // Each user is collected in its own REQUIRES_NEW transaction so that a
+    // duplicate idempotency_key race for one user (two collection runs both
+    // trying to create that user's group at once) can't roll back the items
+    // already collected for every other user in this batch.
+    private void collectForUsers(List<User> users, NotificationScheduleSetting setting,
+                                  LocalDateTime scheduledAt, List<Product> products) {
         for (User user : users) {
             try {
-                collectForUser(user, setting, scheduledAt, product, true);
+                collectForUser(user, setting, scheduledAt, products, true);
             } catch (DataIntegrityViolationException e) {
                 // Lost the race to create the group — someone else just committed it,
                 // retry once against the group that now exists.
                 try {
-                    collectForUser(user, setting, scheduledAt, product, false);
+                    collectForUser(user, setting, scheduledAt, products, false);
                 } catch (Exception retryEx) {
-                    log.warn("Failed to collect product {} into notification group for user {} after retry",
-                            product.getId(), user.getId(), retryEx);
+                    log.warn("Failed to collect products into {} group for user {} after retry",
+                            setting.getNotificationWindowType(), user.getId(), retryEx);
                 }
             } catch (Exception e) {
-                log.warn("Failed to collect product {} into notification group for user {}",
-                        product.getId(), user.getId(), e);
+                log.warn("Failed to collect products into {} group for user {}",
+                        setting.getNotificationWindowType(), user.getId(), e);
             }
         }
     }
 
     private void collectForUser(User user, NotificationScheduleSetting setting, LocalDateTime scheduledAt,
-                                 Product product, boolean allowCreate) {
+                                 List<Product> products, boolean allowCreate) {
         TransactionTemplate perUserTransaction = new TransactionTemplate(transactionManager);
         perUserTransaction.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         perUserTransaction.executeWithoutResult(status -> {
             if (!isMarketingEnabled(user)) return;
             UserNotificationPreferences prefs = getOrCreatePreferences(user);
-            if (!prefs.isTelegramNotificationsEnabled() || !prefs.isLunchDigestEnabled()) return;
+            if (!prefs.isTelegramNotificationsEnabled()
+                    || !isDigestEnabledForWindow(prefs, setting.getNotificationWindowType())) return;
 
             Optional<NotificationGroup> existing = groupRepository
                     .findFirstByUserAndTimeWindowAndScheduledAtAndStatusIn(
@@ -104,19 +164,26 @@ public class NotificationGroupService {
                 }
                 return createGroup(user, setting, scheduledAt);
             });
-            if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) return;
 
-            NotificationGroupItem item = new NotificationGroupItem();
-            item.setNotificationGroup(group);
-            item.setPartner(product.getStore());
-            item.setBranch(product.getStore());
-            item.setBox(product);
-            item.setAvailableQuantity(product.getStockQuantity() != null ? product.getStockQuantity() : 0);
-            item.setPrice(product.getPrice());
-            item.setOriginalPrice(product.getOriginalPrice());
-            item.setDiscountPercent(product.getDiscountPercentage() != null ? product.getDiscountPercentage().intValue() : 0);
-            item.setPickupEndAt(product.getExpiryDate());
-            group.getItems().add(item);
+            boolean changed = false;
+            for (Product product : products) {
+                if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) continue;
+
+                NotificationGroupItem item = new NotificationGroupItem();
+                item.setNotificationGroup(group);
+                item.setPartner(product.getStore());
+                item.setBranch(product.getStore());
+                item.setBox(product);
+                item.setAvailableQuantity(product.getStockQuantity() != null ? product.getStockQuantity() : 0);
+                item.setPrice(product.getPrice());
+                item.setOriginalPrice(product.getOriginalPrice());
+                item.setDiscountPercent(product.getDiscountPercentage() != null ? product.getDiscountPercentage().intValue() : 0);
+                item.setPickupEndAt(product.getExpiryDate());
+                group.getItems().add(item);
+                changed = true;
+            }
+            if (!changed) return;
+
             recalculateGroup(group);
             groupRepository.save(group);
         });
