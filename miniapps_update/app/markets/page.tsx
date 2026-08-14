@@ -8,6 +8,7 @@ import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, isProductVisibleInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
 import { formatPrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
+import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
 
 function MarketsContent() {
@@ -289,6 +290,11 @@ function MarketsContent() {
                           <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
                           <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>
                           <p className="mt-1 text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</p>
+                          {product.closingSoon && (
+                            <div className="mt-1">
+                              <ClosingSoonBadge />
+                            </div>
+                          )}
                         </article>
                       </Link>
                     );

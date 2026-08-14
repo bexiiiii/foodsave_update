@@ -2,6 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { ArrowLeft, Clock, Star, Timer } from "lucide-react";
+import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
@@ -191,6 +192,11 @@ function BoxesContent() {
           <p className="text-xs text-black/50 font-inter mt-1">
             Осталось: {product.stockQuantity}
           </p>
+          {product.closingSoon && (
+            <div className="mt-1">
+              <ClosingSoonBadge />
+            </div>
+          )}
         </div>
       </Link>
     );

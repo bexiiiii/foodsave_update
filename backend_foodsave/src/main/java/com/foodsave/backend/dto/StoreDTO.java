@@ -2,6 +2,7 @@ package com.foodsave.backend.dto;
 
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.domain.enums.StoreStatus;
+import com.foodsave.backend.util.ProductAvailability;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -9,9 +10,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.time.format.DateTimeParseException;
 
 @Data
 @NoArgsConstructor
@@ -61,9 +59,6 @@ public class StoreDTO {
     private Boolean isFavorite;
     private Boolean closingSoon;
 
-    private static final DateTimeFormatter CLOSING_HOURS_FORMAT = DateTimeFormatter.ofPattern("H:mm");
-    private static final long CLOSING_SOON_THRESHOLD_MINUTES = 60;
-
     public static StoreDTO fromEntity(Store store) {
         StoreDTO dto = new StoreDTO();
         dto.setId(store.getId());
@@ -95,24 +90,7 @@ public class StoreDTO {
             dto.setUser(UserDTO.fromEntity(store.getOwner()));
         }
         dto.setIsFavorite(false);
-        dto.setClosingSoon(isClosingSoon(store.getClosingHours()));
+        dto.setClosingSoon(ProductAvailability.isClosingSoon(store.getClosingHours()));
         return dto;
-    }
-
-    private static boolean isClosingSoon(String closingHours) {
-        if (closingHours == null || closingHours.isBlank()) {
-            return false;
-        }
-        try {
-            LocalTime closingTime = LocalTime.parse(closingHours.trim(), CLOSING_HOURS_FORMAT);
-            LocalTime now = LocalTime.now();
-            long minutesUntilClose = java.time.Duration.between(now, closingTime).toMinutes();
-            if (minutesUntilClose < 0) {
-                minutesUntilClose += 24 * 60;
-            }
-            return minutesUntilClose >= 0 && minutesUntilClose <= CLOSING_SOON_THRESHOLD_MINUTES;
-        } catch (DateTimeParseException e) {
-            return false;
-        }
     }
 }

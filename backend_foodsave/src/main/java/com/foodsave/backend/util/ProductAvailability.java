@@ -20,6 +20,7 @@ public final class ProductAvailability {
 
     public static final ZoneId BUSINESS_ZONE = ZoneId.of("Asia/Almaty");
     private static final DateTimeFormatter TIME_FORMAT = DateTimeFormatter.ofPattern("HH:mm");
+    private static final long CLOSING_SOON_THRESHOLD_MINUTES = 60;
 
     private ProductAvailability() {
     }
@@ -84,6 +85,23 @@ public final class ProductAvailability {
 
         // Overnight schedule, for example 10:00-03:00.
         return !now.isBefore(opening) || now.isBefore(closing);
+    }
+
+    public static boolean isClosingSoon(Store store) {
+        return store != null && isClosingSoon(store.getClosingHours());
+    }
+
+    public static boolean isClosingSoon(String closingHours) {
+        LocalTime closing = parseTime(closingHours);
+        if (closing == null) {
+            return false;
+        }
+        LocalTime now = LocalTime.now(BUSINESS_ZONE);
+        long minutesUntilClose = java.time.Duration.between(now, closing).toMinutes();
+        if (minutesUntilClose < 0) {
+            minutesUntilClose += 24 * 60;
+        }
+        return minutesUntilClose >= 0 && minutesUntilClose <= CLOSING_SOON_THRESHOLD_MINUTES;
     }
 
     private static LocalTime parseTime(String value) {

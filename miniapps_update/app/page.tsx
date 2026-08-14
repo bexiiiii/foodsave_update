@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
+import ClosingSoonBadge from "../components/ClosingSoonBadge";
 import FavoriteToast from "../components/FavoriteToast";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
@@ -188,6 +189,11 @@ export default function HomePage() {
           <p className="mt-1 truncate text-sm text-black/50 font-inter">
             {safeString(product.storeName) || "FoodSave"} • {["0.8", "1.2", "0.5", "1.8"][index % 4]} km
           </p>
+          {product.closingSoon && (
+            <div className="mt-1">
+              <ClosingSoonBadge />
+            </div>
+          )}
           <div className="mt-1 flex items-baseline gap-2">
             <span className="text-base font-bold text-[#15551F] font-inter">{formatPrice(price)}</span>
             {originalPrice > price && (

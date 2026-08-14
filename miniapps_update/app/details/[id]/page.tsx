@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, MapPin, Minus, Plus, Phone, Star, Truck, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
@@ -363,6 +363,19 @@ export default function ProductDetailsPage() {
           <div className="bg-red-100 border border-red-200 rounded-xl p-3">
             <p className="text-red-800 text-sm font-inter">
               Товара нет в наличии
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Closing Soon Warning — the last thing shown before the reserve button */}
+      {product.closingSoon && (
+        <div className="px-4 mt-4">
+          <div className="flex items-start gap-3 bg-[#FF9500]/10 border border-[#FF9500]/25 rounded-xl p-3">
+            <Timer className="w-5 h-5 text-[#FF9500] shrink-0 mt-0.5" />
+            <p className="text-[#B15F00] text-sm font-inter leading-relaxed">
+              <span className="font-semibold">Заведение скоро закроется</span>
+              {store?.closingHours ? ` (в ${store.closingHours})` : ""} — заберите заказ вовремя, иначе бронь могут отменить.
             </p>
           </div>
         </div>

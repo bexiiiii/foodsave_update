@@ -609,6 +609,7 @@ public class ProductService {
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
                 .isFavorite(false)
+                .closingSoon(ProductAvailability.isClosingSoon(product.getStore()))
                 .build();
     }
 

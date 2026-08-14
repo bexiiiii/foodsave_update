@@ -78,6 +78,7 @@ public class ProductDTO {
     private Boolean isFeatured;
     private Double rating;
     private Boolean isFavorite;
+    private Boolean closingSoon;
 
     private String createdAt;
     private String updatedAt;
@@ -124,6 +125,7 @@ public class ProductDTO {
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
                 .isFavorite(false)
+                .closingSoon(ProductAvailability.isClosingSoon(product.getStore()))
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .build();

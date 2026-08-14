@@ -142,6 +142,7 @@ export interface Product {
   active?: boolean;
   featured: boolean;
   isFavorite?: boolean;
+  closingSoon?: boolean;
   createdAt: string;
   updatedAt: string;
 }
