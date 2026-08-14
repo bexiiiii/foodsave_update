@@ -58,6 +58,7 @@ public class StoreDTO {
     private Integer productCount;
     private Boolean isFavorite;
     private Boolean closingSoon;
+    private Integer closingSoonMinutes;
 
     public static StoreDTO fromEntity(Store store) {
         StoreDTO dto = new StoreDTO();
@@ -90,7 +91,9 @@ public class StoreDTO {
             dto.setUser(UserDTO.fromEntity(store.getOwner()));
         }
         dto.setIsFavorite(false);
-        dto.setClosingSoon(ProductAvailability.isClosingSoon(store.getClosingHours()));
+        Integer minutesUntilClose = ProductAvailability.minutesUntilClose(store.getClosingHours());
+        dto.setClosingSoon(minutesUntilClose != null);
+        dto.setClosingSoonMinutes(minutesUntilClose);
         return dto;
     }
 }

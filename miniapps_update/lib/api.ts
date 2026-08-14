@@ -109,6 +109,7 @@ export interface Store {
   coverImage?: string;
   isFavorite?: boolean;
   closingSoon?: boolean;
+  closingSoonMinutes?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -143,6 +144,7 @@ export interface Product {
   featured: boolean;
   isFavorite?: boolean;
   closingSoon?: boolean;
+  closingSoonMinutes?: number;
   createdAt: string;
   updatedAt: string;
 }

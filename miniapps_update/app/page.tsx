@@ -191,7 +191,7 @@ export default function HomePage() {
           </p>
           {product.closingSoon && (
             <div className="mt-1">
-              <ClosingSoonBadge />
+              <ClosingSoonBadge minutes={product.closingSoonMinutes} />
             </div>
           )}
           <div className="mt-1 flex items-baseline gap-2">

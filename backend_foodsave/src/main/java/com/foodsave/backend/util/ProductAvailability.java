@@ -88,20 +88,34 @@ public final class ProductAvailability {
     }
 
     public static boolean isClosingSoon(Store store) {
-        return store != null && isClosingSoon(store.getClosingHours());
+        return minutesUntilClose(store) != null;
     }
 
     public static boolean isClosingSoon(String closingHours) {
+        return minutesUntilClose(closingHours) != null;
+    }
+
+    /**
+     * Minutes until the store closes, or null if it isn't closing within
+     * {@link #CLOSING_SOON_THRESHOLD_MINUTES}. Kept as the single source of the
+     * exact countdown so the badge, the pre-checkout warning and the store card
+     * all show the same number instead of drifting apart.
+     */
+    public static Integer minutesUntilClose(Store store) {
+        return store == null ? null : minutesUntilClose(store.getClosingHours());
+    }
+
+    public static Integer minutesUntilClose(String closingHours) {
         LocalTime closing = parseTime(closingHours);
         if (closing == null) {
-            return false;
+            return null;
         }
         LocalTime now = LocalTime.now(BUSINESS_ZONE);
-        long minutesUntilClose = java.time.Duration.between(now, closing).toMinutes();
-        if (minutesUntilClose < 0) {
-            minutesUntilClose += 24 * 60;
+        long minutes = java.time.Duration.between(now, closing).toMinutes();
+        if (minutes < 0) {
+            minutes += 24 * 60;
         }
-        return minutesUntilClose >= 0 && minutesUntilClose <= CLOSING_SOON_THRESHOLD_MINUTES;
+        return (minutes >= 0 && minutes <= CLOSING_SOON_THRESHOLD_MINUTES) ? (int) minutes : null;
     }
 
     private static LocalTime parseTime(String value) {

@@ -178,10 +178,10 @@ function MarketsContent() {
               </p>
             )}
             {store.closingSoon && (
-              <span className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-[#FF9500] bg-[#FF9500]/10 rounded-full px-2.5 py-1 font-inter">
-                <Clock className="w-3 h-3" />
-                Закрывается через час
-              </span>
+              <ClosingSoonBadge
+                minutes={store.closingSoonMinutes}
+                className="inline-flex items-center gap-1 mt-2 text-[12px] font-medium text-[#FF9500] bg-[#FF9500]/10 rounded-full px-2.5 py-1 font-inter"
+              />
             )}
           </div>
 
@@ -292,7 +292,7 @@ function MarketsContent() {
                           <p className="mt-1 text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</p>
                           {product.closingSoon && (
                             <div className="mt-1">
-                              <ClosingSoonBadge />
+                              <ClosingSoonBadge minutes={product.closingSoonMinutes} />
                             </div>
                           )}
                         </article>

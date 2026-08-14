@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from "react";
 import { ArrowLeft, Clock, Star, Timer } from "lucide-react";
-import ClosingSoonBadge from "../../components/ClosingSoonBadge";
+import ClosingSoonBadge, { formatMinutesUntilClose } from "../../components/ClosingSoonBadge";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
@@ -194,7 +194,7 @@ function BoxesContent() {
           </p>
           {product.closingSoon && (
             <div className="mt-1">
-              <ClosingSoonBadge />
+              <ClosingSoonBadge minutes={product.closingSoonMinutes} />
             </div>
           )}
         </div>
@@ -324,7 +324,9 @@ function BoxesContent() {
               Скоро закрытие
             </h2>
             <p className="text-[15px] leading-relaxed text-black/60 text-center font-inter mb-4">
-              <span className="font-medium text-black">{store.name}</span> закроется через час — успейте оформить заказ
+              <span className="font-medium text-black">{store.name}</span> закроется через{" "}
+              {store.closingSoonMinutes != null ? formatMinutesUntilClose(store.closingSoonMinutes) : "час"}
+              {" "}— успейте оформить заказ
             </p>
             {store.closingHours && (
               <div className="flex justify-center mb-5">

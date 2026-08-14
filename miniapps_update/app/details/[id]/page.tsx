@@ -7,6 +7,7 @@ import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
+import { formatMinutesUntilClose } from "../../../components/ClosingSoonBadge";
 import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 
@@ -35,6 +36,11 @@ export default function ProductDetailsPage() {
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
   const [phoneError, setPhoneError] = useState("");
+
+  // Closing-soon confirmation gate — shown before either reserve flow proceeds,
+  // so someone who scrolled past the inline warning still has to acknowledge it.
+  const [showClosingSoonConfirm, setShowClosingSoonConfirm] = useState(false);
+  const [pendingReserveType, setPendingReserveType] = useState<'PICKUP' | 'COURIER' | null>(null);
 
   // Load user profile phone on mount to pre-fill and use in reservations
   useEffect(() => {
@@ -174,11 +180,42 @@ export default function ProductDetailsPage() {
     }
   };
 
-  const handleCourierClick = () => {
+  const proceedWithPickup = () => {
+    handleReserve('PICKUP', phoneNumber || undefined);
+  };
+
+  const proceedWithCourier = () => {
     if (!product || product.stockQuantity <= 0) return;
     setPhoneNumber("");
     setPhoneError("");
     setShowPhoneModal(true);
+  };
+
+  const handlePickupClick = () => {
+    if (product?.closingSoon) {
+      setPendingReserveType('PICKUP');
+      setShowClosingSoonConfirm(true);
+      return;
+    }
+    proceedWithPickup();
+  };
+
+  const handleCourierClick = () => {
+    if (!product || product.stockQuantity <= 0) return;
+    if (product.closingSoon) {
+      setPendingReserveType('COURIER');
+      setShowClosingSoonConfirm(true);
+      return;
+    }
+    proceedWithCourier();
+  };
+
+  const handleClosingSoonConfirm = () => {
+    setShowClosingSoonConfirm(false);
+    const type = pendingReserveType;
+    setPendingReserveType(null);
+    if (type === 'PICKUP') proceedWithPickup();
+    else if (type === 'COURIER') proceedWithCourier();
   };
 
   const handlePhoneSubmit = () => {
@@ -374,7 +411,10 @@ export default function ProductDetailsPage() {
           <div className="flex items-start gap-3 bg-[#FF9500]/10 border border-[#FF9500]/25 rounded-xl p-3">
             <Timer className="w-5 h-5 text-[#FF9500] shrink-0 mt-0.5" />
             <p className="text-[#B15F00] text-sm font-inter leading-relaxed">
-              <span className="font-semibold">Заведение скоро закроется</span>
+              <span className="font-semibold">
+                Заведение закроется через{" "}
+                {product.closingSoonMinutes != null ? formatMinutesUntilClose(product.closingSoonMinutes) : "час"}
+              </span>
               {store?.closingHours ? ` (в ${store.closingHours})` : ""} — заберите заказ вовремя, иначе бронь могут отменить.
             </p>
           </div>
@@ -408,7 +448,7 @@ export default function ProductDetailsPage() {
 
           {/* Reserve Button */}
           <button
-            onClick={() => handleReserve('PICKUP', phoneNumber || undefined)}
+            onClick={handlePickupClick}
             disabled={product.stockQuantity <= 0 || isReserving}
             className="flex-1 bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#429565] transition-colors"
           >
@@ -432,6 +472,46 @@ export default function ProductDetailsPage() {
           </button>
         </div>
       </div>
+
+      {/* Closing Soon Confirmation — required acknowledgement before the reserve goes through */}
+      {showClosingSoonConfirm && product && (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center bg-black/50 px-4 pb-6">
+          <div className="w-full bg-white rounded-3xl p-6 shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 bg-[#FF9500] rounded-2xl flex items-center justify-center">
+                <Timer className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+            </div>
+
+            <h2 className="text-xl font-semibold text-black text-center font-inter mb-1.5">
+              Заведение скоро закроется
+            </h2>
+            <p className="text-[15px] leading-relaxed text-black/60 text-center font-inter mb-5">
+              {store?.name ? <span className="font-medium text-black">{store.name}</span> : "Заведение"} закроется через{" "}
+              {product.closingSoonMinutes != null ? formatMinutesUntilClose(product.closingSoonMinutes) : "час"}
+              {store?.closingHours ? ` (в ${store.closingHours})` : ""}. Убедитесь, что успеете забрать заказ вовремя.
+            </p>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleClosingSoonConfirm}
+                className="w-full bg-[#4CAD73] rounded-2xl h-[50px] flex items-center justify-center hover:opacity-90 active:scale-[0.97] transition-transform"
+              >
+                <span className="text-[17px] font-semibold text-white font-inter">Понятно, продолжить</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowClosingSoonConfirm(false);
+                  setPendingReserveType(null);
+                }}
+                className="w-full bg-gray-100 rounded-2xl h-[50px] flex items-center justify-center active:scale-[0.97] transition-transform"
+              >
+                <span className="text-[17px] font-medium text-black font-inter">Отмена</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Phone Number Modal */}
       {showPhoneModal && (

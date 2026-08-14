@@ -581,6 +581,7 @@ public class ProductService {
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
         boolean isAvailable = ProductAvailability.isAvailable(product);
+        Integer minutesUntilClose = ProductAvailability.minutesUntilClose(product.getStore());
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -609,7 +610,8 @@ public class ProductService {
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
                 .isFavorite(false)
-                .closingSoon(ProductAvailability.isClosingSoon(product.getStore()))
+                .closingSoon(minutesUntilClose != null)
+                .closingSoonMinutes(minutesUntilClose)
                 .build();
     }
 
