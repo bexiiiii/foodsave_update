@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { ArrowLeft, Clock, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Clock, SlidersHorizontal, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
@@ -537,18 +537,21 @@ function MarketsContent() {
                       <>
                         <label className="col-span-2 block">
                           <span className="mb-1 block text-xs font-medium text-black/45 font-inter">Заведение</span>
-                          <select
-                            value={selectedProductStoreId}
-                            onChange={(event) => setSelectedProductStoreId(event.target.value)}
-                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
-                          >
-                            <option value="">Все заведения</option>
-                            {productStoreOptions.map(([storeId, storeName]) => (
-                              <option key={storeId} value={storeId}>
-                                {storeName}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="relative">
+                            <select
+                              value={selectedProductStoreId}
+                              onChange={(event) => setSelectedProductStoreId(event.target.value)}
+                              className="h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 pr-10 text-sm font-semibold text-black shadow-sm outline-none transition-colors focus:border-[#4CAD73] font-inter"
+                            >
+                              <option value="">Все заведения</option>
+                              {productStoreOptions.map(([storeId, storeName]) => (
+                                <option key={storeId} value={storeId}>
+                                  {storeName}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
+                          </div>
                         </label>
                         <label className="block">
                           <span className="mb-1 block text-xs font-medium text-black/45 font-inter">От</span>
