@@ -11,14 +11,56 @@ import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
 
+type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "rating_desc" | "closing_soon" | "name_asc";
+
 const getProductPrice = (product: Product) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
 
-const sortProducts = (items: Product[]) =>
+const getProductDiscount = (product: Product) => {
+  const price = getProductPrice(product);
+  const originalPrice = normalizePrice(product.originalPrice || price);
+  return originalPrice > price
+    ? Math.round((1 - price / originalPrice) * 100)
+    : product.discountPercentage || 0;
+};
+
+const sortProducts = (items: Product[], sortMode: CatalogSortMode = "recommended") =>
   [...items].sort((a, b) => {
     const favoriteDiff = Number(!!b.isFavorite) - Number(!!a.isFavorite);
     if (favoriteDiff !== 0) return favoriteDiff;
-    return getProductPrice(a) - getProductPrice(b);
+
+    if (sortMode === "discount_desc") {
+      return getProductDiscount(b) - getProductDiscount(a);
+    }
+    if (sortMode === "price_asc") {
+      return getProductPrice(a) - getProductPrice(b);
+    }
+
+    const closingSoonDiff = Number(!!b.closingSoon) - Number(!!a.closingSoon);
+    if (closingSoonDiff !== 0) return closingSoonDiff;
+    return getProductDiscount(b) - getProductDiscount(a);
+  });
+
+const sortStores = (items: Store[], sortMode: CatalogSortMode = "recommended") =>
+  [...items].sort((a, b) => {
+    const favoriteDiff = Number(!!b.isFavorite) - Number(!!a.isFavorite);
+    if (favoriteDiff !== 0) return favoriteDiff;
+
+    if (sortMode === "rating_desc") {
+      return (b.rating || 0) - (a.rating || 0);
+    }
+    if (sortMode === "closing_soon") {
+      const aMinutes = a.closingSoonMinutes ?? Number.MAX_SAFE_INTEGER;
+      const bMinutes = b.closingSoonMinutes ?? Number.MAX_SAFE_INTEGER;
+      return aMinutes - bMinutes;
+    }
+    if (sortMode === "name_asc") {
+      return a.name.localeCompare(b.name, "ru");
+    }
+
+    const closingSoonDiff = Number(!!b.closingSoon) - Number(!!a.closingSoon);
+    if (closingSoonDiff !== 0) return closingSoonDiff;
+    return (b.rating || 0) - (a.rating || 0);
   });
 
 function MarketsContent() {
@@ -41,6 +83,13 @@ function MarketsContent() {
   const [maxPrice, setMaxPrice] = useState("");
   const [appliedMinPrice, setAppliedMinPrice] = useState("");
   const [appliedMaxPrice, setAppliedMaxPrice] = useState("");
+  const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
+  const [closingSoonOnly, setClosingSoonOnly] = useState(false);
+  const [discountOnly, setDiscountOnly] = useState(false);
+  const [storesWithBoxesOnly, setStoresWithBoxesOnly] = useState(false);
+  const [selectedProductStoreId, setSelectedProductStoreId] = useState("");
+  const [sortMode, setSortMode] = useState<CatalogSortMode>("recommended");
 
   const appliedMinPriceValue = Number(appliedMinPrice);
   const appliedMaxPriceValue = Number(appliedMaxPrice);
@@ -56,12 +105,35 @@ function MarketsContent() {
     : hasAppliedMaxPrice
       ? appliedMaxPriceValue
       : undefined;
+  const showProductFilters = showAllProducts || products.length > 0;
+  const showStoreFilters = stores.length > 0 && !showAllProducts;
   const isPriceFilterActive = minFilterValue !== undefined || maxFilterValue !== undefined;
+  const hasExtraFilters = favoritesOnly || closingSoonOnly || discountOnly || storesWithBoxesOnly || sortMode !== "recommended";
+  const activeFilterCount = [
+    showProductFilters && isPriceFilterActive,
+    showProductFilters && selectedProductStoreId !== "",
+    favoritesOnly,
+    closingSoonOnly,
+    showProductFilters && discountOnly,
+    showStoreFilters && storesWithBoxesOnly,
+    sortMode !== "recommended",
+  ].filter(Boolean).length;
   const hasPendingPriceChanges = minPrice !== appliedMinPrice || maxPrice !== appliedMaxPrice;
+  const priceFilterLabel = minFilterValue !== undefined && maxFilterValue !== undefined
+    ? `${formatPrice(minFilterValue)} - ${formatPrice(maxFilterValue)}`
+    : minFilterValue !== undefined
+      ? `от ${formatPrice(minFilterValue)}`
+      : maxFilterValue !== undefined
+        ? `до ${formatPrice(maxFilterValue)}`
+        : "Любая цена";
+  const filterSummary = activeFilterCount > 0
+    ? `${activeFilterCount} фильтр${activeFilterCount === 1 ? "" : activeFilterCount < 5 ? "а" : "ов"}`
+    : priceFilterLabel;
 
   const applyPriceFilter = () => {
     setAppliedMinPrice(minPrice.trim());
     setAppliedMaxPrice(maxPrice.trim());
+    setIsPriceFilterOpen(false);
   };
 
   const resetPriceFilter = () => {
@@ -69,6 +141,13 @@ function MarketsContent() {
     setMaxPrice("");
     setAppliedMinPrice("");
     setAppliedMaxPrice("");
+    setFavoritesOnly(false);
+    setClosingSoonOnly(false);
+    setDiscountOnly(false);
+    setStoresWithBoxesOnly(false);
+    setSelectedProductStoreId("");
+    setSortMode("recommended");
+    setIsPriceFilterOpen(false);
   };
 
   const toggleStoreFavorite = async (store: Store) => {
@@ -225,14 +304,32 @@ function MarketsContent() {
     return "9:00 - 22:00";
   };
 
-  const favoriteStores = stores.filter((store) => store.isFavorite);
-  const regularStores = stores.filter((store) => !store.isFavorite);
-  const filteredProducts = products.filter((product) => {
+  const filteredStores = sortStores(stores.filter((store) => {
+    if (favoritesOnly && !store.isFavorite) return false;
+    if (closingSoonOnly && !store.closingSoon) return false;
+    if (storesWithBoxesOnly && store.productCount === 0) return false;
+    return true;
+  }), sortMode);
+  const favoriteStores = filteredStores.filter((store) => store.isFavorite);
+  const regularStores = filteredStores.filter((store) => !store.isFavorite);
+  const productStoreOptions = Array.from(
+    products.reduce((map, product) => {
+      if (product.storeId) {
+        map.set(String(product.storeId), product.storeName || `Заведение #${product.storeId}`);
+      }
+      return map;
+    }, new Map<string, string>())
+  ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
+  const filteredProducts = sortProducts(products.filter((product) => {
     const price = getProductPrice(product);
     if (minFilterValue !== undefined && price < minFilterValue) return false;
     if (maxFilterValue !== undefined && price > maxFilterValue) return false;
+    if (selectedProductStoreId && String(product.storeId) !== selectedProductStoreId) return false;
+    if (favoritesOnly && !product.isFavorite) return false;
+    if (closingSoonOnly && !product.closingSoon) return false;
+    if (discountOnly && getProductDiscount(product) <= 0) return false;
     return true;
-  });
+  }), sortMode);
 
   const StoreCard = ({ store }: { store: Store }) => {
     const isFavorite = !!store.isFavorite;
@@ -313,9 +410,7 @@ function MarketsContent() {
     const isTogglingFavorite = togglingProductId === product.id;
     const price = getProductPrice(product);
     const originalPrice = normalizePrice(product.originalPrice || price);
-    const discount = originalPrice > price
-      ? Math.round((1 - price / originalPrice) * 100)
-      : product.discountPercentage || 0;
+    const discount = getProductDiscount(product);
 
     return (
       <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
@@ -397,64 +492,175 @@ function MarketsContent() {
           </div>
         ) : (
           <div className="space-y-4">
-            {(showAllProducts || products.length > 0) && !notificationGroup && (
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 text-sm font-bold text-black font-inter">
-                    <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
-                    Фильтр по цене
-                  </div>
-                  {isPriceFilterActive && (
+            {(showProductFilters || showStoreFilters) && !notificationGroup && (
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-2.5">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setIsPriceFilterOpen((open) => !open)}
+                    className="flex h-10 flex-1 items-center justify-between rounded-xl bg-white px-3 text-left font-inter"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-bold text-black">
+                      <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
+                      Фильтр
+                    </span>
+                    <span className="max-w-[130px] truncate text-xs font-semibold text-black/45">
+                      {filterSummary}
+                    </span>
+                  </button>
+                  {(isPriceFilterActive || hasExtraFilters) && (
                     <button
                       type="button"
                       onClick={resetPriceFilter}
-                      className="flex items-center gap-1 text-xs font-semibold text-black/50 font-inter"
+                      aria-label="Сбросить фильтр"
+                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black/45"
                     >
-                      <X className="h-3.5 w-3.5" />
-                      Сбросить
+                      <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
-                <form
-                  className="grid grid-cols-2 gap-3"
-                  onSubmit={(event) => {
-                    event.preventDefault();
-                    applyPriceFilter();
-                  }}
-                >
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-black/45 font-inter">От</span>
-                    <input
-                      value={minPrice}
-                      onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
-                      inputMode="numeric"
-                      placeholder="0 ₸"
-                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
-                    />
-                  </label>
-                  <label className="block">
-                    <span className="mb-1 block text-xs font-medium text-black/45 font-inter">До</span>
-                    <input
-                      value={maxPrice}
-                      onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
-                      inputMode="numeric"
-                      placeholder="2 000 ₸"
-                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
-                    />
-                  </label>
-                  <button
-                    type="submit"
-                    disabled={!hasPendingPriceChanges}
-                    className="col-span-2 h-11 rounded-xl bg-[#15551F] text-sm font-bold text-white transition-opacity disabled:opacity-45 font-inter"
+                {isPriceFilterOpen && (
+                  <form
+                    className="mt-3 grid grid-cols-2 gap-3"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      applyPriceFilter();
+                    }}
                   >
-                    Применить
-                  </button>
-                </form>
+                    {showProductFilters && (
+                      <>
+                        <label className="col-span-2 block">
+                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">Заведение</span>
+                          <select
+                            value={selectedProductStoreId}
+                            onChange={(event) => setSelectedProductStoreId(event.target.value)}
+                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
+                          >
+                            <option value="">Все заведения</option>
+                            {productStoreOptions.map(([storeId, storeName]) => (
+                              <option key={storeId} value={storeId}>
+                                {storeName}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">От</span>
+                          <input
+                            value={minPrice}
+                            onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
+                            inputMode="numeric"
+                            placeholder="0 ₸"
+                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
+                          />
+                        </label>
+                        <label className="block">
+                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">До</span>
+                          <input
+                            value={maxPrice}
+                            onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
+                            inputMode="numeric"
+                            placeholder="2 000 ₸"
+                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
+                          />
+                        </label>
+                      </>
+                    )}
+                    <div className="col-span-2">
+                      <span className="mb-2 block text-xs font-medium text-black/45 font-inter">Показать</span>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setFavoritesOnly((value) => !value)}
+                          className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
+                            favoritesOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
+                          }`}
+                        >
+                          Избранные
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setClosingSoonOnly((value) => !value)}
+                          className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
+                            closingSoonOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
+                          }`}
+                        >
+                          Закрываются скоро
+                        </button>
+                        {showProductFilters && (
+                          <button
+                            type="button"
+                            onClick={() => setDiscountOnly((value) => !value)}
+                            className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
+                              discountOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
+                            }`}
+                          >
+                            Со скидкой
+                          </button>
+                        )}
+                        {showStoreFilters && (
+                          <button
+                            type="button"
+                            onClick={() => setStoresWithBoxesOnly((value) => !value)}
+                            className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
+                              storesWithBoxesOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
+                            }`}
+                          >
+                            С боксами
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    <div className="col-span-2">
+                      <span className="mb-2 block text-xs font-medium text-black/45 font-inter">Сортировка</span>
+                      <div className="grid grid-cols-3 gap-2">
+                        {(showProductFilters
+                          ? [
+                            ["recommended", "Лучшие"],
+                            ["price_asc", "Дешевле"],
+                            ["discount_desc", "Скидка"],
+                          ]
+                          : [
+                            ["recommended", "Лучшие"],
+                            ["rating_desc", "Рейтинг"],
+                            ["closing_soon", "Закрытие"],
+                            ["name_asc", "А-Я"],
+                          ]
+                        ).map(([value, label]) => (
+                          <button
+                            key={value}
+                            type="button"
+                            onClick={() => setSortMode(value as CatalogSortMode)}
+                            className={`h-9 rounded-xl text-xs font-bold font-inter ${
+                              sortMode === value ? "bg-[#15551F] text-white" : "bg-white text-black/60"
+                            }`}
+                          >
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {showProductFilters && (
+                      <button
+                        type="submit"
+                        disabled={!hasPendingPriceChanges}
+                        className="col-span-2 h-10 rounded-xl bg-[#15551F] text-sm font-bold text-white transition-opacity disabled:opacity-45 font-inter"
+                      >
+                        Применить
+                      </button>
+                    )}
+                  </form>
+                )}
               </div>
             )}
 
             {stores.length > 0 && query && (
-              <h2 className="pt-1 text-lg font-bold text-black font-inter">Заведения</h2>
+              <div className="flex items-baseline justify-between gap-3 pt-1">
+                <h2 className="text-lg font-bold text-black font-inter">Заведения</h2>
+                <span className="text-xs font-medium text-black/45 font-inter">
+                  {filteredStores.length} из {stores.length}
+                </span>
+              </div>
             )}
             {notificationGroup && (
               <div className="rounded-2xl bg-[#FFF1F1] p-4">
@@ -478,6 +684,11 @@ function MarketsContent() {
             {regularStores.map((store) => (
               <StoreCard key={store.id} store={store} />
             ))}
+            {stores.length > 0 && filteredStores.length === 0 && (
+              <div className="rounded-2xl bg-gray-100 p-5 text-center">
+                <p className="text-sm font-medium text-black/50 font-inter">По этим фильтрам заведений не найдено</p>
+              </div>
+            )}
 
             {products.length > 0 && (
               <>
