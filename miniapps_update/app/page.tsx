@@ -301,7 +301,7 @@ export default function HomePage() {
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-black font-inter">{t("recommendedForYou")}</h2>
-            <Link href="/markets" className="flex items-center gap-1 text-base font-semibold text-[#15551F] font-inter">
+            <Link href="/markets?view=products" className="flex items-center gap-1 text-base font-semibold text-[#15551F] font-inter">
               {t("seeAll")}
               <ChevronRight className="h-5 w-5" />
             </Link>

@@ -1,15 +1,25 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import { ArrowLeft, Clock, Star } from "lucide-react";
+import { ArrowLeft, Clock, SlidersHorizontal, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, isProductVisibleInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
-import { formatPrice } from "../../lib/pricing";
+import { formatPrice, normalizePrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
+
+const getProductPrice = (product: Product) =>
+  normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
+
+const sortProducts = (items: Product[]) =>
+  [...items].sort((a, b) => {
+    const favoriteDiff = Number(!!b.isFavorite) - Number(!!a.isFavorite);
+    if (favoriteDiff !== 0) return favoriteDiff;
+    return getProductPrice(a) - getProductPrice(b);
+  });
 
 function MarketsContent() {
   const { } = useTelegram(); // Initialize Telegram singleton
@@ -18,12 +28,48 @@ function MarketsContent() {
   const query = searchParams.get("query")?.trim() || "";
   const categoryId = searchParams.get("categoryId")?.trim() || "";
   const notificationGroupId = searchParams.get("notificationGroupId")?.trim() || "";
+  const view = searchParams.get("view")?.trim() || "";
+  const showAllProducts = view === "products";
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingStoreId, setTogglingStoreId] = useState<number | null>(null);
+  const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
+  const [minPrice, setMinPrice] = useState("");
+  const [maxPrice, setMaxPrice] = useState("");
+  const [appliedMinPrice, setAppliedMinPrice] = useState("");
+  const [appliedMaxPrice, setAppliedMaxPrice] = useState("");
+
+  const appliedMinPriceValue = Number(appliedMinPrice);
+  const appliedMaxPriceValue = Number(appliedMaxPrice);
+  const hasAppliedMinPrice = appliedMinPrice.trim() !== "" && Number.isFinite(appliedMinPriceValue);
+  const hasAppliedMaxPrice = appliedMaxPrice.trim() !== "" && Number.isFinite(appliedMaxPriceValue);
+  const minFilterValue = hasAppliedMinPrice && hasAppliedMaxPrice
+    ? Math.min(appliedMinPriceValue, appliedMaxPriceValue)
+    : hasAppliedMinPrice
+      ? appliedMinPriceValue
+      : undefined;
+  const maxFilterValue = hasAppliedMinPrice && hasAppliedMaxPrice
+    ? Math.max(appliedMinPriceValue, appliedMaxPriceValue)
+    : hasAppliedMaxPrice
+      ? appliedMaxPriceValue
+      : undefined;
+  const isPriceFilterActive = minFilterValue !== undefined || maxFilterValue !== undefined;
+  const hasPendingPriceChanges = minPrice !== appliedMinPrice || maxPrice !== appliedMaxPrice;
+
+  const applyPriceFilter = () => {
+    setAppliedMinPrice(minPrice.trim());
+    setAppliedMaxPrice(maxPrice.trim());
+  };
+
+  const resetPriceFilter = () => {
+    setMinPrice("");
+    setMaxPrice("");
+    setAppliedMinPrice("");
+    setAppliedMaxPrice("");
+  };
 
   const toggleStoreFavorite = async (store: Store) => {
     if (togglingStoreId === store.id) return;
@@ -46,6 +92,30 @@ function MarketsContent() {
       );
     } finally {
       setTogglingStoreId(null);
+    }
+  };
+
+  const toggleProductFavorite = async (product: Product) => {
+    if (togglingProductId === product.id) return;
+
+    const previousValue = !!product.isFavorite;
+    setTogglingProductId(product.id);
+    setProducts((prev) =>
+      sortProducts(prev.map((item) => (item.id === product.id ? { ...item, isFavorite: !previousValue } : item)))
+    );
+    setToast({
+      title: previousValue ? "Убрано из избранного" : "Добавлено в избранное",
+      itemName: product.name,
+    });
+    try {
+      await apiClient.toggleFavoriteProduct(product.id, previousValue);
+    } catch (error) {
+      console.error("Failed to toggle favorite product:", error);
+      setProducts((prev) =>
+        sortProducts(prev.map((item) => (item.id === product.id ? { ...item, isFavorite: previousValue } : item)))
+      );
+    } finally {
+      setTogglingProductId(null);
     }
   };
 
@@ -103,10 +173,28 @@ function MarketsContent() {
         if (query) {
           const [storesResult, productsResult] = await Promise.all([
             apiClient.searchStores(query, 0, 50),
-            apiClient.searchProducts(query, 0, 50),
+            apiClient.searchProducts(
+              query,
+              0,
+              50,
+              minFilterValue,
+              maxFilterValue,
+            ),
           ]);
           setStores(storesResult.content);
-          setProducts(productsResult.content.filter(isProductVisibleInMiniApp));
+          setProducts(sortProducts(productsResult.content.filter(isProductVisibleInMiniApp)));
+          return;
+        }
+
+        if (showAllProducts) {
+          const productsResult = await apiClient.getFeaturedProducts(
+            0,
+            200,
+            minFilterValue,
+            maxFilterValue,
+          );
+          setStores([]);
+          setProducts(sortProducts(productsResult.content.filter(isProductVisibleInMiniApp)));
           return;
         }
 
@@ -125,7 +213,7 @@ function MarketsContent() {
     };
 
     loadStores();
-  }, [query, categoryId, notificationGroupId]);
+  }, [query, categoryId, notificationGroupId, showAllProducts, minFilterValue, maxFilterValue]);
 
   const formatOpeningHours = (store: Store) => {
     if (store.openingHours && store.closingHours) {
@@ -139,6 +227,12 @@ function MarketsContent() {
 
   const favoriteStores = stores.filter((store) => store.isFavorite);
   const regularStores = stores.filter((store) => !store.isFavorite);
+  const filteredProducts = products.filter((product) => {
+    const price = getProductPrice(product);
+    if (minFilterValue !== undefined && price < minFilterValue) return false;
+    if (maxFilterValue !== undefined && price > maxFilterValue) return false;
+    return true;
+  });
 
   const StoreCard = ({ store }: { store: Store }) => {
     const isFavorite = !!store.isFavorite;
@@ -214,6 +308,65 @@ function MarketsContent() {
     );
   };
 
+  const ProductCard = ({ product }: { product: Product }) => {
+    const isFavorite = !!product.isFavorite;
+    const isTogglingFavorite = togglingProductId === product.id;
+    const price = getProductPrice(product);
+    const originalPrice = normalizePrice(product.originalPrice || price);
+    const discount = originalPrice > price
+      ? Math.round((1 - price / originalPrice) * 100)
+      : product.discountPercentage || 0;
+
+    return (
+      <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
+        <article>
+          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
+            {product.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center bg-[#4CAD73] text-xl font-bold text-white">FS</div>
+            )}
+            {discount > 0 && (
+              <div className="absolute left-2 top-2 rounded-full bg-[#E5484D] px-3 py-1.5 text-xs font-extrabold text-white shadow-lg shadow-red-500/25 font-inter">
+                -{discount}%
+              </div>
+            )}
+            <button
+              aria-label={isFavorite ? "Убрать из избранного" : "Добавить в избранное"}
+              disabled={isTogglingFavorite}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                toggleProductFavorite(product);
+              }}
+              type="button"
+              className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center transition-transform active:scale-90"
+            >
+              <Star
+                className={`h-5 w-5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${isFavorite ? "text-amber-400" : "text-white"}`}
+                fill={isFavorite ? "currentColor" : "none"}
+              />
+            </button>
+          </div>
+          <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
+          <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>
+          {product.closingSoon && (
+            <div className="mt-1">
+              <ClosingSoonBadge minutes={product.closingSoonMinutes} />
+            </div>
+          )}
+          <div className="mt-1 flex items-baseline gap-2">
+            <span className="text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</span>
+            {originalPrice > price && (
+              <span className="text-xs text-black/35 line-through font-inter">{formatPrice(originalPrice)}</span>
+            )}
+          </div>
+        </article>
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
@@ -221,7 +374,7 @@ function MarketsContent() {
         <div className="flex items-center gap-4">
           <BackButton fallback="/" />
           <h1 className="text-xl font-bold text-black font-inter">
-            {notificationGroup ? "Подборка FoodSave" : query ? `Поиск: ${query}` : "Заведения"}
+            {notificationGroup ? "Подборка FoodSave" : query ? `Поиск: ${query}` : showAllProducts ? "Боксы" : "Заведения"}
           </h1>
         </div>
       </div>
@@ -244,6 +397,62 @@ function MarketsContent() {
           </div>
         ) : (
           <div className="space-y-4">
+            {(showAllProducts || products.length > 0) && !notificationGroup && (
+              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-3">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2 text-sm font-bold text-black font-inter">
+                    <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
+                    Фильтр по цене
+                  </div>
+                  {isPriceFilterActive && (
+                    <button
+                      type="button"
+                      onClick={resetPriceFilter}
+                      className="flex items-center gap-1 text-xs font-semibold text-black/50 font-inter"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Сбросить
+                    </button>
+                  )}
+                </div>
+                <form
+                  className="grid grid-cols-2 gap-3"
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    applyPriceFilter();
+                  }}
+                >
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-black/45 font-inter">От</span>
+                    <input
+                      value={minPrice}
+                      onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
+                      inputMode="numeric"
+                      placeholder="0 ₸"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
+                    />
+                  </label>
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-medium text-black/45 font-inter">До</span>
+                    <input
+                      value={maxPrice}
+                      onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
+                      inputMode="numeric"
+                      placeholder="2 000 ₸"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
+                    />
+                  </label>
+                  <button
+                    type="submit"
+                    disabled={!hasPendingPriceChanges}
+                    className="col-span-2 h-11 rounded-xl bg-[#15551F] text-sm font-bold text-white transition-opacity disabled:opacity-45 font-inter"
+                  >
+                    Применить
+                  </button>
+                </form>
+              </div>
+            )}
+
             {stores.length > 0 && query && (
               <h2 className="pt-1 text-lg font-bold text-black font-inter">Заведения</h2>
             )}
@@ -272,41 +481,29 @@ function MarketsContent() {
 
             {products.length > 0 && (
               <>
-                <h2 className="pt-3 text-lg font-bold text-black font-inter">Боксы</h2>
-                <div className="grid grid-cols-2 gap-4">
-                  {products.map((product) => {
-                    const price = product.price || product.discountedPrice || product.originalPrice || 0;
-                    return (
-                      <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
-                        <article>
-                          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
-                            {product.imageUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full items-center justify-center bg-[#4CAD73] text-xl font-bold text-white">FS</div>
-                            )}
-                          </div>
-                          <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
-                          <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>
-                          <p className="mt-1 text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</p>
-                          {product.closingSoon && (
-                            <div className="mt-1">
-                              <ClosingSoonBadge minutes={product.closingSoonMinutes} />
-                            </div>
-                          )}
-                        </article>
-                      </Link>
-                    );
-                  })}
+                <div className="flex items-baseline justify-between gap-3 pt-3">
+                  <h2 className="text-lg font-bold text-black font-inter">Боксы</h2>
+                  <span className="text-xs font-medium text-black/45 font-inter">
+                    {filteredProducts.length} из {products.length}
+                  </span>
                 </div>
+                <div className="grid grid-cols-2 gap-4">
+                  {filteredProducts.map((product) => (
+                    <ProductCard key={product.id} product={product} />
+                  ))}
+                </div>
+                {filteredProducts.length === 0 && (
+                  <div className="rounded-2xl bg-gray-100 p-5 text-center">
+                    <p className="text-sm font-medium text-black/50 font-inter">В этом диапазоне цены боксов не найдены</p>
+                  </div>
+                )}
               </>
             )}
             
             {stores.length === 0 && products.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-black/50 font-inter">
-                  {query ? "По вашему запросу ничего не найдено" : "Заведения не найдены"}
+                  {query ? "По вашему запросу ничего не найдено" : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
                 </p>
               </div>
             )}

@@ -226,9 +226,18 @@ public class ProductService {
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getFeaturedProducts(Pageable pageable) {
+        return getFeaturedProducts(null, null, pageable);
+    }
+
+    public Page<ProductDTO> getFeaturedProducts(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
         Page<ProductDTO> products = productRepository.findAllActiveAvailableProducts(
-                        ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
+                        ProductAvailability.visibilityCutoff(),
+                        ProductAvailability.currentTimeText(),
+                        priceRange.min(),
+                        priceRange.max(),
+                        pageable)
                 .map(this::convertToDTO);
         return withFavoritesFirst(products, pageable);
     }
@@ -417,10 +426,35 @@ public class ProductService {
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> searchProducts(String query, Pageable pageable) {
+        return searchProducts(query, null, null, pageable);
+    }
+
+    public Page<ProductDTO> searchProducts(String query, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
         return productRepository.searchProducts(
-                        query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
+                        query,
+                        ProductAvailability.visibilityCutoff(),
+                        ProductAvailability.currentTimeText(),
+                        priceRange.min(),
+                        priceRange.max(),
+                        pageable)
                 .map(this::convertToDTO);
     }
+
+    private PriceRange normalizePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
+        if (minPrice != null && minPrice.signum() < 0) {
+            minPrice = BigDecimal.ZERO;
+        }
+        if (maxPrice != null && maxPrice.signum() < 0) {
+            maxPrice = BigDecimal.ZERO;
+        }
+        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
+            return new PriceRange(maxPrice, minPrice);
+        }
+        return new PriceRange(minPrice, maxPrice);
+    }
+
+    private record PriceRange(BigDecimal min, BigDecimal max) {}
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getProductsByCategory(Long categoryId, Pageable pageable) {

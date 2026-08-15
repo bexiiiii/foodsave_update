@@ -91,6 +91,7 @@ public class NotificationGroupService {
 
         List<Product> availableProducts = productRepository.findAllActiveAvailableProducts(
                         ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(),
+                        null, null,
                         PageRequest.of(0, 1000))
                 .getContent();
         if (availableProducts.isEmpty()) return;

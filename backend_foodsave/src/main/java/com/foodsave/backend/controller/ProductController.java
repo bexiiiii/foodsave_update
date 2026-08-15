@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -54,8 +55,11 @@ public class ProductController {
     
     @GetMapping("/featured")
     @Operation(summary = "Get featured products with pagination")
-    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(Pageable pageable) {
-        return ResponseEntity.ok(productService.getFeaturedProducts(pageable));
+    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            Pageable pageable) {
+        return ResponseEntity.ok(productService.getFeaturedProducts(minPrice, maxPrice, pageable));
     }
     
     @PostMapping
@@ -86,8 +90,10 @@ public class ProductController {
     @Operation(summary = "Search products with pagination")
     public ResponseEntity<Page<ProductDTO>> searchProducts(
             @RequestParam String query,
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.searchProducts(query, pageable));
+        return ResponseEntity.ok(productService.searchProducts(query, minPrice, maxPrice, pageable));
     }
     
     @GetMapping("/category/{categoryId}")

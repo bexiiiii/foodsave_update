@@ -569,10 +569,14 @@ class ApiClient {
     }
   }
 
-  async searchProducts(query: string, page = 0, size = 50): Promise<PaginationResponse<Product>> {
+  async searchProducts(query: string, page = 0, size = 50, minPrice?: number, maxPrice?: number): Promise<PaginationResponse<Product>> {
     try {
+      const priceParams = [
+        Number.isFinite(minPrice) ? `minPrice=${encodeURIComponent(String(minPrice))}` : null,
+        Number.isFinite(maxPrice) ? `maxPrice=${encodeURIComponent(String(maxPrice))}` : null,
+      ].filter(Boolean).join('&');
       const response = await this.makePublicRequest<PaginationResponse<Product>>(
-        `/products/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`
+        `/products/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}${priceParams ? `&${priceParams}` : ''}`
       );
       if (!response || !Array.isArray(response.content)) {
         return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
@@ -664,9 +668,13 @@ class ApiClient {
     }
   }
 
-  async getFeaturedProducts(page = 0, size = 20): Promise<PaginationResponse<Product>> {
+  async getFeaturedProducts(page = 0, size = 20, minPrice?: number, maxPrice?: number): Promise<PaginationResponse<Product>> {
     try {
-      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}`);
+      const priceParams = [
+        Number.isFinite(minPrice) ? `minPrice=${encodeURIComponent(String(minPrice))}` : null,
+        Number.isFinite(maxPrice) ? `maxPrice=${encodeURIComponent(String(maxPrice))}` : null,
+      ].filter(Boolean).join('&');
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}${priceParams ? `&${priceParams}` : ''}`);
       // Ensure content is an array
       if (!response || !Array.isArray(response.content)) {
         return {
