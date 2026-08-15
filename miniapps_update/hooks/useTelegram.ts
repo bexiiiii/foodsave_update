@@ -31,6 +31,7 @@ declare global {
             };
           }
         ) => void) => void;
+        openTelegramLink?: (url: string) => void;
       };
     };
   }

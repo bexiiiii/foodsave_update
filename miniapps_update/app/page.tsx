@@ -18,6 +18,7 @@ import { useCategories, useFeaturedProducts } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
 import { apiClient, Category, Product, isProductVisibleInMiniApp } from "../lib/api";
+import { getProductRecommendationScore, seedRecommendationsFromOrders } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
 
 const getCurrentPrice = (product: Partial<Product>) =>
@@ -68,6 +69,7 @@ export default function HomePage() {
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
+  const [recommendationVersion, setRecommendationVersion] = useState(0);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
   const featuredProducts = safeArray(featuredProductsResponse?.content)
@@ -76,7 +78,10 @@ export default function HomePage() {
       ...product,
       isFavorite: favoriteOverrides[product.id] ?? product.isFavorite,
     }))
-    .sort((a, b) => Number(!!b.isFavorite) - Number(!!a.isFavorite));
+    .sort((a, b) => {
+      void recommendationVersion;
+      return getProductRecommendationScore(b) - getProductRecommendationScore(a);
+    });
 
   const toggleProductFavorite = async (product: Product) => {
     if (togglingProductId === product.id) return;
@@ -108,6 +113,26 @@ export default function HomePage() {
       console.error("Telegram authentication failed:", error);
     });
   }, [authLoading, user, getTelegramInitData, login]);
+
+  useEffect(() => {
+    if (authLoading || !user) return;
+
+    let isMounted = true;
+    apiClient.getMyOrders()
+      .then((orders) => {
+        if (!isMounted) return;
+        if (seedRecommendationsFromOrders(orders)) {
+          setRecommendationVersion((version) => version + 1);
+        }
+      })
+      .catch(() => {
+        // Recommendations still work from local views/favorites when order history is unavailable.
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [authLoading, user]);
 
   useEffect(() => {
     const sessionId = sessionStorage.getItem("foodsaveSessionId") || crypto.randomUUID();

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
@@ -10,6 +10,12 @@ import BackButton from "../../../components/BackButton";
 import { formatMinutesUntilClose } from "../../../components/ClosingSoonBadge";
 import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
+import {
+  dismissDecisionHelpPrompt,
+  recordProductReservation,
+  recordProductView,
+  shouldShowDecisionHelpPrompt,
+} from "../../../lib/personalization";
 
 type OrderModalState =
   | { type: "success"; order: Order }
@@ -31,6 +37,7 @@ export default function ProductDetailsPage() {
   const [isFavorite, setIsFavorite] = useState(false);
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [showDecisionHelpPrompt, setShowDecisionHelpPrompt] = useState(false);
 
   // Phone modal state
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -65,6 +72,8 @@ export default function ProductDetailsPage() {
         if (isMounted) {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
+          recordProductView(productData);
+          setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
           const attribution = readAttribution();
           apiClient.trackEvent({
             eventType: "BOX_VIEWED",
@@ -154,6 +163,8 @@ export default function ProductDetailsPage() {
       };
 
       const order = await apiClient.createReservation(reservationData);
+      recordProductReservation(product);
+      setShowDecisionHelpPrompt(false);
 
       setProduct((prev) => {
         if (!prev) return prev;
@@ -253,6 +264,17 @@ export default function ProductDetailsPage() {
     }
   };
 
+  const openDecisionHelp = () => {
+    dismissDecisionHelpPrompt();
+    setShowDecisionHelpPrompt(false);
+    const supportUrl = "https://t.me/FoodSave_kz";
+    if (window.Telegram?.WebApp?.openTelegramLink) {
+      window.Telegram.WebApp.openTelegramLink(supportUrl);
+      return;
+    }
+    window.open(supportUrl, "_blank", "noopener,noreferrer");
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white pb-24" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
@@ -296,6 +318,39 @@ export default function ProductDetailsPage() {
           </button>
         </div>
       </div>
+
+      {showDecisionHelpPrompt && (
+        <div className="px-4 mt-4">
+          <div className="rounded-2xl border border-[#4CAD73]/20 bg-[#F1FAF4] p-3 shadow-sm">
+            <div className="flex items-start gap-3">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#15551F]">
+                <HelpCircle className="h-5 w-5" />
+              </div>
+              <button
+                type="button"
+                onClick={openDecisionHelp}
+                className="min-w-0 flex-1 text-left"
+              >
+                <p className="text-sm font-bold text-black font-inter">Сомневаетесь?</p>
+                <p className="mt-0.5 text-xs font-medium leading-relaxed text-black/55 font-inter">
+                  Напишите нам, и мы быстро поможем выбрать подходящий бокс.
+                </p>
+              </button>
+              <button
+                type="button"
+                aria-label="Скрыть подсказку"
+                onClick={() => {
+                  dismissDecisionHelpPrompt();
+                  setShowDecisionHelpPrompt(false);
+                }}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black/35"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Store Info */}
       <div className="px-4 mt-6">
