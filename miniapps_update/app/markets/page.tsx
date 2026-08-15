@@ -266,13 +266,16 @@ function MarketsContent() {
         }
 
         if (showAllProducts) {
-          const productsResult = await apiClient.getFeaturedProducts(
-            0,
-            200,
-            minFilterValue,
-            maxFilterValue,
-          );
-          setStores([]);
+          const [storesData, productsResult] = await Promise.all([
+            apiClient.getActiveStores(),
+            apiClient.getFeaturedProducts(
+              0,
+              200,
+              minFilterValue,
+              maxFilterValue,
+            ),
+          ]);
+          setStores(storesData);
           setProducts(sortProducts(productsResult.content.filter(isProductVisibleInMiniApp)));
           return;
         }
@@ -313,12 +316,15 @@ function MarketsContent() {
   const favoriteStores = filteredStores.filter((store) => store.isFavorite);
   const regularStores = filteredStores.filter((store) => !store.isFavorite);
   const productStoreOptions = Array.from(
-    products.reduce((map, product) => {
+    stores.reduce((map, store) => {
+      map.set(String(store.id), store.name);
+      return map;
+    }, products.reduce((map, product) => {
       if (product.storeId) {
         map.set(String(product.storeId), product.storeName || `Заведение #${product.storeId}`);
       }
       return map;
-    }, new Map<string, string>())
+    }, new Map<string, string>()))
   ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
   const filteredProducts = sortProducts(products.filter((product) => {
     const price = getProductPrice(product);
@@ -670,7 +676,7 @@ function MarketsContent() {
                 </h2>
               </div>
             )}
-            {favoriteStores.length > 0 && (
+            {!showAllProducts && favoriteStores.length > 0 && (
               <>
                 <h2 className="pt-1 text-lg font-bold text-black font-inter">Избранное</h2>
                 {favoriteStores.map((store) => (
@@ -681,10 +687,10 @@ function MarketsContent() {
                 )}
               </>
             )}
-            {regularStores.map((store) => (
+            {!showAllProducts && regularStores.map((store) => (
               <StoreCard key={store.id} store={store} />
             ))}
-            {stores.length > 0 && filteredStores.length === 0 && (
+            {!showAllProducts && stores.length > 0 && filteredStores.length === 0 && (
               <div className="rounded-2xl bg-gray-100 p-5 text-center">
                 <p className="text-sm font-medium text-black/50 font-inter">По этим фильтрам заведений не найдено</p>
               </div>
