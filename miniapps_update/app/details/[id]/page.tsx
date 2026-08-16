@@ -12,6 +12,7 @@ import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 import {
   dismissDecisionHelpPrompt,
+  isDecisionHelpPromptDismissed,
   recordProductReservation,
   recordProductView,
   shouldShowDecisionHelpPrompt,
@@ -73,11 +74,13 @@ export default function ProductDetailsPage() {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
           recordProductView(productData);
-          setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
+          const localDecisionHelp = shouldShowDecisionHelpPrompt();
+          setShowDecisionHelpPrompt(localDecisionHelp);
           const attribution = readAttribution();
+          const sessionId = String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || "");
           apiClient.trackEvent({
             eventType: "BOX_VIEWED",
-            sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
+            sessionId,
             source: String(attribution.source || "direct"),
             notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
             campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
@@ -93,6 +96,13 @@ export default function ProductDetailsPage() {
               discountPercent: productData.discountPercentage,
             },
           });
+          apiClient.shouldShowDecisionHelp(sessionId)
+            .then((response) => {
+              if (isMounted && !isDecisionHelpPromptDismissed() && (response.showPrompt || localDecisionHelp)) {
+                setShowDecisionHelpPrompt(true);
+              }
+            })
+            .catch(() => {});
         }
         if (productData?.storeId) {
           try {

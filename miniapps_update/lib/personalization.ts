@@ -184,13 +184,19 @@ export const getProductRecommendationScore = (product: Product) => {
 export const shouldShowDecisionHelpPrompt = () => {
   if (!isBrowser()) return false;
   const now = Date.now();
-  const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
-  if (dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS) return false;
+  if (isDecisionHelpPromptDismissed()) return false;
 
   const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
     .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
   const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
   return recentViews.length >= 5 && uniqueProductIds.size >= 3;
+};
+
+export const isDecisionHelpPromptDismissed = () => {
+  if (!isBrowser()) return false;
+  const now = Date.now();
+  const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
+  return !!dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS;
 };
 
 export const dismissDecisionHelpPrompt = () => {

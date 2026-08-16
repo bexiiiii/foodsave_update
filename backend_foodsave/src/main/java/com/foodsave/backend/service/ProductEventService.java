@@ -1,6 +1,8 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.domain.enums.ProductEventSource;
+import com.foodsave.backend.domain.enums.ProductEventType;
+import com.foodsave.backend.dto.analytics.DecisionHelpResponse;
 import com.foodsave.backend.dto.analytics.ProductEventRequest;
 import com.foodsave.backend.entity.Order;
 import com.foodsave.backend.entity.ProductEvent;
@@ -28,6 +30,9 @@ import java.util.Set;
 public class ProductEventService {
 
     private static final int MAX_METADATA_ENTRIES = 50;
+    private static final int DECISION_HELP_MIN_VIEWS = 5;
+    private static final int DECISION_HELP_MIN_UNIQUE_BOXES = 3;
+    private static final int DECISION_HELP_WINDOW_MINUTES = 15;
     private static final Set<String> SENSITIVE_KEYS = Set.of(
             "phone", "email", "name", "firstName", "lastName", "password", "token",
             "auth", "authorization", "initData", "init_data", "hash"
@@ -100,6 +105,34 @@ public class ProductEventService {
         productEventRepository.save(event);
     }
 
+    @Transactional(readOnly = true)
+    public DecisionHelpResponse getDecisionHelp(String sessionId) {
+        Long currentUserId = securityUtil.getCurrentUserId();
+        String normalizedSessionId = limitBlankToNull(sessionId, 120);
+
+        if (currentUserId == null && normalizedSessionId == null) {
+            return new DecisionHelpResponse(false, 0, 0);
+        }
+
+        LocalDateTime since = LocalDateTime.now().minusMinutes(DECISION_HELP_WINDOW_MINUTES);
+        long recentViews = productEventRepository.countDecisionHelpViews(
+                currentUserId,
+                normalizedSessionId,
+                ProductEventType.BOX_VIEWED,
+                since
+        );
+        long uniqueBoxes = productEventRepository.countDecisionHelpBoxes(
+                currentUserId,
+                normalizedSessionId,
+                ProductEventType.BOX_VIEWED,
+                since
+        );
+
+        boolean showPrompt = recentViews >= DECISION_HELP_MIN_VIEWS
+                && uniqueBoxes >= DECISION_HELP_MIN_UNIQUE_BOXES;
+        return new DecisionHelpResponse(showPrompt, recentViews, uniqueBoxes);
+    }
+
     private User resolveUser(ProductEventRequest request) {
         Long currentUserId = securityUtil.getCurrentUserId();
         if (currentUserId != null) {
@@ -151,5 +184,10 @@ public class ProductEventService {
     private String limit(String value, int max) {
         if (value == null) return null;
         return value.length() <= max ? value : value.substring(0, max);
+    }
+
+    private String limitBlankToNull(String value, int max) {
+        if (value == null || value.isBlank()) return null;
+        return limit(value.trim(), max);
     }
 }

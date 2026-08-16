@@ -41,6 +41,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     @Query("SELECT o FROM Order o WHERE o.user = :user ORDER BY o.createdAt DESC")
     List<Order> findByUserOrderByCreatedAtDesc(@Param("user") User user);
+
+    @Query("SELECT oi.product.id as productId, o.store.id as storeId, oi.product.category.id as categoryId, " +
+           "SUM(oi.quantity) as quantity, MAX(o.createdAt) as lastOrderedAt " +
+           "FROM Order o JOIN o.items oi " +
+           "WHERE o.user.id = :userId AND o.status NOT IN :excludedStatuses " +
+           "GROUP BY oi.product.id, o.store.id, oi.product.category.id")
+    List<UserOrderAffinityProjection> findUserOrderAffinities(@Param("userId") Long userId,
+                                                              @Param("excludedStatuses") Set<OrderStatus> excludedStatuses);
     
     @Query("SELECT o FROM Order o WHERE o.store = :store")
     List<Order> findByStore(@Param("store") Store store);
@@ -178,6 +186,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
         @Param("startDate") LocalDateTime startDate,
         @Param("endDate") LocalDateTime endDate
     );
+
+    interface UserOrderAffinityProjection {
+        Long getProductId();
+        Long getStoreId();
+        Long getCategoryId();
+        Long getQuantity();
+        LocalDateTime getLastOrderedAt();
+    }
 
     @Query("SELECT SUM(o.total) - SUM(oi.unitPrice * oi.quantity) FROM Order o JOIN o.items oi WHERE o.store = :store")
     BigDecimal sumDiscountByStore(@Param("store") Store store);

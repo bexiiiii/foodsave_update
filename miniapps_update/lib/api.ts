@@ -215,6 +215,12 @@ export interface ProductEventPayload {
   metadata?: Record<string, unknown>;
 }
 
+export interface DecisionHelpResponse {
+  showPrompt: boolean;
+  recentViews: number;
+  uniqueBoxes: number;
+}
+
 export interface NotificationGroup {
   id: number;
   status: string;
@@ -710,6 +716,25 @@ class ApiClient {
     }
   }
 
+  async getRecommendedProducts(page = 0, size = 20, minPrice?: number, maxPrice?: number): Promise<PaginationResponse<Product>> {
+    try {
+      const priceParams = [
+        Number.isFinite(minPrice) ? `minPrice=${encodeURIComponent(String(minPrice))}` : null,
+        Number.isFinite(maxPrice) ? `maxPrice=${encodeURIComponent(String(maxPrice))}` : null,
+      ].filter(Boolean).join('&');
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(
+        `/products/recommended?page=${page}&size=${size}${priceParams ? `&${priceParams}` : ''}`
+      );
+      if (!response || !Array.isArray(response.content)) {
+        return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
+      }
+      return response;
+    } catch (error) {
+      console.error('Failed to fetch recommended products:', error);
+      return this.getFeaturedProducts(page, size, minPrice, maxPrice);
+    }
+  }
+
   // Order methods
   async getMyOrders(): Promise<Order[]> {
     try {
@@ -805,6 +830,21 @@ class ApiClient {
       });
     } catch (error) {
       console.warn('Analytics event ignored:', error);
+    }
+  }
+
+  async shouldShowDecisionHelp(sessionId?: string): Promise<DecisionHelpResponse> {
+    try {
+      const query = sessionId ? `?sessionId=${encodeURIComponent(sessionId)}` : '';
+      const response = await this.makePublicRequest<DecisionHelpResponse>(`/analytics/decision-help${query}`);
+      return {
+        showPrompt: !!response?.showPrompt,
+        recentViews: Number(response?.recentViews || 0),
+        uniqueBoxes: Number(response?.uniqueBoxes || 0),
+      };
+    } catch (error) {
+      console.warn('Decision help check ignored:', error);
+      return { showPrompt: false, recentViews: 0, uniqueBoxes: 0 };
     }
   }
 

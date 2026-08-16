@@ -5,8 +5,12 @@ import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.Category;
 import com.foodsave.backend.dto.ProductDTO;
 import com.foodsave.backend.domain.enums.FavoriteType;
+import com.foodsave.backend.domain.enums.OrderStatus;
+import com.foodsave.backend.domain.enums.ProductEventType;
 import com.foodsave.backend.exception.InsufficientStockException;
 import com.foodsave.backend.repository.FavoriteRepository;
+import com.foodsave.backend.repository.OrderRepository;
+import com.foodsave.backend.repository.ProductEventRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
@@ -23,6 +27,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -34,7 +39,9 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,6 +51,8 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
+    private final ProductEventRepository productEventRepository;
+    private final OrderRepository orderRepository;
     private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
     private final FavoriteRepository favoriteRepository;
@@ -56,6 +65,8 @@ public class ProductService {
     private final NotificationGroupService notificationGroupService;
 
     public ProductService(ProductRepository productRepository,
+                          ProductEventRepository productEventRepository,
+                          OrderRepository orderRepository,
                           StoreRepository storeRepository,
                           CategoryRepository categoryRepository,
                           FavoriteRepository favoriteRepository,
@@ -67,6 +78,8 @@ public class ProductService {
                           RealtimeEventService realtimeEventService,
                           NotificationGroupService notificationGroupService) {
         this.productRepository = productRepository;
+        this.productEventRepository = productEventRepository;
+        this.orderRepository = orderRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
         this.favoriteRepository = favoriteRepository;
@@ -240,6 +253,145 @@ public class ProductService {
                         pageable)
                 .map(this::convertToDTO);
         return withFavoritesFirst(products, pageable);
+    }
+
+    public Page<ProductDTO> getRecommendedProducts(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
+        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
+        int requestedSize = pageable.isPaged() ? pageable.getPageSize() : 100;
+        int offset = pageable.isPaged() ? (int) Math.min(pageable.getOffset(), 500) : 0;
+        int fetchSize = Math.min(Math.max(offset + requestedSize + 100, requestedSize), 500);
+
+        Page<Product> availableProducts = productRepository.findAllActiveAvailableProducts(
+                ProductAvailability.visibilityCutoff(),
+                ProductAvailability.currentTimeText(),
+                priceRange.min(),
+                priceRange.max(),
+                PageRequest.of(0, Math.max(fetchSize, 1))
+        );
+
+        Long currentUserId = securityUtil.getCurrentUserId();
+        RecommendationSignals signals = currentUserId != null
+                ? loadRecommendationSignals(currentUserId)
+                : RecommendationSignals.empty();
+
+        List<ProductDTO> sorted = availableProducts.getContent().stream()
+                .map(product -> new ScoredProduct(product, recommendationScore(product, signals)))
+                .sorted(Comparator
+                        .comparingDouble(ScoredProduct::score).reversed()
+                        .thenComparing(scored -> scored.product().getSortOrder() != null ? scored.product().getSortOrder() : 0)
+                        .thenComparing(scored -> scored.product().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder())))
+                .skip(offset)
+                .limit(requestedSize)
+                .map(scored -> {
+                    ProductDTO dto = convertToDTO(scored.product());
+                    dto.setIsFavorite(signals.favoriteProductIds().contains(dto.getId()));
+                    return dto;
+                })
+                .toList();
+
+        return new PageImpl<>(sorted, pageable, availableProducts.getTotalElements());
+    }
+
+    private RecommendationSignals loadRecommendationSignals(Long userId) {
+        Set<Long> favoriteProductIds = favoriteRepository.findFavoriteProductIds(userId);
+        Set<Long> favoriteStoreIds = favoriteRepository.findFavoriteStoreIds(userId);
+
+        Map<Long, Double> productScores = new HashMap<>();
+        Map<Long, Double> storeScores = new HashMap<>();
+        Map<Long, Double> categoryScores = new HashMap<>();
+
+        Set<OrderStatus> excludedStatuses = Set.of(
+                OrderStatus.CANCELLED,
+                OrderStatus.CANCELLED_BY_USER,
+                OrderStatus.CANCELLED_BY_PARTNER,
+                OrderStatus.EXPIRED,
+                OrderStatus.NO_SHOW,
+                OrderStatus.REJECTED,
+                OrderStatus.REFUNDED
+        );
+        orderRepository.findUserOrderAffinities(userId, excludedStatuses).forEach(affinity -> {
+            double quantity = affinity.getQuantity() != null ? affinity.getQuantity() : 1.0;
+            addScore(productScores, affinity.getProductId(), 90.0 * quantity);
+            addScore(storeScores, affinity.getStoreId(), 35.0 * quantity);
+            addScore(categoryScores, affinity.getCategoryId(), 20.0 * quantity);
+        });
+
+        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusDays(45);
+        productEventRepository.countProductSignals(
+                userId,
+                Set.of(ProductEventType.BOX_VIEWED),
+                since
+        ).forEach(signal -> addScore(productScores, signal.getProductId(), 8.0 * signal.getCount()));
+        productEventRepository.countProductSignals(
+                userId,
+                Set.of(ProductEventType.RESERVATION_BUTTON_CLICKED, ProductEventType.RESERVATION_STARTED, ProductEventType.RESERVATION_CREATED),
+                since
+        ).forEach(signal -> addScore(productScores, signal.getProductId(), 35.0 * signal.getCount()));
+        productEventRepository.countStoreSignals(
+                userId,
+                Set.of(ProductEventType.BOX_VIEWED, ProductEventType.PARTNER_VIEWED, ProductEventType.BRANCH_VIEWED),
+                since
+        ).forEach(signal -> addScore(storeScores, signal.getStoreId(), 4.0 * signal.getCount()));
+
+        favoriteProductIds.forEach(productId -> addScore(productScores, productId, 140.0));
+        favoriteStoreIds.forEach(storeId -> addScore(storeScores, storeId, 70.0));
+
+        return new RecommendationSignals(productScores, storeScores, categoryScores, favoriteProductIds, favoriteStoreIds);
+    }
+
+    private double recommendationScore(Product product, RecommendationSignals signals) {
+        double score = 0.0;
+        score += signals.productScores().getOrDefault(product.getId(), 0.0);
+        score += product.getStore() != null
+                ? signals.storeScores().getOrDefault(product.getStore().getId(), 0.0)
+                : 0.0;
+        score += product.getCategory() != null
+                ? signals.categoryScores().getOrDefault(product.getCategory().getId(), 0.0)
+                : 0.0;
+        score += discountScore(product);
+        score += ProductAvailability.minutesUntilClose(product.getStore()) != null ? 12.0 : 0.0;
+        score -= product.getSortOrder() != null ? product.getSortOrder() * 0.05 : 0.0;
+        return score;
+    }
+
+    private double discountScore(Product product) {
+        if (product.getDiscountPercentage() != null && product.getDiscountPercentage() > 0) {
+            return Math.min(product.getDiscountPercentage(), 60.0);
+        }
+        BigDecimal originalPrice = product.getOriginalPrice();
+        BigDecimal price = product.getPrice();
+        if (originalPrice == null || price == null || originalPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            return 0.0;
+        }
+        if (price.compareTo(originalPrice) >= 0) {
+            return 0.0;
+        }
+        return Math.min(
+                originalPrice.subtract(price)
+                        .multiply(BigDecimal.valueOf(100))
+                        .divide(originalPrice, 2, java.math.RoundingMode.HALF_UP)
+                        .doubleValue(),
+                60.0
+        );
+    }
+
+    private void addScore(Map<Long, Double> scores, Long id, double score) {
+        if (id == null || score <= 0) return;
+        scores.merge(id, score, Double::sum);
+    }
+
+    private record ScoredProduct(Product product, double score) {}
+
+    private record RecommendationSignals(
+            Map<Long, Double> productScores,
+            Map<Long, Double> storeScores,
+            Map<Long, Double> categoryScores,
+            Set<Long> favoriteProductIds,
+            Set<Long> favoriteStoreIds
+    ) {
+        static RecommendationSignals empty() {
+            return new RecommendationSignals(Map.of(), Map.of(), Map.of(), Set.of(), Set.of());
+        }
     }
 
     @Caching(evict = {

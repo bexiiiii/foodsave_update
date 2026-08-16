@@ -61,6 +61,15 @@ public class ProductController {
             Pageable pageable) {
         return ResponseEntity.ok(productService.getFeaturedProducts(minPrice, maxPrice, pageable));
     }
+
+    @GetMapping("/recommended")
+    @Operation(summary = "Get personalized recommended products with pagination")
+    public ResponseEntity<Page<ProductDTO>> getRecommendedProducts(
+            @RequestParam(required = false) BigDecimal minPrice,
+            @RequestParam(required = false) BigDecimal maxPrice,
+            Pageable pageable) {
+        return ResponseEntity.ok(productService.getRecommendedProducts(minPrice, maxPrice, pageable));
+    }
     
     @PostMapping
     @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")
