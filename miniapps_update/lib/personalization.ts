@@ -20,6 +20,9 @@ const HELP_DISMISSED_KEY = "foodsave_decision_help_dismissed_at_v1";
 const MAX_INTERACTIONS = 60;
 const RECENT_VIEW_WINDOW_MS = 15 * 60 * 1000;
 const HELP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const HELP_MIN_RECENT_VIEWS = 4;
+const HELP_MIN_UNIQUE_PRODUCTS = 2;
+const HELP_MIN_REPEAT_PRODUCT_VIEWS = 4;
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -182,14 +185,30 @@ export const getProductRecommendationScore = (product: Product) => {
 };
 
 export const shouldShowDecisionHelpPrompt = () => {
-  if (!isBrowser()) return false;
+  return getDecisionHelpState().shouldShowPrompt;
+};
+
+export const getDecisionHelpState = () => {
+  if (!isBrowser()) {
+    return { shouldShowPrompt: false, recentViews: 0, uniqueProductIds: 0, maxProductViews: 0 };
+  }
+  if (isDecisionHelpPromptDismissed()) {
+    return { shouldShowPrompt: false, recentViews: 0, uniqueProductIds: 0, maxProductViews: 0 };
+  }
   const now = Date.now();
-  if (isDecisionHelpPromptDismissed()) return false;
 
   const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
     .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
-  const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
-  return recentViews.length >= 5 && uniqueProductIds.size >= 3;
+  const productViewCounts = recentViews.reduce<Record<number, number>>((counts, item) => {
+    counts[item.productId] = (counts[item.productId] || 0) + 1;
+    return counts;
+  }, {});
+  const uniqueProductIds = Object.keys(productViewCounts).length;
+  const maxProductViews = Math.max(0, ...Object.values(productViewCounts));
+  const shouldShowPrompt = recentViews.length >= HELP_MIN_RECENT_VIEWS
+    && (uniqueProductIds >= HELP_MIN_UNIQUE_PRODUCTS || maxProductViews >= HELP_MIN_REPEAT_PRODUCT_VIEWS);
+
+  return { shouldShowPrompt, recentViews: recentViews.length, uniqueProductIds, maxProductViews };
 };
 
 export const isDecisionHelpPromptDismissed = () => {

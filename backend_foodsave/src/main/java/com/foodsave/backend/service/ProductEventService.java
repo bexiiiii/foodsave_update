@@ -30,8 +30,9 @@ import java.util.Set;
 public class ProductEventService {
 
     private static final int MAX_METADATA_ENTRIES = 50;
-    private static final int DECISION_HELP_MIN_VIEWS = 5;
-    private static final int DECISION_HELP_MIN_UNIQUE_BOXES = 3;
+    private static final int DECISION_HELP_MIN_VIEWS = 4;
+    private static final int DECISION_HELP_MIN_UNIQUE_BOXES = 2;
+    private static final int DECISION_HELP_MIN_REPEAT_BOX_VIEWS = 4;
     private static final int DECISION_HELP_WINDOW_MINUTES = 15;
     private static final Set<String> SENSITIVE_KEYS = Set.of(
             "phone", "email", "name", "firstName", "lastName", "password", "token",
@@ -127,9 +128,19 @@ public class ProductEventService {
                 ProductEventType.BOX_VIEWED,
                 since
         );
+        long repeatedBoxViews = productEventRepository.countDecisionHelpBoxViews(
+                        currentUserId,
+                        normalizedSessionId,
+                        ProductEventType.BOX_VIEWED,
+                        since
+                ).stream()
+                .mapToLong(signal -> signal.getCount() != null ? signal.getCount() : 0)
+                .max()
+                .orElse(0);
 
         boolean showPrompt = recentViews >= DECISION_HELP_MIN_VIEWS
-                && uniqueBoxes >= DECISION_HELP_MIN_UNIQUE_BOXES;
+                && (uniqueBoxes >= DECISION_HELP_MIN_UNIQUE_BOXES
+                    || repeatedBoxViews >= DECISION_HELP_MIN_REPEAT_BOX_VIEWS);
         return new DecisionHelpResponse(showPrompt, recentViews, uniqueBoxes);
     }
 

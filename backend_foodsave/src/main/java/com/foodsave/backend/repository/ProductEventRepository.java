@@ -57,6 +57,16 @@ public interface ProductEventRepository extends JpaRepository<ProductEvent, Long
                                 @Param("eventType") ProductEventType eventType,
                                 @Param("since") LocalDateTime since);
 
+    @Query("SELECT e.boxId as productId, COUNT(e) as count FROM ProductEvent e " +
+            "WHERE e.eventType = :eventType AND e.occurredAt >= :since AND e.boxId IS NOT NULL " +
+            "AND ((:userId IS NOT NULL AND e.user.id = :userId) " +
+            "OR (:sessionId IS NOT NULL AND (e.sessionId = :sessionId OR e.anonymousSessionId = :sessionId))) " +
+            "GROUP BY e.boxId")
+    List<ProductSignalProjection> countDecisionHelpBoxViews(@Param("userId") Long userId,
+                                                            @Param("sessionId") String sessionId,
+                                                            @Param("eventType") ProductEventType eventType,
+                                                            @Param("since") LocalDateTime since);
+
     interface EventCountProjection {
         ProductEventType getEventType();
         Long getCount();

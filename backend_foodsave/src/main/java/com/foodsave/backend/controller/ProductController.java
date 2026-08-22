@@ -33,12 +33,6 @@ public class ProductController {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
     
-    @GetMapping("/{id}")
-    @Operation(summary = "Get product by ID")
-    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
-    }
-    
     @GetMapping("/store/{storeId}")
     @Operation(summary = "Get products by store ID with pagination")
     public ResponseEntity<Page<ProductDTO>> getProductsByStore(
@@ -157,5 +151,11 @@ public class ProductController {
             @PathVariable Long id,
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(productService.hasSufficientStock(id, quantity));
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get product by ID")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
     }
 }

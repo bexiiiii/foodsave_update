@@ -44,6 +44,11 @@ services:
       JAVA_OPTS: "-Xms512m -Xmx1024m -XX:+UseG1GC -Djava.net.preferIPv4Stack=true"
     volumes:
       - backend_uploads:/app/uploads
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     # Pin Telegram API to a known-reachable IPv4 — some other Telegram IPs
     # are unreachable from this network and Java RestTemplate randomly picks
     # one, causing connect timeouts on /sendMessage and /sendPhoto.
@@ -64,6 +69,11 @@ services:
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-https://foodsave.kz}
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
     networks:
       - foodsave-network
 
@@ -90,6 +100,11 @@ services:
       - foodsave-network
     depends_on:
       - backend
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
 networks:
   foodsave-network:
