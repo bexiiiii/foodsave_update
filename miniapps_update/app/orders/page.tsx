@@ -87,7 +87,7 @@ export default function OrdersPage() {
       setOrderPendingCancellation(null);
     } catch (error) {
       console.error("Failed to cancel order:", error);
-      setCancelError("Не удалось отменить заказ. Попробуйте еще раз.");
+      setCancelError(error instanceof Error && error.message ? error.message : "Не удалось отменить заказ. Попробуйте еще раз.");
     } finally {
       setIsCancellingOrderId(null);
     }

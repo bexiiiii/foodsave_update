@@ -9,6 +9,7 @@ import com.foodsave.backend.dto.OrderDTO;
 import com.foodsave.backend.dto.OrderItemDTO;
 import com.foodsave.backend.dto.OrderStatsDTO;
 import com.foodsave.backend.dto.StoreOrderStatsDTO;
+import com.foodsave.backend.domain.enums.ReservationCancellationReason;
 import com.foodsave.backend.entity.Order;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.User;
@@ -16,6 +17,7 @@ import com.foodsave.backend.entity.OrderItem;
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.repository.OrderRepository;
 import com.foodsave.backend.repository.ProductRepository;
+import com.foodsave.backend.exception.ApiException;
 import com.foodsave.backend.exception.InsufficientStockException;
 import com.foodsave.backend.exception.ResourceNotFoundException;
 import com.foodsave.backend.security.SecurityUtils;
@@ -29,6 +31,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -446,6 +449,52 @@ public class OrderService {
         realtimeEventService.publish(order.getUser().getId(), "order-status-changed", result);
         realtimeEventService.publish(order.getStore().getOwner().getId(), "order-status-changed", result);
         return result;
+    }
+
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "storeOrders", allEntries = true),
+            @CacheEvict(value = "products", allEntries = true),
+            @CacheEvict(value = "productsByStore", allEntries = true),
+            @CacheEvict(value = "featuredProducts", allEntries = true),
+            @CacheEvict(value = "discountedProducts", allEntries = true)
+    })
+    public OrderDTO cancelCurrentUserOrder(Long id, ReservationCancellationReason reason, String comment) {
+        Long currentUserId = securityUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new ApiException("Войдите в приложение, чтобы отменить заказ.", HttpStatus.UNAUTHORIZED);
+        }
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        if (order.getUser() == null || !currentUserId.equals(order.getUser().getId())) {
+            throw new ResourceNotFoundException("Order not found with id: " + id);
+        }
+        if (!canUserCancel(order.getStatus())) {
+            throw new ApiException("Этот заказ уже нельзя отменить.", HttpStatus.CONFLICT);
+        }
+
+        OrderStatus previous = order.getStatus();
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(
+                OrderStatus.CANCELLED,
+                ReservationActorType.USER,
+                reason,
+                comment
+        );
+        Order saved = reservationStatusService.changeStatus(order, request);
+        OrderDTO result = OrderDTO.fromEntity(saved);
+        telegramNotificationExecutor.execute(() -> telegramOrderNotificationService.notifyStatusChanged(saved, previous, saved.getStatus()));
+        realtimeEventService.publish(saved.getUser().getId(), "order-status-changed", result);
+        realtimeEventService.publish(saved.getStore().getOwner().getId(), "order-status-changed", result);
+        return result;
+    }
+
+    private boolean canUserCancel(OrderStatus status) {
+        return status == OrderStatus.CREATED
+                || status == OrderStatus.PENDING
+                || status == OrderStatus.CONFIRMED
+                || status == OrderStatus.PREPARING
+                || status == OrderStatus.READY_FOR_PICKUP;
     }
 
     // Статистика заказов для всех заведений (только для админов)

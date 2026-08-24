@@ -351,7 +351,17 @@ class ApiClient {
             console.warn('Authentication failed - clearing tokens');
             this.clearToken();
           }
-          throw new Error(`HTTP error! status: ${response.status}`);
+          let message = `HTTP error! status: ${response.status}`;
+          try {
+            const errorText = await response.text();
+            if (errorText) {
+              const errorBody = JSON.parse(errorText);
+              message = errorBody.message || errorBody.error || message;
+            }
+          } catch {
+            // Keep the status-based fallback when the server returns non-JSON.
+          }
+          throw new Error(message);
         }
 
         if (response.status === 204) {
@@ -777,11 +787,9 @@ class ApiClient {
       throw new Error('Authentication required');
     }
 
-    const response = await this.makeRequest<Order>(`/orders/${id}/status`, {
+    const response = await this.makeRequest<Order>(`/orders/${id}/cancel`, {
       method: 'PUT',
       body: JSON.stringify({
-        status: 'CANCELLED_BY_USER',
-        actorType: 'USER',
         cancellationReason,
         cancellationComment: cancellationComment?.trim() || undefined,
       }),

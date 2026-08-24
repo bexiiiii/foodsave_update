@@ -7,10 +7,13 @@ import com.foodsave.backend.domain.enums.ReservationCancellationReason;
 import com.foodsave.backend.dto.OrderStatusUpdateRequest;
 import com.foodsave.backend.dto.analytics.ProductEventRequest;
 import com.foodsave.backend.entity.Order;
+import com.foodsave.backend.entity.OrderItem;
 import com.foodsave.backend.entity.OrderStatusHistory;
+import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.entity.User;
 import com.foodsave.backend.repository.OrderRepository;
 import com.foodsave.backend.repository.OrderStatusHistoryRepository;
+import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.util.SecurityUtil;
 import jakarta.persistence.EntityNotFoundException;
@@ -26,6 +29,7 @@ public class ReservationStatusService {
 
     private final OrderStatusHistoryRepository historyRepository;
     private final OrderRepository orderRepository;
+    private final ProductRepository productRepository;
     private final UserRepository userRepository;
     private final SecurityUtil securityUtil;
     private final ProductEventService productEventService;
@@ -57,6 +61,7 @@ public class ReservationStatusService {
         if (isCancellation(next)) {
             order.setCancellationReason(request.cancellationReason());
             order.setCancellationComment(cleanComment(request.cancellationComment()));
+            restoreReservedStockIfNeeded(order, previous);
         }
 
         Order saved = orderRepository.save(order);
@@ -94,6 +99,24 @@ public class ReservationStatusService {
                 || status == OrderStatus.EXPIRED
                 || status == OrderStatus.NO_SHOW
                 || status == OrderStatus.REJECTED;
+    }
+
+    private void restoreReservedStockIfNeeded(Order order, OrderStatus previousStatus) {
+        if (isCancellation(previousStatus) || order.getItems() == null || order.getItems().isEmpty()) {
+            return;
+        }
+
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() == null || item.getProduct().getId() == null) {
+                continue;
+            }
+            int quantity = item.getQuantity() != null && item.getQuantity() > 0 ? item.getQuantity() : 1;
+            Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
+                    .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+            int currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
+            product.setStockQuantity(currentStock + quantity);
+            productRepository.save(product);
+        }
     }
 
     private void applyStatusTimestamp(Order order, OrderStatus status) {
@@ -140,7 +163,10 @@ public class ReservationStatusService {
             case CONFIRMED -> ProductEventType.RESERVATION_CONFIRMED;
             case REJECTED -> ProductEventType.RESERVATION_REJECTED;
             case CANCELLED_BY_USER -> ProductEventType.RESERVATION_CANCELLED_BY_USER;
-            case CANCELLED, CANCELLED_BY_PARTNER -> ProductEventType.RESERVATION_CANCELLED_BY_PARTNER;
+            case CANCELLED -> order.getStatusActorType() == ReservationActorType.USER
+                    ? ProductEventType.RESERVATION_CANCELLED_BY_USER
+                    : ProductEventType.RESERVATION_CANCELLED_BY_PARTNER;
+            case CANCELLED_BY_PARTNER -> ProductEventType.RESERVATION_CANCELLED_BY_PARTNER;
             case EXPIRED -> ProductEventType.RESERVATION_EXPIRED;
             case PICKED_UP -> ProductEventType.ORDER_PICKED_UP;
             case COMPLETED, DELIVERED -> ProductEventType.ORDER_COMPLETED;

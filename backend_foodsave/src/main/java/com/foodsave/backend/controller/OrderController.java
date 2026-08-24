@@ -2,15 +2,19 @@ package com.foodsave.backend.controller;
 
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.Permission;
+import com.foodsave.backend.domain.enums.ReservationCancellationReason;
+import com.foodsave.backend.exception.ApiException;
 import com.foodsave.backend.dto.OrderDTO;
 import com.foodsave.backend.dto.OrderStatsDTO;
 import com.foodsave.backend.dto.OrderStatusUpdateRequest;
 import com.foodsave.backend.dto.StoreOrderStatsDTO;
+import org.springframework.http.HttpStatus;
 import com.foodsave.backend.service.OrderService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/orders")
@@ -102,5 +106,25 @@ public class OrderController {
             return ResponseEntity.ok(orderService.updateOrderStatus(id, new OrderStatusUpdateRequest(status, actorType, reason, comment)));
         }
         throw new IllegalArgumentException("Unsupported status payload");
+    }
+
+    @PutMapping("/{id}/cancel")
+    public ResponseEntity<OrderDTO> cancelCurrentUserOrder(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> payload) {
+        ReservationCancellationReason reason = parseCancellationReason(payload != null ? payload.get("cancellationReason") : null);
+        String comment = payload != null && payload.get("cancellationComment") != null
+                ? String.valueOf(payload.get("cancellationComment"))
+                : null;
+        return ResponseEntity.ok(orderService.cancelCurrentUserOrder(id, reason, comment));
+    }
+
+    private ReservationCancellationReason parseCancellationReason(Object rawReason) {
+        if (rawReason == null || String.valueOf(rawReason).isBlank()) {
+            throw new ApiException("Выберите причину отмены.", HttpStatus.BAD_REQUEST);
+        }
+        try {
+            return ReservationCancellationReason.valueOf(String.valueOf(rawReason));
+        } catch (IllegalArgumentException ex) {
+            throw new ApiException("Некорректная причина отмены.", HttpStatus.BAD_REQUEST);
+        }
     }
 }
