@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -31,6 +30,12 @@ public class ProductController {
     @Operation(summary = "Get all products with pagination")
     public ResponseEntity<Page<ProductDTO>> getAllProducts(Pageable pageable) {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
+    }
+    
+    @GetMapping("/{id}")
+    @Operation(summary = "Get product by ID")
+    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.getProductById(id));
     }
     
     @GetMapping("/store/{storeId}")
@@ -49,20 +54,8 @@ public class ProductController {
     
     @GetMapping("/featured")
     @Operation(summary = "Get featured products with pagination")
-    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            Pageable pageable) {
-        return ResponseEntity.ok(productService.getFeaturedProducts(minPrice, maxPrice, pageable));
-    }
-
-    @GetMapping("/recommended")
-    @Operation(summary = "Get personalized recommended products with pagination")
-    public ResponseEntity<Page<ProductDTO>> getRecommendedProducts(
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            Pageable pageable) {
-        return ResponseEntity.ok(productService.getRecommendedProducts(minPrice, maxPrice, pageable));
+    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(Pageable pageable) {
+        return ResponseEntity.ok(productService.getFeaturedProducts(pageable));
     }
     
     @PostMapping
@@ -93,10 +86,8 @@ public class ProductController {
     @Operation(summary = "Search products with pagination")
     public ResponseEntity<Page<ProductDTO>> searchProducts(
             @RequestParam String query,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.searchProducts(query, minPrice, maxPrice, pageable));
+        return ResponseEntity.ok(productService.searchProducts(query, pageable));
     }
     
     @GetMapping("/category/{categoryId}")
@@ -114,6 +105,7 @@ public class ProductController {
     }
     
     @GetMapping("/low-stock")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get low stock products with pagination")
     public ResponseEntity<Page<ProductDTO>> getLowStockProducts(
             @RequestParam(defaultValue = "10") Integer threshold,
@@ -122,6 +114,7 @@ public class ProductController {
     }
     
     @GetMapping("/expiring")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get expiring products with pagination")
     public ResponseEntity<Page<ProductDTO>> getExpiringProducts(Pageable pageable) {
         return ResponseEntity.ok(productService.getExpiringProducts(pageable));
@@ -151,11 +144,5 @@ public class ProductController {
             @PathVariable Long id,
             @RequestParam Integer quantity) {
         return ResponseEntity.ok(productService.hasSufficientStock(id, quantity));
-    }
-
-    @GetMapping("/{id}")
-    @Operation(summary = "Get product by ID")
-    public ResponseEntity<ProductDTO> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
     }
 }

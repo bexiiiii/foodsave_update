@@ -10,6 +10,6 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 public class FavoriteListDTO {
-    private List<StoreDTO> stores;
+    private List<StorePublicDTO> stores;
     private List<ProductDTO> products;
 }

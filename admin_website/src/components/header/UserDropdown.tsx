@@ -32,9 +32,9 @@ export default function UserDropdown() {
     <div className="relative">
       <button
         onClick={toggleDropdown}
-        className="flex items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
+        className="flex min-w-0 items-center text-gray-700 dark:text-gray-400 dropdown-toggle"
       >
-        <span className="mr-3 overflow-hidden rounded-full h-11 w-11">
+        <span className="mr-2 shrink-0 overflow-hidden rounded-full h-10 w-10 sm:mr-3 sm:h-11 sm:w-11">
           <Image
             width={44}
             height={44}
@@ -43,7 +43,7 @@ export default function UserDropdown() {
           />
         </span>
 
-        <span className="block mr-1 font-medium text-theme-sm">
+        <span className="mr-1 hidden max-w-[130px] truncate font-medium text-theme-sm sm:block">
           {user ? `${user.firstName} ${user.lastName}` : 'Загрузка...'}
         </span>
 
@@ -69,7 +69,7 @@ export default function UserDropdown() {
       <Dropdown
         isOpen={isOpen}
         onClose={closeDropdown}
-        className="absolute right-0 mt-[17px] flex w-[260px] flex-col rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark"
+        className="fixed left-3 right-3 top-24 z-[100001] mt-0 flex max-h-[70vh] w-auto flex-col overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-dark sm:absolute sm:left-auto sm:right-0 sm:top-auto sm:mt-[17px] sm:w-[260px]"
       >
         <div>
           <span className="block font-medium text-gray-700 text-theme-sm dark:text-gray-400">
@@ -138,7 +138,7 @@ export default function UserDropdown() {
           <li>
             <DropdownItem
               onItemClick={handleLogout}
-              className="flex items-center gap-3 px-3 py-2 font-medium text-red-500 rounded-lg group text-theme-sm hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
+              className="flex min-h-11 items-center gap-3 px-3 py-2 font-medium text-red-500 rounded-lg group text-theme-sm hover:bg-red-50 hover:text-red-600 dark:text-red-400 dark:hover:bg-red-500/10 dark:hover:text-red-300"
             >
               <svg
                 className="fill-red-500 group-hover:fill-red-600 dark:fill-red-400 dark:group-hover:fill-red-300"

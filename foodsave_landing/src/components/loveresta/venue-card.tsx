@@ -1,4 +1,4 @@
-import { Heart, Star } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 
 import type { Venue } from '@/lib/loveresta-data';
@@ -10,8 +10,6 @@ const posterThemes = [
     glow:
       'radial-gradient(circle at top left, rgba(var(--loveresta-primary-rgb), 0.14), transparent 34%)',
     ink: 'var(--loveresta-primary-bg)',
-    chrome: 'rgba(var(--loveresta-bg-rgb), 0.12)',
-    mark: 'rgba(var(--loveresta-bg-rgb), 0.48)',
   },
   {
     background:
@@ -19,8 +17,6 @@ const posterThemes = [
     glow:
       'radial-gradient(circle at top center, rgba(var(--loveresta-bg-rgb), 0.1), transparent 34%)',
     ink: 'var(--loveresta-primary-bg)',
-    chrome: 'rgba(var(--loveresta-accent-rgb), 0.24)',
-    mark: 'rgba(var(--loveresta-bg-rgb), 0.44)',
   },
   {
     background:
@@ -28,8 +24,6 @@ const posterThemes = [
     glow:
       'radial-gradient(circle at center, rgba(var(--loveresta-primary-rgb), 0.12), transparent 42%)',
     ink: 'var(--loveresta-primary-bg)',
-    chrome: 'rgba(var(--loveresta-accent-rgb), 0.24)',
-    mark: 'rgba(var(--loveresta-bg-rgb), 0.48)',
   },
   {
     background:
@@ -37,8 +31,6 @@ const posterThemes = [
     glow:
       'radial-gradient(circle at center, rgba(var(--loveresta-bg-rgb), 0.34), transparent 40%)',
     ink: 'var(--loveresta-accent)',
-    chrome: 'rgba(var(--loveresta-bg-rgb), 0.34)',
-    mark: 'rgba(var(--loveresta-accent-rgb), 0.28)',
   },
 ] as const;
 
@@ -51,7 +43,6 @@ export function VenueCard({
 }) {
   const href = venue.kind === 'shop' ? `/shop/${venue.id}` : `/restaurant/${venue.id}`;
   const theme = posterThemes[index % posterThemes.length];
-  const wordmark = venue.posterWordmark ?? venue.name.toUpperCase();
   const initials = venue.name
     .split(' ')
     .slice(0, 2)
@@ -73,33 +64,20 @@ export function VenueCard({
           className="loveresta-venue-poster__glow"
           style={{ background: theme.glow }}
         />
-        <div className="loveresta-venue-poster__top">
-          <span className="loveresta-venue-poster__heart" aria-hidden="true">
-            <Heart
-              size={22}
-              strokeWidth={2}
-              style={{ backgroundColor: theme.chrome, color: 'var(--loveresta-primary)' }}
-            />
-          </span>
-        </div>
 
-        <div className="loveresta-venue-poster__center">
-          <div
-            className="loveresta-venue-poster__mark"
-            aria-hidden="true"
-            style={{ borderColor: theme.mark, color: theme.ink }}
-          >
-            <span>{initials}</span>
+        {venue.logo ? (
+          <Image
+            src={venue.logo}
+            alt={venue.name}
+            fill
+            sizes="(max-width: 640px) 100vw, (max-width: 900px) 286px, 340px"
+            className="loveresta-venue-poster__bg-logo"
+          />
+        ) : (
+          <div className="loveresta-venue-poster__initials" style={{ color: theme.ink }}>
+            {initials}
           </div>
-          <strong className="loveresta-venue-poster__brand">{wordmark}</strong>
-        </div>
-
-        <div className="loveresta-venue-poster__bottom">
-          <span className="loveresta-venue-poster__rating">
-            <Star size={18} fill="currentColor" strokeWidth={1.8} />
-            {venue.rating}
-          </span>
-        </div>
+        )}
       </article>
     </Link>
   );

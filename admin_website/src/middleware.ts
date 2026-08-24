@@ -5,6 +5,7 @@ import type { NextRequest } from 'next/server'
 const rolePermissions = {
   STORE_MANAGER: [
     '/analytics',
+    '/communications',
     '/orders', 
     '/products',
     '/profile',
@@ -14,6 +15,7 @@ const rolePermissions = {
   STORE_OWNER: [
     '/',
     '/analytics',
+    '/communications',
     '/orders',
     '/products',
     '/categories',
@@ -31,6 +33,7 @@ const rolePermissions = {
     // SUPER_ADMIN имеет доступ ко всем страницам
     '/',
     '/analytics',
+    '/communications',
     '/orders',
     '/products',
     '/categories',

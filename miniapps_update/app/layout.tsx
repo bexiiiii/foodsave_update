@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
+import { Suspense } from "react";
 import "./globals.css";
 import Script from "next/script";
 import { TelegramProvider } from "../contexts/TelegramProvider";
 import { ErrorBoundary } from "../components/ErrorBoundary";
+import RealtimeBridge from "../components/RealtimeBridge";
+import NavigationTracker from "../components/NavigationTracker";
+import StartParamRouter from "../components/StartParamRouter";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -53,6 +57,11 @@ export default function RootLayout({
       >
         <ErrorBoundary>
           <TelegramProvider>
+            <Suspense fallback={null}>
+              <NavigationTracker />
+              <StartParamRouter />
+            </Suspense>
+            <RealtimeBridge />
             {children}
           </TelegramProvider>
         </ErrorBoundary>

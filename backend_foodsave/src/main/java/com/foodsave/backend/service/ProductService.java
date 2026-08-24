@@ -4,19 +4,14 @@ import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.Category;
 import com.foodsave.backend.dto.ProductDTO;
-import com.foodsave.backend.domain.enums.FavoriteType;
-import com.foodsave.backend.domain.enums.OrderStatus;
-import com.foodsave.backend.domain.enums.ProductEventType;
 import com.foodsave.backend.exception.InsufficientStockException;
-import com.foodsave.backend.repository.FavoriteRepository;
-import com.foodsave.backend.repository.OrderRepository;
-import com.foodsave.backend.repository.ProductEventRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
 import com.foodsave.backend.repository.NotificationSettingsRepository;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.util.SecurityUtil;
+import com.foodsave.backend.security.AuthorizationService;
 import com.foodsave.backend.util.ProductAvailability;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -26,8 +21,6 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -38,10 +31,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -51,11 +41,8 @@ import java.util.stream.Collectors;
 public class ProductService {
 
     private final ProductRepository productRepository;
-    private final ProductEventRepository productEventRepository;
-    private final OrderRepository orderRepository;
     private final StoreRepository storeRepository;
     private final CategoryRepository categoryRepository;
-    private final FavoriteRepository favoriteRepository;
     private final SecurityUtil securityUtil;
     private final com.foodsave.backend.repository.UserRepository userRepository;
     private final TelegramBotService telegramBotService;
@@ -63,26 +50,22 @@ public class ProductService {
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final RealtimeEventService realtimeEventService;
     private final NotificationGroupService notificationGroupService;
+    private final AuthorizationService authorizationService;
 
     public ProductService(ProductRepository productRepository,
-                          ProductEventRepository productEventRepository,
-                          OrderRepository orderRepository,
                           StoreRepository storeRepository,
                           CategoryRepository categoryRepository,
-                          FavoriteRepository favoriteRepository,
                           SecurityUtil securityUtil,
                           com.foodsave.backend.repository.UserRepository userRepository,
                           TelegramBotService telegramBotService,
                           @Qualifier("telegramNotificationExecutor") TaskExecutor telegramNotificationExecutor,
                           NotificationSettingsRepository notificationSettingsRepository,
                           RealtimeEventService realtimeEventService,
-                          NotificationGroupService notificationGroupService) {
+                          NotificationGroupService notificationGroupService,
+                          AuthorizationService authorizationService) {
         this.productRepository = productRepository;
-        this.productEventRepository = productEventRepository;
-        this.orderRepository = orderRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
-        this.favoriteRepository = favoriteRepository;
         this.securityUtil = securityUtil;
         this.userRepository = userRepository;
         this.telegramBotService = telegramBotService;
@@ -90,6 +73,7 @@ public class ProductService {
         this.notificationSettingsRepository = notificationSettingsRepository;
         this.realtimeEventService = realtimeEventService;
         this.notificationGroupService = notificationGroupService;
+        this.authorizationService = authorizationService;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -177,13 +161,7 @@ public class ProductService {
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        ProductDTO dto = convertToDTO(product);
-
-        Long currentUserId = securityUtil.getCurrentUserId();
-        if (currentUserId != null) {
-            dto.setIsFavorite(favoriteRepository.existsByUserIdAndProductIdAndType(currentUserId, id, FavoriteType.PRODUCT));
-        }
-        return dto;
+        return convertToDTO(product);
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
@@ -211,23 +189,9 @@ public class ProductService {
         }
         
         // For regular users, only show AVAILABLE products (exclude OUT_OF_STOCK)
-        Page<ProductDTO> products = productRepository.findActiveAvailableByStoreId(
+        return productRepository.findActiveAvailableByStoreId(
                         storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
-        return withFavoritesFirst(products, pageable);
-    }
-
-    private Page<ProductDTO> withFavoritesFirst(Page<ProductDTO> page, Pageable pageable) {
-        Long currentUserId = securityUtil.getCurrentUserId();
-        if (currentUserId == null) {
-            return page;
-        }
-        Set<Long> favoriteProductIds = favoriteRepository.findFavoriteProductIds(currentUserId);
-        List<ProductDTO> sorted = page.getContent().stream()
-                .peek(dto -> dto.setIsFavorite(favoriteProductIds.contains(dto.getId())))
-                .sorted(Comparator.comparing(ProductDTO::getIsFavorite).reversed())
-                .toList();
-        return new PageImpl<>(sorted, pageable, page.getTotalElements());
     }
 
     @Cacheable(value = "categories", key = "'ALL'")
@@ -239,159 +203,10 @@ public class ProductService {
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getFeaturedProducts(Pageable pageable) {
-        return getFeaturedProducts(null, null, pageable);
-    }
-
-    public Page<ProductDTO> getFeaturedProducts(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
-        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
-        Page<ProductDTO> products = productRepository.findAllActiveAvailableProducts(
-                        ProductAvailability.visibilityCutoff(),
-                        ProductAvailability.currentTimeText(),
-                        priceRange.min(),
-                        priceRange.max(),
-                        pageable)
+        return productRepository.findAllActiveAvailableProducts(
+                        ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
-        return withFavoritesFirst(products, pageable);
-    }
-
-    public Page<ProductDTO> getRecommendedProducts(BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
-        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
-        int requestedSize = pageable.isPaged() ? pageable.getPageSize() : 100;
-        int offset = pageable.isPaged() ? (int) Math.min(pageable.getOffset(), 500) : 0;
-        int fetchSize = Math.min(Math.max(offset + requestedSize + 100, requestedSize), 500);
-
-        Page<Product> availableProducts = productRepository.findAllActiveAvailableProducts(
-                ProductAvailability.visibilityCutoff(),
-                ProductAvailability.currentTimeText(),
-                priceRange.min(),
-                priceRange.max(),
-                PageRequest.of(0, Math.max(fetchSize, 1))
-        );
-
-        Long currentUserId = securityUtil.getCurrentUserId();
-        RecommendationSignals signals = currentUserId != null
-                ? loadRecommendationSignals(currentUserId)
-                : RecommendationSignals.empty();
-
-        List<ProductDTO> sorted = availableProducts.getContent().stream()
-                .map(product -> new ScoredProduct(product, recommendationScore(product, signals)))
-                .sorted(Comparator
-                        .comparingDouble(ScoredProduct::score).reversed()
-                        .thenComparing(scored -> scored.product().getSortOrder() != null ? scored.product().getSortOrder() : 0)
-                        .thenComparing(scored -> scored.product().getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder())))
-                .skip(offset)
-                .limit(requestedSize)
-                .map(scored -> {
-                    ProductDTO dto = convertToDTO(scored.product());
-                    dto.setIsFavorite(signals.favoriteProductIds().contains(dto.getId()));
-                    return dto;
-                })
-                .toList();
-
-        return new PageImpl<>(sorted, pageable, availableProducts.getTotalElements());
-    }
-
-    private RecommendationSignals loadRecommendationSignals(Long userId) {
-        Set<Long> favoriteProductIds = favoriteRepository.findFavoriteProductIds(userId);
-        Set<Long> favoriteStoreIds = favoriteRepository.findFavoriteStoreIds(userId);
-
-        Map<Long, Double> productScores = new HashMap<>();
-        Map<Long, Double> storeScores = new HashMap<>();
-        Map<Long, Double> categoryScores = new HashMap<>();
-
-        Set<OrderStatus> excludedStatuses = Set.of(
-                OrderStatus.CANCELLED,
-                OrderStatus.CANCELLED_BY_USER,
-                OrderStatus.CANCELLED_BY_PARTNER,
-                OrderStatus.EXPIRED,
-                OrderStatus.NO_SHOW,
-                OrderStatus.REJECTED,
-                OrderStatus.REFUNDED
-        );
-        orderRepository.findUserOrderAffinities(userId, excludedStatuses).forEach(affinity -> {
-            double quantity = affinity.getQuantity() != null ? affinity.getQuantity() : 1.0;
-            addScore(productScores, affinity.getProductId(), 90.0 * quantity);
-            addScore(storeScores, affinity.getStoreId(), 35.0 * quantity);
-            addScore(categoryScores, affinity.getCategoryId(), 20.0 * quantity);
-        });
-
-        java.time.LocalDateTime since = java.time.LocalDateTime.now().minusDays(45);
-        productEventRepository.countProductSignals(
-                userId,
-                Set.of(ProductEventType.BOX_VIEWED),
-                since
-        ).forEach(signal -> addScore(productScores, signal.getProductId(), 8.0 * signal.getCount()));
-        productEventRepository.countProductSignals(
-                userId,
-                Set.of(ProductEventType.RESERVATION_BUTTON_CLICKED, ProductEventType.RESERVATION_STARTED, ProductEventType.RESERVATION_CREATED),
-                since
-        ).forEach(signal -> addScore(productScores, signal.getProductId(), 35.0 * signal.getCount()));
-        productEventRepository.countStoreSignals(
-                userId,
-                Set.of(ProductEventType.BOX_VIEWED, ProductEventType.PARTNER_VIEWED, ProductEventType.BRANCH_VIEWED),
-                since
-        ).forEach(signal -> addScore(storeScores, signal.getStoreId(), 4.0 * signal.getCount()));
-
-        favoriteProductIds.forEach(productId -> addScore(productScores, productId, 140.0));
-        favoriteStoreIds.forEach(storeId -> addScore(storeScores, storeId, 70.0));
-
-        return new RecommendationSignals(productScores, storeScores, categoryScores, favoriteProductIds, favoriteStoreIds);
-    }
-
-    private double recommendationScore(Product product, RecommendationSignals signals) {
-        double score = 0.0;
-        score += signals.productScores().getOrDefault(product.getId(), 0.0);
-        score += product.getStore() != null
-                ? signals.storeScores().getOrDefault(product.getStore().getId(), 0.0)
-                : 0.0;
-        score += product.getCategory() != null
-                ? signals.categoryScores().getOrDefault(product.getCategory().getId(), 0.0)
-                : 0.0;
-        score += discountScore(product);
-        score += ProductAvailability.minutesUntilClose(product.getStore()) != null ? 12.0 : 0.0;
-        score -= product.getSortOrder() != null ? product.getSortOrder() * 0.05 : 0.0;
-        return score;
-    }
-
-    private double discountScore(Product product) {
-        if (product.getDiscountPercentage() != null && product.getDiscountPercentage() > 0) {
-            return Math.min(product.getDiscountPercentage(), 60.0);
-        }
-        BigDecimal originalPrice = product.getOriginalPrice();
-        BigDecimal price = product.getPrice();
-        if (originalPrice == null || price == null || originalPrice.compareTo(BigDecimal.ZERO) <= 0) {
-            return 0.0;
-        }
-        if (price.compareTo(originalPrice) >= 0) {
-            return 0.0;
-        }
-        return Math.min(
-                originalPrice.subtract(price)
-                        .multiply(BigDecimal.valueOf(100))
-                        .divide(originalPrice, 2, java.math.RoundingMode.HALF_UP)
-                        .doubleValue(),
-                60.0
-        );
-    }
-
-    private void addScore(Map<Long, Double> scores, Long id, double score) {
-        if (id == null || score <= 0) return;
-        scores.merge(id, score, Double::sum);
-    }
-
-    private record ScoredProduct(Product product, double score) {}
-
-    private record RecommendationSignals(
-            Map<Long, Double> productScores,
-            Map<Long, Double> storeScores,
-            Map<Long, Double> categoryScores,
-            Set<Long> favoriteProductIds,
-            Set<Long> favoriteStoreIds
-    ) {
-        static RecommendationSignals empty() {
-            return new RecommendationSignals(Map.of(), Map.of(), Map.of(), Set.of(), Set.of());
-        }
     }
 
     @Caching(evict = {
@@ -404,6 +219,7 @@ public class ProductService {
     public ProductDTO createProduct(ProductDTO productDTO) {
         Store store = storeRepository.findById(productDTO.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+        authorizationService.requireCanManageStore(store.getId());
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
 
@@ -558,6 +374,7 @@ public class ProductService {
     public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        authorizationService.requireCanManageStore(product.getStore().getId());
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
         
@@ -573,40 +390,18 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public void deleteProduct(Long id) {
-        productRepository.deleteById(id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        authorizationService.requireCanManageStore(product.getStore().getId());
+        productRepository.delete(product);
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> searchProducts(String query, Pageable pageable) {
-        return searchProducts(query, null, null, pageable);
-    }
-
-    public Page<ProductDTO> searchProducts(String query, BigDecimal minPrice, BigDecimal maxPrice, Pageable pageable) {
-        PriceRange priceRange = normalizePriceRange(minPrice, maxPrice);
         return productRepository.searchProducts(
-                        query,
-                        ProductAvailability.visibilityCutoff(),
-                        ProductAvailability.currentTimeText(),
-                        priceRange.min(),
-                        priceRange.max(),
-                        pageable)
+                        query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
     }
-
-    private PriceRange normalizePriceRange(BigDecimal minPrice, BigDecimal maxPrice) {
-        if (minPrice != null && minPrice.signum() < 0) {
-            minPrice = BigDecimal.ZERO;
-        }
-        if (maxPrice != null && maxPrice.signum() < 0) {
-            maxPrice = BigDecimal.ZERO;
-        }
-        if (minPrice != null && maxPrice != null && minPrice.compareTo(maxPrice) > 0) {
-            return new PriceRange(maxPrice, minPrice);
-        }
-        return new PriceRange(minPrice, maxPrice);
-    }
-
-    private record PriceRange(BigDecimal min, BigDecimal max) {}
 
     // Note: Page objects don't cache well with Redis due to serialization issues
     public Page<ProductDTO> getProductsByCategory(Long categoryId, Pageable pageable) {
@@ -642,6 +437,7 @@ public class ProductService {
     public ProductDTO updateProductStatus(Long id, ProductStatus status) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        authorizationService.requireCanManageStore(product.getStore().getId());
         product.setStatus(status);
         return convertToDTO(productRepository.save(product));
     }
@@ -658,6 +454,7 @@ public class ProductService {
     public ProductDTO updateStockQuantity(Long productId, Integer newQuantity) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        authorizationService.requireCanManageStore(product.getStore().getId());
         
         if (newQuantity < 0) {
             throw new IllegalArgumentException("Stock quantity cannot be negative");
@@ -678,6 +475,7 @@ public class ProductService {
                                           BigDecimal discountedPrice) {
         Product product = productRepository.findById(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        authorizationService.requireCanManageStore(product.getStore().getId());
 
         if (discountedPrice == null || discountedPrice.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Цена со скидкой должна быть больше нуля");
@@ -767,7 +565,6 @@ public class ProductService {
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
         boolean isAvailable = ProductAvailability.isAvailable(product);
-        Integer minutesUntilClose = ProductAvailability.minutesUntilClose(product.getStore());
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -795,9 +592,6 @@ public class ProductService {
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
-                .isFavorite(false)
-                .closingSoon(minutesUntilClose != null)
-                .closingSoonMinutes(minutesUntilClose)
                 .build();
     }
 

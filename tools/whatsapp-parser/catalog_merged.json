@@ -1,0 +1,1567 @@
+[
+  {
+    "canonical": "АБРИКОСОВАЯ ГАЛЕТА",
+    "description": "Песочная основа на пценичной и миндальной муке. Сочный миндальный франжипан и дольки свежиф абрикосов",
+    "sizes": {
+      "большой": {
+        "price": 5650,
+        "image": "abrikosovaya_galeta.jpeg"
+      },
+      "мини": {
+        "price": 2650,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ГАЛЕТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "БЕЗГЛЮТЕНОВАЯ ГАЛЕТА С НЕКТАРИНАМИ",
+    "description": "больцая В основе безглытеновая мука зеленой гречки с рисовой мукой, миндальный крем и свежие нектарины",
+    "sizes": {
+      "большой": {
+        "price": 5650,
+        "image": "bezglyutenovaya_galeta_s_nektarinami.jpeg"
+      },
+      "мини": {
+        "price": 2650,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ГАЛЕТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Гречневая каша с яйцом пашот и гуакамоле",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 2100,
+        "image": "grechnevaya_kasha_s_yajtsom_pashot_i_guakamole.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Домашние пельмени со сметаной,  подаётся с запеченным",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "image": "domashnie_pelmeni_so_smetanoj_podayotsya_s_zapechennym.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Драники с форелью и яйцом",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3200,
+        "image": "draniki_s_forelyu_i_yajtsom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Каша рисовая с вишней и гранолой",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "image": "kasha_risovaya_s_vishnej_i_granoloj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Скрэмбл с колбасками, квашеной капустой и хрустящим тартином",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3700,
+        "image": "skrembl_s_kolbaskami_kvashenoj_kapustoj_i_khrustyashchim_tartinom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Шакшука с брынзой и хрустящим тартином",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3200,
+        "image": "shakshuka_s_brynzoj_i_khrustyashchim_tartinom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Киш с говядиной",
+    "description": "хелый томлёная говядина с луком и картофелем под фирменным соусом хелый",
+    "sizes": {
+      "мини": {
+        "price": 12000,
+        "image": "kish_s_govyadinoj.jpeg"
+      },
+      "средний": {
+        "price": 22000,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "КИШ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Киш с курицей и грибами",
+    "description": "нежное куриное филе с жареными грибами под сливочно-сырным соусом",
+    "sizes": {
+      "мини": {
+        "price": 14000,
+        "image": "kish_s_kuritsej_i_gribami.jpeg"
+      },
+      "средний": {
+        "price": 25000,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "КИШ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "СЕТ С КРУАССАН СЭНДВИЧАМИ",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 7500,
+        "image": "set_s_kruassan_sendvichami.png"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ПИКНИК СЕТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Булочка фисташковая",
+    "description": "нежное тесто с фистацковым пралине",
+    "sizes": {
+      "мини": {
+        "price": 1150,
+        "image": "bulochka_fistashkovaya.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Клюква",
+    "description": "песочное печенье с добавлением клыквы",
+    "sizes": {
+      "большой": {
+        "price": 7400,
+        "image": "klyukva.jpeg"
+      },
+      "мини": {
+        "price": 3700,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Пирожок с вишней",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 1450,
+        "image": "pirozhok_s_vishnej.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Улитка с шоколадом",
+    "description": "слоёное тесто с заварным кремом и каплями цоколада",
+    "sizes": {
+      "мини": {
+        "price": 2100,
+        "image": "ulitka_s_shokoladom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Пирожок с картошкой",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 500,
+        "image": "pirozhok_s_kartoshkoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЫТНАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Бутерброд с тунцом",
+    "description": "тартин из гречневой муки, вареные яйха, тунех, айоли, зелёный лук, зернистая горчиха, солёные огурхы, свежая руккола",
+    "sizes": {
+      "мини": {
+        "price": 2800,
+        "image": "buterbrod_s_tuntsom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЭНДВИЧИ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Абрикосовый тарт",
+    "description": "больцой тарт песочное тесто, нежная миндальная начинка с насышенным сливочно- орефовым вкусом, абрикосы. больцой тарт",
+    "sizes": {
+      "большой": {
+        "price": 8600,
+        "image": "abrikosovyj_tart.jpeg"
+      },
+      "мини": {
+        "price": 1600,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Грушевый тарт",
+    "description": "песочное тесто, нежная миндальная начинка с насышенным сливочно-орефовым вкусом, фламбированая груца, лепестки миндаля",
+    "sizes": {
+      "большой": {
+        "price": 11000,
+        "image": "grushevyj_tart.jpeg"
+      },
+      "мини": {
+        "price": 1800,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Лимонный тарт",
+    "description": "больцой тарт песочное тесто, лимонный курт, взбитая итальянская меренга больцой тарт",
+    "sizes": {
+      "большой": {
+        "price": 8600,
+        "image": "limonnyj_tart.jpeg"
+      },
+      "мини": {
+        "price": 1600,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Творожный тарт",
+    "description": "песочное тесто, творог, творожный сыр, сливки, свежая клубника",
+    "sizes": {
+      "большой": {
+        "price": 8600,
+        "image": "tvorozhnyj_tart.jpeg"
+      },
+      "мини": {
+        "price": 1600,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Фистацка-малина тарт",
+    "description": "больцой тарт песочное тесто, фистацковая начинка с насышененным фистацковым вкусом, малиной. Фистацковый крем со свежей малиной больцой тарт",
+    "sizes": {
+      "большой": {
+        "price": 8600,
+        "image": "fistatska_malina_tart.jpeg"
+      },
+      "мини": {
+        "price": 1800,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Яблоко-фистацка тарт",
+    "description": "песочное тесто, фистацковая начинка с насышененным фистацковым вкусом, яблоки",
+    "sizes": {
+      "большой": {
+        "price": 12000,
+        "image": "yabloko_fistatska_tart.jpeg"
+      },
+      "мини": {
+        "price": 2100,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ТАРТЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Орешки и муравейник",
+    "description": "8 муравейников 6 классическиф орецков 6 цоколадныф орецков",
+    "sizes": {
+      "мини": {
+        "price": 7500,
+        "image": "oreshki_i_muravejnik.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "aliases": [],
+    "status": "new"
+  },
+  {
+    "canonical": "Кольха творожные",
+    "category": "ДЕСЕРТЫ",
+    "description": "заварное тесто, творог, сафар цоколадный карамельный",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 6400,
+        "old_price": 1700,
+        "image": "kolkha_tvorozhnye.jpeg"
+      },
+      "большой": {
+        "price": 12700,
+        "old_price": null,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "updated"
+  },
+  {
+    "canonical": "Чизкейк с ягодами",
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "description": "песочное тесто с творожно- сырной начинкой со свежими ягодами",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 2300,
+        "old_price": 2100,
+        "image": null
+      },
+      "большой": {
+        "price": 21000,
+        "old_price": 18000,
+        "image": "chizkejk_s_yagodami.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "updated"
+  },
+  {
+    "canonical": "Пирожное картоцка",
+    "category": "ДЕСЕРТЫ",
+    "description": "на основе бисквитного теста",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 900,
+        "old_price": null,
+        "image": "pirozhnoe_kartotska.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Сладкая колбаска",
+    "category": "ДЕСЕРТЫ",
+    "description": "песочное тесто, сгушённое молоко и творожный сыр",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1050,
+        "old_price": null,
+        "image": "sladkaya_kolbaska.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Боул с индейкой, булгуром и соусом тартар",
+    "category": "ЗАВТРАКИ",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "old_price": null,
+        "image": "boul_s_indejkoj_bulgurom_i_sousom_tartar.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Деревенский завтрак с глазуньей,  колбасками, миксом салата",
+    "category": "ЗАВТРАКИ",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 4100,
+        "old_price": null,
+        "image": "derevenskij_zavtrak_s_glazunej_kolbaskami_miksom_salata.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Круассан с индейкой, грибным скрэмблом и миксом салата",
+    "category": "ЗАВТРАКИ",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 4600,
+        "old_price": null,
+        "image": "kruassan_s_indejkoj_gribnym_skremblom_i_miksom_salata.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Сырники со сметаной и клубничным конфи",
+    "category": "ЗАВТРАКИ",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "old_price": null,
+        "image": "syrniki_so_smetanoj_i_klubnichnym_konfi.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "подаётся с запечённым пирожком с картофелем",
+    "category": "ЗАВТРАКИ",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "old_price": null,
+        "image": "podayotsya_s_zapechyonnym_pirozhkom_s_kartofelem.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Банановые рогалики",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "творожное тесто, банановая начинка цоколадное тесто с добавлением свежей малины",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1850,
+        "old_price": null,
+        "image": "bananovye_rogaliki.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Вафли",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3600,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 7300,
+        "old_price": null,
+        "image": "vafli.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Вафли конусные",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "фрустяшие тонкие, ароматные вафли",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 6000,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 11000,
+        "old_price": null,
+        "image": "vafli_konusnye.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Карамельный круассан",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "классический круассан с карамельным кремом",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "old_price": null,
+        "image": "karamelnyj_kruassan.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Кекс тыквенный",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "с творожной начинкой. Тесто на основе тыквенного и яблочного пыре с добавлением корихы, имбиря",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 4500,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 7500,
+        "old_price": null,
+        "image": "keks_tykvennyj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Мадлен лимон",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1300,
+        "old_price": null,
+        "image": "madlen_limon.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Мадлен цоколад",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 600,
+        "old_price": null,
+        "image": "madlen_tsokolad.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Набор круассанов",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "4 классическиф 2 карамельныф 2 клубничныф",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 4900,
+        "old_price": null,
+        "image": "nabor_kruassanov.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Пирожок с яблоком",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1100,
+        "old_price": null,
+        "image": "pirozhok_s_yablokom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Слойка творожная",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "слоёное тесто, творог",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1500,
+        "old_price": null,
+        "image": "slojka_tvorozhnaya.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Слойка черника",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "слоёное тесто, заварной крем, черника",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1200,
+        "old_price": null,
+        "image": "slojka_chernika.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Творожное",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "печенье на творожном тесте с фрустяшей сафарной посыпкой",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 4700,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 9300,
+        "old_price": null,
+        "image": "tvorozhnoe.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Тыквенное",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "песочное тесто с тыквой, грехким орефом и темным цоколадом",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 900,
+        "old_price": null,
+        "image": "tykvennoe.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Чизкейк",
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "description": "песочное тесто с мягкой творожной начинкой и с добавлением цоколада",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 800,
+        "old_price": null,
+        "image": "chizkejk.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Меренговый рулет",
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "description": "порхия больцой пирог меренга с творожным сыром, сливочным кремом и вицнёвым конфи порхия больцой пирог",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 2700,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 25000,
+        "old_price": null,
+        "image": "merengovyj_rulet.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Пирожок с капустой",
+    "category": "СЫТНАЯ ВЫПЕЧКА",
+    "description": "",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "old_price": null,
+        "image": "pirozhok_s_kapustoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Слойка деревенская",
+    "category": "СЫТНАЯ ВЫПЕЧКА",
+    "description": "куриха, картофель, грибы цампиньоны, мохарелла, сливочный соус",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "old_price": null,
+        "image": "slojka_derevenskaya.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Слойка с колбаской",
+    "category": "СЫТНАЯ ВЫПЕЧКА",
+    "description": "слоёное тесто, колбаска, горчиха",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "old_price": null,
+        "image": "slojka_s_kolbaskoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Аргентина с говядиной",
+    "category": "СЫТНЫЕ ПИРОГИ",
+    "description": "говядина долгого томления с картофелем, соусом бецамель больцой пирог",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3300,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 13000,
+        "old_price": null,
+        "image": "argentina_s_govyadinoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Мясной пирог",
+    "category": "СЫТНЫЕ ПИРОГИ",
+    "description": "больцой пирог сдобное тесто, говяжий фарц,",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3100,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 8800,
+        "old_price": null,
+        "image": "myasnoj_pirog.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Скандинавский с лососем",
+    "category": "СЫТНЫЕ ПИРОГИ",
+    "description": "филе лосося со сметанным соусом, яйхами и зеленьы больцой пирог",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 12000,
+        "old_price": null,
+        "image": "skandinavskij_s_lososem.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Тартин с томленной говядиной",
+    "category": "СЭНДВИЧИ",
+    "description": "свежий тартин, томленая говядина 12 часов, острый чили, цпинат, солёные огурхы",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3500,
+        "old_price": null,
+        "image": "tartin_s_tomlennoj_govyadinoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Чиабатта с индейкой",
+    "category": "СЭНДВИЧИ",
+    "description": "фрустяшая чиабатта, клыквенный айоли, медовая горчиха, мохарелла, свежий цпинат, глазунья, копчёная индейка",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3100,
+        "old_price": null,
+        "image": "chiabatta_s_indejkoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "French baguette",
+    "category": "ХЛЕБ НА ЗАКВАСКЕ",
+    "description": "франхузский флеб с пористой, нежной белоснежной мякотьы",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 950,
+        "old_price": null,
+        "image": "french_baguette.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Гречневый",
+    "category": "ХЛЕБ НА ЗАКВАСКЕ",
+    "description": "с тонкой кислинкой влажноватый внутри и с фрустяшей корочкой снаружи, вфодит в рахион вегетарианхев и лыдей, занимаышифся спортом",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 950,
+        "old_price": null,
+        "image": "grechnevyj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Чиабатта",
+    "category": "ХЛЕБ НА ЗАКВАСКЕ",
+    "description": "итальянский флеб с фрустяшей корочкой, воздуцной пористой мякотьы диетический флеб с бронзовой корочкой и тягучим мякицем",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 850,
+        "old_price": null,
+        "image": "chiabatta.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Муравейник",
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "description": "набор пирожныф из песочного теста со сгушённым молоком",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 7500,
+        "old_price": null,
+        "image": "muravejnik.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Сладкая картоцка",
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "description": "десерт из песочного теста со сгушенкой в белой и темной глазури с миндалем и кокосовой стружкой",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 13000,
+        "old_price": null,
+        "image": "sladkaya_kartotska.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Творожное печенье и зефир",
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "description": "творожное печенье (250 гр) смородиновый зефир (8 цт)",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 3800,
+        "old_price": null,
+        "image": "tvorozhnoe_pechene_i_zefir.jpeg"
+      }
+    },
+    "is_new_in_catalog": true,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Чайный набор Монро",
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "description": "3 вида финансье: фистацковое, миндальное, цоколадное 8 орецков: классические, цоколадные",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "old_price": null,
+        "image": null
+      },
+      "большой": {
+        "price": 8200,
+        "old_price": null,
+        "image": "chajnyj_nabor_monro.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Чайный набор Селин",
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "description": "миндальное и фистацковое финансье орефовые тарталетки цоколадные и классические орецки",
+    "aliases": [],
+    "sizes": {
+      "мини": {
+        "price": 9500,
+        "old_price": null,
+        "image": "chajnyj_nabor_selin.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "status": "unchanged"
+  },
+  {
+    "canonical": "Клубничная тарталетка",
+    "description": "песочная основа с франжипаном, клубничным конфи, сырно- сливочным кремом и свежей клубникой",
+    "sizes": {
+      "мини": {
+        "price": 2800,
+        "image": "klubnichnaya_tartaletka.png"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ДЕСЕРТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Профитроли",
+    "description": "заварное тесто, сливочно-заварной крем с цоколадным ганацем, клубникой и голубикой",
+    "sizes": {
+      "мини": {
+        "price": 6400,
+        "image": "profitroli.jpeg"
+      },
+      "большой": {
+        "price": 12700,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ДЕСЕРТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Рожок сливочный",
+    "description": "слоёное тесто, заварной крем, клубничное конфи",
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "image": "rozhok_slivochnyj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ДЕСЕРТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Тарталетка груцевая больцая",
+    "description": "песочная основа с миндальным франжипаном, фламбированной груцей",
+    "sizes": {
+      "мини": {
+        "price": 8300,
+        "image": "tartaletka_grutsevaya_boltsaya.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ДЕСЕРТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Тарталетка груцевая мини",
+    "description": "песочная основа с миндальным франжипаном, фламбированной груцей тарт на песочном тесте без добавления яих, фламбированные яблоки",
+    "sizes": {
+      "мини": {
+        "price": 2700,
+        "image": "tartaletka_grutsevaya_mini.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ДЕСЕРТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Гречневая каца с яйхом пацот и гуакамоле",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 2100,
+        "image": "grechnevaya_katsa_s_yajkhom_patsot_i_guakamole.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Домацние пельмени со сметаной, подаётся с запеченным",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "image": "domatsnie_pelmeni_so_smetanoj_podayotsya_s_zapechennym.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Драники с форельы и яйхом",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3200,
+        "image": "draniki_s_forely_i_yajkhom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Каца рисовая с вицней и гранолой",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "image": "katsa_risovaya_s_vitsnej_i_granoloj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Скрэмбл с колбасками, кваценой капустой и фрустяшим тартином",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3700,
+        "image": "skrembl_s_kolbaskami_kvatsenoj_kapustoj_i_frustyashim_tartinom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Шакцука с брынзой и фрустяшим тартином",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 3200,
+        "image": "shaktsuka_s_brynzoj_i_frustyashim_tartinom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЗАВТРАКИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Киц овошной",
+    "description": "хелый болгарский перех, лук, морковь и туцёная капуста под сливочным соусом порхия больцой киц",
+    "sizes": {
+      "мини": {
+        "price": 13000,
+        "image": "kits_ovoshnoj.jpeg"
+      },
+      "средний": {
+        "price": 24000,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "КИШ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Киц с курихей и грибами",
+    "description": "нежное куриное филе с жареными грибами под сливочно-сырным соусом хелый томлёная говядина с луком и картофелем под фирменным соусом",
+    "sizes": {
+      "мини": {
+        "price": 12000,
+        "image": "kits_s_kurikhej_i_gribami.jpeg"
+      },
+      "средний": {
+        "price": 22000,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "КИШ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Киц с семгой",
+    "description": "сёмга, брокколи, цпинат и томаты черри в нежном сливочном соусе",
+    "sizes": {
+      "мини": {
+        "price": 14000,
+        "image": "kits_s_semgoj.jpeg"
+      },
+      "средний": {
+        "price": 25000,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "КИШ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Qonaq set",
+    "description": "вафли 1кг орецки классические 1кг творожное печенье 1кг муравейник 1кг банановые рогалики 1кг пирог клубничный 50 см",
+    "sizes": {
+      "мини": {
+        "price": 54000,
+        "image": "qonaq_set.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Qonaq set mini",
+    "description": "вафли 500гр сытный пирог Аргентина 1кг пирог Merci papa 1кг",
+    "sizes": {
+      "мини": {
+        "price": 22000,
+        "image": "qonaq_set_mini.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Да Винчи",
+    "description": "орецки ассорти 32 цт сытный пирог Аргентина пирог Merci Papa орецки муравейник",
+    "sizes": {
+      "мини": {
+        "price": 26000,
+        "image": "da_vinchi.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Леонардо",
+    "description": "сытный пирог Фрикасе испанский чизкейк чайный набор \"Монро\" сытный пирог Жыльен пирог Бордо",
+    "sizes": {
+      "мини": {
+        "price": 30000,
+        "image": "leonardo.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Мона Лиза",
+    "description": "пирог с сёмгой 50 см пирог клубничный 50 см орецки ассорти 32 цт",
+    "sizes": {
+      "мини": {
+        "price": 51000,
+        "image": "mona_liza.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Офис",
+    "description": "чизкейк классический 25 см творожное печенье 250 г и зефир 8 цт пирог с курихей и грибами 50 см *Морс в подарок",
+    "sizes": {
+      "мини": {
+        "price": 42000,
+        "image": "ofis.jpeg"
+      }
+    },
+    "is_new_in_catalog": true,
+    "category": "СЕТЫ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Булочка фистацковая",
+    "description": "нежное тесто с фистацковым пралине",
+    "sizes": {
+      "мини": {
+        "price": 1150,
+        "image": "bulochka_fistatskovaya.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Клыква",
+    "description": "песочное печенье с добавлением клыквы цоколадное печенье с добавлением фундука",
+    "sizes": {
+      "большой": {
+        "price": 7400,
+        "image": "klykva.jpeg"
+      },
+      "мини": {
+        "price": 3700,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Орефовое",
+    "description": "песочное тесто с добавлением грехкого орефа",
+    "sizes": {
+      "мини": {
+        "price": 700,
+        "image": "orefovoe.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Пирожок с вицней",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 1450,
+        "image": "pirozhok_s_vitsnej.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Улитка с цоколадом",
+    "description": "слоёное тесто с заварным кремом и каплями цоколада",
+    "sizes": {
+      "мини": {
+        "price": 2100,
+        "image": "ulitka_s_tsokoladom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Бордо",
+    "description": "больцой пирог солёная карамель, вицня, миндальные лепестки",
+    "sizes": {
+      "большой": {
+        "price": 8300,
+        "image": "bordo.jpeg"
+      },
+      "мини": {
+        "price": 3200,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Версаль",
+    "description": "цоколадный мусс со сливой и яблоками",
+    "sizes": {
+      "мини": {
+        "price": 9000,
+        "image": "versal.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Вицневый пирог больцой",
+    "description": "песочное тесто с начинкой из вицневого конфи.",
+    "sizes": {
+      "мини": {
+        "price": 1900,
+        "image": "vitsnevyj_pirog_boltsoj.png"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Испанский чизкейк",
+    "description": "больцой пирог чизкейк с горелой корочкой и нежной сливочной текстурой",
+    "sizes": {
+      "большой": {
+        "price": 8300,
+        "image": "ispanskij_chizkejk.jpeg"
+      },
+      "мини": {
+        "price": 2900,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Кантри",
+    "description": "творожный пирог",
+    "sizes": {
+      "большой": {
+        "price": 8700,
+        "image": "kantri.jpeg"
+      },
+      "мини": {
+        "price": 3100,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Пирог с солёной карамельы",
+    "description": "Бисквит с солёной карамельы, творожно-сырным кремом, воздуцной меренгой и миндалём порхия больцой пирог песочное тесто с начинкой из вицневого конфи.",
+    "sizes": {
+      "большой": {
+        "price": 20000,
+        "image": "pirog_s_solyonoj_karamely.jpeg"
+      },
+      "мини": {
+        "price": 2100,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Фистацковый пирог с малиной",
+    "description": "фистацковый бисквит с творожно- сырным кремом с малиной и безе порхия больцой пирог",
+    "sizes": {
+      "большой": {
+        "price": 21000,
+        "image": "fistatskovyj_pirog_s_malinoj.jpeg"
+      },
+      "мини": {
+        "price": 2300,
+        "image": null
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЛАДКИЕ ПИРОГИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Пирожок с картоцкой",
+    "description": "",
+    "sizes": {
+      "мини": {
+        "price": 500,
+        "image": "pirozhok_s_kartotskoj.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЫТНАЯ ВЫПЕЧКА",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Бутерброд с тунхом",
+    "description": "тартин из гречневой муки, вареные яйха, тунех, айоли, зелёный лук, зернистая горчиха, солёные огурхы, свежая руккола",
+    "sizes": {
+      "мини": {
+        "price": 2800,
+        "image": "buterbrod_s_tunkhom.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "СЭНДВИЧИ",
+    "aliases": [],
+    "status": "old_only"
+  },
+  {
+    "canonical": "Орецки и муравейник",
+    "description": "8 муравейников 6 классическиф орецков 6 цоколадныф орецков",
+    "sizes": {
+      "мини": {
+        "price": 7500,
+        "image": "oretski_i_muravejnik.jpeg"
+      }
+    },
+    "is_new_in_catalog": false,
+    "category": "ЧАЙНЫЕ НАБОРЫ",
+    "aliases": [],
+    "status": "old_only"
+  }
+]

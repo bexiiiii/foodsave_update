@@ -12,10 +12,9 @@ import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 import {
   dismissDecisionHelpPrompt,
-  getDecisionHelpState,
-  isDecisionHelpPromptDismissed,
   recordProductReservation,
   recordProductView,
+  shouldShowDecisionHelpPrompt,
 } from "../../../lib/personalization";
 
 type OrderModalState =
@@ -63,7 +62,6 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     let isMounted = true;
     let loadingStarted = false;
-    let decisionHelpTimeout: ReturnType<typeof window.setTimeout> | null = null;
 
     const loadProduct = async () => {
       if (!productId || loadingStarted) return;
@@ -75,13 +73,11 @@ export default function ProductDetailsPage() {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
           recordProductView(productData);
-          const decisionHelpState = getDecisionHelpState();
-          setShowDecisionHelpPrompt(decisionHelpState.shouldShowPrompt);
+          setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
           const attribution = readAttribution();
-          const sessionId = String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || "");
-          void apiClient.trackEvent({
+          apiClient.trackEvent({
             eventType: "BOX_VIEWED",
-            sessionId,
+            sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
             source: String(attribution.source || "direct"),
             notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
             campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
@@ -97,22 +93,6 @@ export default function ProductDetailsPage() {
               discountPercent: productData.discountPercentage,
             },
           });
-          const shouldAskServerForDecisionHelp = !decisionHelpState.shouldShowPrompt
-            && decisionHelpState.recentViews >= 3
-            && decisionHelpState.uniqueProductIds >= 2
-            && !isDecisionHelpPromptDismissed();
-
-          if (shouldAskServerForDecisionHelp) {
-            decisionHelpTimeout = window.setTimeout(() => {
-              apiClient.shouldShowDecisionHelp(sessionId)
-                .then((response) => {
-                  if (isMounted && !isDecisionHelpPromptDismissed() && response.showPrompt) {
-                    setShowDecisionHelpPrompt(true);
-                  }
-                })
-                .catch(() => {});
-            }, 1000);
-          }
         }
         if (productData?.storeId) {
           try {
@@ -137,9 +117,6 @@ export default function ProductDetailsPage() {
 
     return () => {
       isMounted = false;
-      if (decisionHelpTimeout) {
-        window.clearTimeout(decisionHelpTimeout);
-      }
     };
   }, [productId]);
 

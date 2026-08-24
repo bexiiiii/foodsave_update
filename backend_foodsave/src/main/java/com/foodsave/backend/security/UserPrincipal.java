@@ -28,7 +28,7 @@ public class UserPrincipal implements UserDetails {
         userPrincipal.setUsername(user.getUsername());
         userPrincipal.setEmail(user.getEmail());
         userPrincipal.setPassword(user.getPassword());
-        userPrincipal.setEnabled(user.isEnabled());
+        userPrincipal.setEnabled(user.isEnabled() && user.isActive());
         userPrincipal.setRole(user.getRole()); // Store single role
         
         List<GrantedAuthority> authorities = List.of(

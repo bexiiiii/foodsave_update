@@ -2,6 +2,7 @@ package com.foodsave.backend.controller;
 
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.dto.StoreDTO;
+import com.foodsave.backend.dto.StorePublicDTO;
 import com.foodsave.backend.dto.UserDTO;
 import com.foodsave.backend.service.StoreService;
 import com.foodsave.backend.domain.enums.StoreStatus;
@@ -24,12 +25,12 @@ import java.util.List;
 @RequestMapping("/api/stores")
 @RequiredArgsConstructor
 @Tag(name = "Store Management", description = "APIs for managing stores")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class StoreController {
 
     private final StoreService storeService;
 
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get all stores")
     // @RequirePermission(Permission.STORE_READ)
     public ResponseEntity<Page<StoreDTO>> getAllStores(Pageable pageable) {
@@ -38,14 +39,21 @@ public class StoreController {
 
     @GetMapping("/active")
     @Operation(summary = "Get all active stores", description = "Public endpoint to get all active stores")
-    public ResponseEntity<List<StoreDTO>> getActiveStores() {
+    public ResponseEntity<List<StorePublicDTO>> getActiveStores() {
         return ResponseEntity.ok(storeService.getActiveStores());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get store by ID")
-    public ResponseEntity<StoreDTO> getStoreById(@PathVariable Long id) {
-        return ResponseEntity.ok(storeService.getStoreById(id));
+    public ResponseEntity<StorePublicDTO> getStoreById(@PathVariable Long id) {
+        return ResponseEntity.ok(storeService.getPublicStoreById(id));
+    }
+
+    @GetMapping("/admin/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('STORE_OWNER') or hasRole('STORE_MANAGER')")
+    @Operation(summary = "Get full store details for administration")
+    public ResponseEntity<StoreDTO> getAdminStoreById(@PathVariable Long id) {
+        return ResponseEntity.ok(storeService.getAdminStoreById(id));
     }
 
     // Объединённый метод для удаления магазина
@@ -58,6 +66,7 @@ public class StoreController {
     }
 
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update store status")
     // @RequirePermission(Permission.STORE_UPDATE)
     public ResponseEntity<StoreDTO> updateStoreStatus(@PathVariable Long id, @RequestParam StoreStatus status) {
@@ -67,14 +76,14 @@ public class StoreController {
     @GetMapping("/search")
     @Operation(summary = "Search stores")
     // @RequirePermission(Permission.STORE_READ)
-    public ResponseEntity<Page<StoreDTO>> searchStores(@RequestParam String query, Pageable pageable) {
+    public ResponseEntity<Page<StorePublicDTO>> searchStores(@RequestParam String query, Pageable pageable) {
         return ResponseEntity.ok(storeService.searchStores(query, pageable));
     }
 
     @GetMapping("/nearby")
     @Operation(summary = "Find nearby stores")
     // @RequirePermission(Permission.STORE_READ)
-    public ResponseEntity<Page<StoreDTO>> findNearbyStores(
+    public ResponseEntity<Page<StorePublicDTO>> findNearbyStores(
             @RequestParam double latitude,
             @RequestParam double longitude,
             @RequestParam double radius,
@@ -84,7 +93,7 @@ public class StoreController {
 
     @GetMapping("/by-location")
     @Operation(summary = "Get stores by location", description = "Get stores in a specific location")
-    public ResponseEntity<Page<StoreDTO>> getStoresByLocation(
+    public ResponseEntity<Page<StorePublicDTO>> getStoresByLocation(
             @Parameter(description = "Location to search in")
             @RequestParam String location,
             Pageable pageable) {
@@ -92,6 +101,7 @@ public class StoreController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('STORE_OWNER') or hasRole('SUPER_ADMIN')")
     // @RequirePermission(Permission.STORE_CREATE)
     @Operation(summary = "Create new store", description = "Create a new store (Store owners and admins only)")
     public ResponseEntity<StoreDTO> createStore(
@@ -102,6 +112,7 @@ public class StoreController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")
     // @RequirePermission(Permission.STORE_UPDATE)
     @Operation(summary = "Update store", description = "Update store information (Admins or store owner only)")
     public ResponseEntity<StoreDTO> updateStore(
@@ -122,12 +133,14 @@ public class StoreController {
     }
 
     @GetMapping("/my-store")
+    @PreAuthorize("hasRole('STORE_OWNER') or hasRole('SUPER_ADMIN')")
     // @RequirePermission(Permission.STORE_READ)
     public ResponseEntity<StoreDTO> getMyStore() {
         return ResponseEntity.ok(storeService.getCurrentUserStore());
     }
 
     @PostMapping("/{storeId}/assign-user/{userId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     // @RequirePermission(Permission.STORE_MANAGE)
     @Operation(summary = "Assign user to store", description = "Assign a user to a store (Admins only)")
     public ResponseEntity<Void> assignUserToStore(
@@ -138,6 +151,7 @@ public class StoreController {
     }
 
     @DeleteMapping("/{storeId}/unassign-user/{userId}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     // @RequirePermission(Permission.STORE_MANAGE)
     @Operation(summary = "Unassign user from store", description = "Remove user from store (Admins only)")
     public ResponseEntity<Void> unassignUserFromStore(
@@ -148,6 +162,7 @@ public class StoreController {
     }
 
     @GetMapping("/{storeId}/users")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('STORE_OWNER') or hasRole('STORE_MANAGER')")
     // @RequirePermission(Permission.STORE_READ)
     @Operation(summary = "Get store users", description = "Get users assigned to a store")
     public ResponseEntity<Page<UserDTO>> getStoreUsers(

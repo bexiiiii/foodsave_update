@@ -5,12 +5,19 @@ import com.foodsave.backend.service.TelegramWebhookService;
 import com.foodsave.backend.service.TelegramStoreManagerBotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
+
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 @RestController
 @RequestMapping("/api/telegram")
@@ -21,22 +28,38 @@ public class TelegramWebhookController {
     private final TelegramWebhookService telegramWebhookService;
     private final TelegramStoreManagerBotService telegramStoreManagerBotService;
 
+    @Value("${telegram.webhook.secret:}")
+    private String clientWebhookSecret;
+
+    @Value("${telegram.manager.webhook.secret:}")
+    private String managerWebhookSecret;
+
     @PostMapping("/webhook")
-    public ResponseEntity<Void> handleWebhook(@RequestBody TelegramUpdate update) {
+    public ResponseEntity<Void> handleWebhook(
+            @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String secret,
+            @RequestBody TelegramUpdate update) {
+        if (!validSecret(clientWebhookSecret, secret)) {
+            log.warn("Rejected client bot webhook with invalid secret");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Long chatId = extractChatId(update);
         Long userId = extractUserId(update);
-        String text = extractText(update);
-        log.info("=== CLIENT BOT WEBHOOK === chatId={}, userId={}, text='{}'", chatId, userId, text);
+        log.info("Client bot webhook received: chatId={}, userId={}", chatId, userId);
         telegramWebhookService.handleUpdate(update);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/webhook/manager")
-    public ResponseEntity<Void> handleManagerWebhook(@RequestBody TelegramUpdate update) {
+    public ResponseEntity<Void> handleManagerWebhook(
+            @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String secret,
+            @RequestBody TelegramUpdate update) {
+        if (!validSecret(managerWebhookSecret, secret)) {
+            log.warn("Rejected manager bot webhook with invalid secret");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         Long chatId = extractChatId(update);
         Long userId = extractUserId(update);
-        String text = extractText(update);
-        log.info("=== MANAGER BOT WEBHOOK === chatId={}, userId={}, text='{}'", chatId, userId, text);
+        log.info("Manager bot webhook received: chatId={}, userId={}", chatId, userId);
         
         if (update == null) {
             log.warn("Received null update");
@@ -137,5 +160,14 @@ public class TelegramWebhookController {
             return "callback: " + update.callbackQuery().data();
         }
         return null;
+    }
+
+    private boolean validSecret(String expected, String actual) {
+        if (!StringUtils.hasText(expected) || !StringUtils.hasText(actual)) {
+            return false;
+        }
+        return MessageDigest.isEqual(
+                expected.getBytes(StandardCharsets.UTF_8),
+                actual.getBytes(StandardCharsets.UTF_8));
     }
 }

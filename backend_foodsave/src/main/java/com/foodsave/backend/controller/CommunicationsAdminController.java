@@ -15,7 +15,7 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/admin/communications")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('STORE_MANAGER') or hasRole('STORE_OWNER')")
+@PreAuthorize("hasRole('SUPER_ADMIN')")
 public class CommunicationsAdminController {
 
     private final CommunicationsAnalyticsService analyticsService;

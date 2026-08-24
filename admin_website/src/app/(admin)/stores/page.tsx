@@ -43,6 +43,8 @@ interface StoreFormData {
     status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'PENDING';
     openingHours: string;
     closingHours: string;
+    latitude: string;
+    longitude: string;
     category: string;
     active: boolean;
     managerId?: number;
@@ -83,6 +85,8 @@ export default function StoresPage() {
         logo: '',
         openingHours: '',
         closingHours: '',
+        latitude: '',
+        longitude: '',
         category: '',
         active: true,
         status: 'ACTIVE',
@@ -248,6 +252,8 @@ export default function StoresPage() {
             status: store.status,
             openingHours: store.openingHours || '09:00',
             closingHours: store.closingHours || '18:00',
+            latitude: store.latitude != null ? String(store.latitude) : '',
+            longitude: store.longitude != null ? String(store.longitude) : '',
             category: store.category || '',
             active: store.active,
             managerId: store.managerId || undefined, // Добавляем managerId
@@ -318,6 +324,8 @@ export default function StoresPage() {
                 ...formData,
                 openingHours: formData.openingHours || '00:00:00',
                 closingHours: formData.closingHours || '00:00:00',
+                latitude: formData.latitude ? Number(formData.latitude) : null,
+                longitude: formData.longitude ? Number(formData.longitude) : null,
                 user: {
                     email: formData.user.email,
                     role: 'STORE_OWNER' as const
@@ -460,6 +468,8 @@ export default function StoresPage() {
             status: 'ACTIVE',
             openingHours: '09:00',
             closingHours: '18:00',
+            latitude: '',
+            longitude: '',
             category: '',
             active: true,
             managerId: undefined,
@@ -528,6 +538,8 @@ export default function StoresPage() {
                             status: 'ACTIVE',
                             openingHours: '09:00',
                             closingHours: '18:00',
+                            latitude: '',
+                            longitude: '',
                             category: '',
                             active: true,
                             user: {
@@ -814,6 +826,34 @@ export default function StoresPage() {
                             {getFieldError('email') && (
                                 <p className="mt-1 text-sm text-red-500">{getFieldError('email')}</p>
                             )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <Label htmlFor="latitude">Широта для карты</Label>
+                                <Input
+                                    id="latitude"
+                                    name="latitude"
+                                    type="number"
+                                    step="any"
+                                    value={formData.latitude}
+                                    onChange={handleChange}
+                                    placeholder="43.238949"
+                                />
+                            </div>
+
+                            <div>
+                                <Label htmlFor="longitude">Долгота для карты</Label>
+                                <Input
+                                    id="longitude"
+                                    name="longitude"
+                                    type="number"
+                                    step="any"
+                                    value={formData.longitude}
+                                    onChange={handleChange}
+                                    placeholder="76.889709"
+                                />
+                            </div>
                         </div>
 
                         {/* Operating Hours */}

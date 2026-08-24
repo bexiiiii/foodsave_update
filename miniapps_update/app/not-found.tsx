@@ -18,7 +18,7 @@ export default function NotFound() {
           </div>
           
           {/* Sad face */}
-          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#73be61] rounded-full flex items-center justify-center">
+          <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#4CAD73] rounded-full flex items-center justify-center">
             <div className="text-white text-lg">😔</div>
           </div>
         </div>
@@ -38,7 +38,7 @@ export default function NotFound() {
       <div className="w-full max-w-sm space-y-3 mb-8">
         <Link 
           href="/"
-          className="w-full bg-[#73be61] text-white py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 hover:bg-[#68a356] active:scale-95 font-inter"
+          className="w-full bg-[#4CAD73] text-white py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 hover:bg-[#429565] active:scale-95 font-inter"
         >
           <div className="flex items-center justify-center gap-2">
             <Home className="w-5 h-5" />
@@ -67,7 +67,7 @@ export default function NotFound() {
             // Используем стандартный способ открытия ссылки в Telegram
             window.open('https://t.me/FoodSave_kz', '_blank');
           }}
-          className="text-[#73be61] font-semibold text-sm font-inter flex items-center gap-1 mx-auto transition-colors hover:text-[#68a356]"
+          className="text-[#4CAD73] font-semibold text-sm font-inter flex items-center gap-1 mx-auto transition-colors hover:text-[#429565]"
         >
           <MessageCircle className="w-4 h-4" />
           Написать в поддержку
@@ -76,7 +76,7 @@ export default function NotFound() {
 
       {/* Decorative Food Items */}
       <div className="absolute top-20 left-8 w-12 h-12 bg-[#de8a08] rounded-2xl opacity-20 rotate-12"></div>
-      <div className="absolute top-32 right-12 w-8 h-8 bg-[#73be61] rounded-xl opacity-20 -rotate-12"></div>
+      <div className="absolute top-32 right-12 w-8 h-8 bg-[#4CAD73] rounded-xl opacity-20 -rotate-12"></div>
       <div className="absolute bottom-32 left-12 w-10 h-10 bg-[#ff6b6b] rounded-2xl opacity-20 rotate-45"></div>
       <div className="absolute bottom-20 right-8 w-6 h-6 bg-[#de8a08] rounded-lg opacity-20 -rotate-45"></div>
     </div>

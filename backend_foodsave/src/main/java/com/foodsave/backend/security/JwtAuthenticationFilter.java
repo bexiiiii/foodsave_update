@@ -48,13 +48,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 log.debug("JWT token valid for user: {}", username);
 
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);
-                UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(
-                                userDetails, null, userDetails.getAuthorities());
-                authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                if (userDetails.isEnabled() && userDetails.isAccountNonLocked()
+                        && userDetails.isAccountNonExpired() && userDetails.isCredentialsNonExpired()) {
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(
+                                    userDetails, null, userDetails.getAuthorities());
+                    authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
 
-                SecurityContextHolder.getContext().setAuthentication(authentication);
-                log.debug("Authentication set for user: {}", username);
+                    SecurityContextHolder.getContext().setAuthentication(authentication);
+                    log.debug("Authentication set for user: {}", username);
+                } else {
+                    log.warn("Rejected token for disabled or inactive user: {}", username);
+                }
             } else if (StringUtils.hasText(jwt)) {
                 log.warn("Invalid JWT token for request: {} {}", method, requestUri);
             }

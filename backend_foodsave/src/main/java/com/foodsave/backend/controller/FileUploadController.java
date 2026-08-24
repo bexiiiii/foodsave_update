@@ -27,7 +27,6 @@ import java.util.*;
 @RequestMapping("/api/upload")
 @RequiredArgsConstructor
 @Tag(name = "File Upload", description = "File upload management APIs")
-@CrossOrigin(origins = "*", maxAge = 3600)
 @Slf4j
 public class FileUploadController {
 
@@ -88,15 +87,18 @@ public class FileUploadController {
             }
 
             // Generate unique filename
-            String originalFilename = file.getOriginalFilename();
-            String fileExtension = getFileExtension(originalFilename);
+            byte[] bytes = file.getBytes();
+            String fileExtension = detectImageExtension(bytes, contentType);
+            if (fileExtension == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "File content is not a supported image"));
+            }
             String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
             String randomString = UUID.randomUUID().toString().substring(0, 8);
             String fileName = timestamp + "_" + randomString + fileExtension;
 
             // Save file
             Path filePath = uploadPath.resolve(fileName);
-            Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
+            Files.write(filePath, bytes);
 
             // Generate file URL
             String fileUrl = resolveBaseUrl(request) + "/uploads/" + targetDirectory + "/" + fileName;
@@ -161,7 +163,11 @@ public class FileUploadController {
     @Operation(summary = "Delete uploaded image")
     public ResponseEntity<?> deleteImage(@RequestParam("filename") String filename) {
         try {
-            Path filePath = Paths.get(uploadDir, "products", filename);
+            Path productDirectory = Paths.get(uploadDir, "products").toAbsolutePath().normalize();
+            Path filePath = productDirectory.resolve(filename).normalize();
+            if (!filePath.startsWith(productDirectory) || filename.contains("/") || filename.contains("\\")) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid filename"));
+            }
             
             if (Files.exists(filePath)) {
                 Files.delete(filePath);
@@ -177,12 +183,24 @@ public class FileUploadController {
         }
     }
 
-    private String getFileExtension(String filename) {
-        if (filename == null || filename.isEmpty()) {
-            return "";
+    private String detectImageExtension(byte[] bytes, String contentType) {
+        if (bytes == null || bytes.length < 12) {
+            return null;
         }
-        int lastDotIndex = filename.lastIndexOf('.');
-        return lastDotIndex > 0 ? filename.substring(lastDotIndex) : "";
+        if ((bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff) {
+            return contentType.equalsIgnoreCase("image/jpeg") || contentType.equalsIgnoreCase("image/jpg") ? ".jpg" : null;
+        }
+        if ((bytes[0] & 0xff) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G') {
+            return contentType.equalsIgnoreCase("image/png") ? ".png" : null;
+        }
+        if (bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == '8') {
+            return contentType.equalsIgnoreCase("image/gif") ? ".gif" : null;
+        }
+        if (bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
+                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
+            return contentType.equalsIgnoreCase("image/webp") ? ".webp" : null;
+        }
+        return null;
     }
 
     private String resolveBaseUrl(HttpServletRequest request) {

@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class CategoryController {
     }
 
     @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Create a new category")
     // @RequirePermission(Permission.CATEGORY_CREATE)
     public ResponseEntity<CategoryDTO> createCategory(@Valid @RequestBody CategoryDTO categoryDTO) {
@@ -46,6 +48,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update an existing category")
     // @RequirePermission(Permission.CATEGORY_UPDATE)
     public ResponseEntity<CategoryDTO> updateCategory(
@@ -55,6 +58,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Delete a category")
     // @RequirePermission(Permission.CATEGORY_DELETE)
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {

@@ -14,7 +14,6 @@ import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -109,8 +108,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "OR p.store.openingHours = p.store.closingHours " +
            "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
            "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
-           "AND (:minPrice IS NULL OR p.price >= :minPrice) " +
-           "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
            "AND (LOWER(p.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(COALESCE(p.description, '')) LIKE LOWER(CONCAT('%', :query, '%')) " +
            "OR LOWER(p.category.name) LIKE LOWER(CONCAT('%', :query, '%')) " +
@@ -119,8 +116,6 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Page<Product> searchProducts(@Param("query") String query,
                                  @Param("expiryCutoff") LocalDateTime expiryCutoff,
                                  @Param("currentTime") String currentTime,
-                                 @Param("minPrice") BigDecimal minPrice,
-                                 @Param("maxPrice") BigDecimal maxPrice,
                                  Pageable pageable);
     
     Page<Product> findByDiscountPercentageGreaterThan(Double discountPercentage, Pageable pageable);
@@ -144,13 +139,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "OR p.store.openingHours = p.store.closingHours " +
            "OR (p.store.openingHours < p.store.closingHours AND p.store.openingHours <= :currentTime AND :currentTime < p.store.closingHours) " +
            "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
-           "AND (:minPrice IS NULL OR p.price >= :minPrice) " +
-           "AND (:maxPrice IS NULL OR p.price <= :maxPrice) " +
            "ORDER BY p.sortOrder ASC, p.createdAt DESC")
     Page<Product> findAllActiveAvailableProducts(@Param("expiryCutoff") LocalDateTime expiryCutoff,
                                                  @Param("currentTime") String currentTime,
-                                                 @Param("minPrice") BigDecimal minPrice,
-                                                 @Param("maxPrice") BigDecimal maxPrice,
                                                  Pageable pageable);
 
     // Find products by store with status AVAILABLE (exclude OUT_OF_STOCK and expired)

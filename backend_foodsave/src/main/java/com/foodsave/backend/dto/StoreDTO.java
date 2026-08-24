@@ -2,7 +2,6 @@ package com.foodsave.backend.dto;
 
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.domain.enums.StoreStatus;
-import com.foodsave.backend.util.ProductAvailability;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -56,9 +55,6 @@ public class StoreDTO {
     private LocalDateTime updatedAt;
     private UserDTO user;
     private Integer productCount;
-    private Boolean isFavorite;
-    private Boolean closingSoon;
-    private Integer closingSoonMinutes;
 
     public static StoreDTO fromEntity(Store store) {
         StoreDTO dto = new StoreDTO();
@@ -77,8 +73,10 @@ public class StoreDTO {
         dto.setCategory(store.getCategory());
         dto.setStatus(store.getStatus());
         dto.setActive(store.isActive());
-        dto.setOwnerId(store.getOwner().getId());
-        dto.setOwnerName(store.getOwner().getEmail());
+        if (store.getOwner() != null) {
+            dto.setOwnerId(store.getOwner().getId());
+            dto.setOwnerName(store.getOwner().getEmail());
+        }
         
         if (store.getManager() != null) {
             dto.setManagerId(store.getManager().getId());
@@ -90,10 +88,6 @@ public class StoreDTO {
         if (store.getOwner() != null) {
             dto.setUser(UserDTO.fromEntity(store.getOwner()));
         }
-        dto.setIsFavorite(false);
-        Integer minutesUntilClose = ProductAvailability.minutesUntilClose(store.getClosingHours());
-        dto.setClosingSoon(minutesUntilClose != null);
-        dto.setClosingSoonMinutes(minutesUntilClose);
         return dto;
     }
 }

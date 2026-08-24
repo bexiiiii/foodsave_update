@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import {
   ExamplesSection,
   MarketingHero,
@@ -8,6 +9,30 @@ import {
   UsersJourneySection,
   UsersReviewsSection,
 } from '@/components/loveresta/ui';
+
+export const metadata: Metadata = {
+  title: 'Пользователям — Еда со скидкой 50–70% в Алматы',
+  description:
+    'Покупайте сюрприз-боксы из кафе и ресторанов Алматы со скидкой до 70%. Как работает FoodSave: выбрал, оплатил, забрал. Экономьте на еде каждый день.',
+  keywords: [
+    'купить еду дешево Алматы',
+    'как сэкономить на еде',
+    'еда со скидкой самовывоз',
+    'сюрприз бокс купить',
+    'кафе скидки сегодня',
+    'рестораны скидка Алматы',
+    'food saving Казахстан',
+  ],
+  alternates: {
+    canonical: 'https://foodsave.kz/forUsers',
+  },
+  openGraph: {
+    title: 'Пользователям FoodSave — Еда со скидкой 50–70%',
+    description:
+      'Покупайте сюрприз-боксы из кафе Алматы со скидкой до 70%. Выбрал — оплатил — забрал.',
+    url: 'https://foodsave.kz/forUsers',
+  },
+};
 
 export default function ForUsersPage() {
   return (

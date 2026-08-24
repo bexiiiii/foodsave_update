@@ -3,9 +3,8 @@
 # Настройка Telegram бота для FoodSave
 # Использование: ./setup-telegram-bot.sh <your-backend-url>
 
-if [ -z "${TELEGRAM_BOT_TOKEN:-}" ]; then
-    echo "❌ Ошибка: TELEGRAM_BOT_TOKEN не установлен"
-    echo "Установите: export TELEGRAM_BOT_TOKEN=your_token"
+if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_WEBHOOK_SECRET:-}" ]; then
+    echo "Ошибка: TELEGRAM_BOT_TOKEN и TELEGRAM_WEBHOOK_SECRET должны быть установлены"
     exit 1
 fi
 
@@ -30,7 +29,7 @@ echo ""
 echo "⚙️  Устанавливаем webhook..."
 RESPONSE=$(curl -s -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
     -H "Content-Type: application/json" \
-    -d "{\"url\":\"${WEBHOOK_URL}\"}")
+    -d "{\"url\":\"${WEBHOOK_URL}\",\"secret_token\":\"${TELEGRAM_WEBHOOK_SECRET}\",\"drop_pending_updates\":false}")
 
 echo "Ответ Telegram API: $RESPONSE"
 echo ""

@@ -1,0 +1,36 @@
+{
+  "base_url": "https://foodsave.kz/api",
+  "email": "admin@foodsave.kz",
+  "password": "Admin@123456",
+  "category_name": "Кондитерские изделия",
+  "images_dir": "./images",
+  "create_endpoint": "/products",
+  "green_api": {
+    "_comment": "webhook_token должен совпадать с webhookUrlToken в GREEN-API. auto_upload=false безопасно парсит и пишет лог, но не создаёт товары. true — сразу создаёт уверенные карточки в CRM.",
+    "webhook_token": "change-me",
+    "id_instance": "",
+    "api_token_instance": "",
+    "api_url": "https://api.green-api.com",
+    "auto_upload": false,
+    "force_upload": false,
+    "allowed_group_names": [
+      "Royalty FoodSave",
+      "Foodsave Pate",
+      "Coffi Foodsave"
+    ],
+    "group_defaults": {
+      "Royalty FoodSave": {"store": "royalty", "category": "Кофейня"},
+      "Coffi Foodsave": {"store": "coffi", "category": "Кофейня"}
+    },
+    "allowed_group_chat_ids": []
+  },
+
+  "_comment_store_aliases": "ключ — как точку называют в WhatsApp-сообщениях (нормализованное, нижний регистр), значение — точная подстрока названия точки в /api/stores/active. Если оставить пустым {} — скрипт попробует сматчить автоматически по похожести строк.",
+  "store_aliases": {
+    "туран": "Туран",
+    "пате туран": "Туран",
+    "толе би": "Толе би",
+    "достык": "Достык",
+    "достык пате": "Достык"
+  }
+}

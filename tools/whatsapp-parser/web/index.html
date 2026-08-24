@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pâté CRM Preview</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Pâté → FoodSave CRM</p>
+          <h1>Предпросмотр WhatsApp-списка</h1>
+        </div>
+        <div class="status-pill" id="status">Готов к парсингу</div>
+      </header>
+
+      <section class="workspace">
+        <section class="input-panel">
+          <div class="panel-head">
+            <h2>Сообщение</h2>
+            <button class="ghost" id="sampleBtn" type="button">Пример</button>
+          </div>
+          <textarea id="messageInput" spellcheck="false" placeholder="Пате Ишим: 40%
+улитка 2 шт
+слойка творог 4 шт"></textarea>
+          <div class="date-field">
+            <label for="expiryDateInput">Срок годности для всех товаров</label>
+            <input id="expiryDateInput" type="date" />
+            <p>По умолчанию ставится завтра. Если нужно другое число, выбери дату вручную перед проверкой или отправкой.</p>
+          </div>
+          <div class="actions">
+            <button id="parseBtn" type="button">Обработать</button>
+            <button class="secondary" id="clearBtn" type="button">Очистить</button>
+          </div>
+          <p class="note">
+            ИИ-ключ не нужен: сейчас работает локальный parser + каталог. Все сомнительные позиции попадут в проверку.
+          </p>
+        </section>
+
+        <section class="review-panel">
+          <div class="metrics">
+            <div>
+              <span id="totalCount">0</span>
+              <p>Всего</p>
+            </div>
+            <div>
+              <span id="okCount">0</span>
+              <p>Готово</p>
+            </div>
+            <div>
+              <span id="reviewCount">0</span>
+              <p>Проверить</p>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button class="tab active" data-filter="all" type="button">Все</button>
+            <button class="tab" data-filter="ok" type="button">Сделал сам</button>
+            <button class="tab" data-filter="review" type="button">Надо проверить</button>
+          </div>
+
+          <div class="crm-actions">
+            <button class="secondary" id="dryRunBtn" type="button" disabled>Проверить payload</button>
+            <button id="sendCrmBtn" type="button" disabled>Создать боксы в FoodSave</button>
+          </div>
+
+          <div class="upload-report" id="uploadReport" hidden></div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Статус</th>
+                  <th>Точка</th>
+                  <th>Что распознал</th>
+                  <th>Цена</th>
+                  <th>Кол-во</th>
+                  <th>Причина</th>
+                </tr>
+              </thead>
+              <tbody id="itemsBody">
+                <tr class="empty">
+                  <td colspan="6">Вставь список слева и нажми «Обработать».</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <dialog class="editor" id="itemEditor">
+      <form id="editorForm">
+        <div class="editor-head">
+          <div>
+            <p class="eyebrow">Правка карточки</p>
+            <h2 id="editorTitle">Товар</h2>
+          </div>
+          <button class="ghost icon-button" id="editorCloseBtn" type="button" aria-label="Закрыть">×</button>
+        </div>
+
+        <div class="editor-grid">
+          <label>
+            Название товара
+            <input id="editName" type="text" required />
+          </label>
+          <label>
+            Точка
+            <input id="editStore" type="text" />
+          </label>
+          <label>
+            Категория
+            <input id="editCategory" type="text" placeholder="Кондитерские изделия" />
+          </label>
+          <label>
+            Статус
+            <select id="editStatus">
+              <option value="AVAILABLE">В наличии</option>
+              <option value="OUT_OF_STOCK">Нет в наличии</option>
+              <option value="DISCONTINUED">Снят с производства</option>
+              <option value="PENDING">В ожидании</option>
+            </select>
+          </label>
+          <label>
+            Цена со скидкой
+            <input id="editPrice" type="number" min="0" step="1" />
+          </label>
+          <label>
+            Оригинальная цена
+            <input id="editOriginalPrice" type="number" min="0" step="1" />
+          </label>
+          <label>
+            Скидка %
+            <input id="editDiscount" type="number" min="0" max="100" step="1" />
+          </label>
+          <label>
+            Количество
+            <input id="editQuantity" type="number" min="1" step="1" required />
+          </label>
+        </div>
+
+        <label class="editor-wide">
+          Фото
+          <input id="editImages" type="text" placeholder="photo.jpg или https://..." />
+        </label>
+
+        <div class="photo-picker">
+          <div class="photo-picker-head">
+            <span>Другие фото</span>
+            <span id="imageCount">0</span>
+          </div>
+          <input id="editImageSearch" type="search" placeholder="Найти фото по имени файла" />
+          <div class="selected-images" id="selectedImages"></div>
+          <div class="photo-grid" id="imageGrid"></div>
+        </div>
+
+        <label class="editor-wide">
+          Описание
+          <textarea id="editDescription" rows="4"></textarea>
+        </label>
+
+        <label class="check-row">
+          <input id="editReady" type="checkbox" />
+          Готово к отправке в CRM
+        </label>
+
+        <div class="editor-reasons" id="editorReasons"></div>
+
+        <div class="editor-actions">
+          <button class="secondary" id="editorSaveBtn" type="button">Сохранить</button>
+          <button id="editorConfirmBtn" type="button">Сохранить и подтвердить</button>
+        </div>
+      </form>
+    </dialog>
+
+    <script src="app.js"></script>
+  </body>
+</html>

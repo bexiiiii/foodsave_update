@@ -251,7 +251,7 @@ class ApiService {
     }
 
     public async getStoreById(id: number): Promise<StoreDTO> {
-        return this.request<StoreDTO>(`${API_ENDPOINTS.STORES.BASE}/${id}`);
+        return this.request<StoreDTO>(`${API_ENDPOINTS.STORES.BASE}/admin/${id}`);
     }
 
     public async getMyStore(): Promise<StoreDTO> {
@@ -355,7 +355,7 @@ export const storeApi = {
         const response = await api.get(`${API_ENDPOINTS.STORES.BASE}/active`);
         return Array.isArray(response.data) ? response.data : [];
     },
-    getById: (id: number) => api.get<StoreDTO>(`${API_ENDPOINTS.STORES.BASE}/${id}`).then(response => response.data),
+    getById: (id: number) => api.get<StoreDTO>(`${API_ENDPOINTS.STORES.BASE}/admin/${id}`).then(response => response.data),
     getMyStore: () => api.get<StoreDTO>(API_ENDPOINTS.STORES.MY_STORE).then(response => response.data),
     create: (data: StoreCreateRequest) => api.post<StoreDTO>(API_ENDPOINTS.STORES.BASE, data).then(response => response.data),
     update: (id: number, data: StoreUpdateRequest) => api.put<StoreDTO>(`${API_ENDPOINTS.STORES.BASE}/${id}`, data).then(response => response.data),

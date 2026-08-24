@@ -1,0 +1,1192 @@
+[
+  {
+    "canonical": "Аргентина с говядиной",
+    "aliases": [
+      "сытный пирог аргентина",
+      "пирог говядина"
+    ],
+    "description": "Говядина долгого томления с картофелем, соусом бешамель.",
+    "sizes": {
+      "мини": {
+        "price": 3300,
+        "image": "argentina_s_govyadinoi.jpg",
+        "detail": "Диаметр 12 см, высота 4,5 см, вес 240 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 13000,
+        "image": "argentina_s_govyadinoi.jpg",
+        "detail": "Диаметр 20 см, высота 6 см, вес 1400 г, 6-8 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Фрикасе с курицей и грибами",
+    "aliases": [
+      "фрикасе курица грибы"
+    ],
+    "description": "Куриное филе с грибами под сливочно-сырным соусом.",
+    "sizes": {
+      "мини": {
+        "price": 2900,
+        "image": "frikase_s_kuricei_i_gribami.jpg",
+        "detail": "Диаметр 12 см, высота 4,5 см, вес 280 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 12000,
+        "image": "frikase_s_kuricei_i_gribami.jpg",
+        "detail": "Диаметр 20 см, высота 6 см, вес 1400 г, 6-8 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Скандинавский с лососем",
+    "aliases": [
+      "скандинавский лосось"
+    ],
+    "description": "Филе лосося со сметанным соусом, яйцами и зеленью.",
+    "sizes": {
+      "мини": {
+        "price": 3700,
+        "image": "skandinavskii_s_lososem.jpg",
+        "detail": "Диаметр 12 см, высота 4,5 см, вес 240 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 13000,
+        "image": "skandinavskii_s_lososem.jpg",
+        "detail": "Диаметр 20 см, высота 6 см, вес 1200 г, 6-8 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Мишлен с сыром",
+    "aliases": [
+      "мишлен сыр"
+    ],
+    "description": "Слоёное тесто с начинкой из шпината, брынзы, творога и моцареллы в сливочном соусе.",
+    "sizes": {
+      "мини": {
+        "price": 3100,
+        "image": "mishlen_s_syrom.jpg",
+        "detail": "Диаметр 12 см, высота 4,5 см, вес 260 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 8800,
+        "image": "mishlen_s_syrom.jpg",
+        "detail": "Диаметр 20 см, высота 6 см, вес 1300 г, 6-8 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Мясной пирог",
+    "aliases": [
+      "meat pie"
+    ],
+    "description": "Сдобное тесто, говяжий фарш, картофель и репчатый лук.",
+    "sizes": {
+      "1шт": {
+        "price": 5700,
+        "image": "myasnoi_pirog.jpg",
+        "detail": "Диаметр 23 см, высота 3 см, вес 850 г, 5-6 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Киш с семгой",
+    "aliases": [
+      "киш семга"
+    ],
+    "description": "Сёмга, брокколи, шпинат и томаты черри в нежном сливочном соусе.",
+    "sizes": {
+      "порция": {
+        "price": 2900,
+        "image": "kish_s_semgoi.jpg",
+        "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
+      },
+      "средний": {
+        "price": 14000,
+        "image": "kish_s_semgoi.jpg",
+        "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
+      },
+      "большой": {
+        "price": 25000,
+        "image": "kish_s_semgoi.jpg",
+        "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
+      }
+    }
+  },
+  {
+    "canonical": "Киш с курицей и грибами",
+    "aliases": [
+      "киш курица грибы"
+    ],
+    "description": "Нежное куриное филе с жареными грибами под сливочно-сырным соусом.",
+    "sizes": {
+      "порция": {
+        "price": 2600,
+        "image": "kish_s_kuricei_i_gribami.jpg",
+        "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
+      },
+      "средний": {
+        "price": 12000,
+        "image": "kish_s_kuricei_i_gribami.jpg",
+        "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
+      },
+      "большой": {
+        "price": 22000,
+        "image": "kish_s_kuricei_i_gribami.jpg",
+        "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
+      }
+    }
+  },
+  {
+    "canonical": "Киш с говядиной",
+    "aliases": [
+      "киш говядина"
+    ],
+    "description": "Томлёная говядина с луком и картофелем под фирменным соусом.",
+    "sizes": {
+      "порция": {
+        "price": 2900,
+        "image": "kish_s_govyadinoi.jpg",
+        "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
+      },
+      "средний": {
+        "price": 13000,
+        "image": "kish_s_govyadinoi.jpg",
+        "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
+      },
+      "большой": {
+        "price": 24000,
+        "image": "kish_s_govyadinoi.jpg",
+        "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
+      }
+    }
+  },
+  {
+    "canonical": "Вишневый тарт",
+    "aliases": [
+      "тарт вишня",
+      "тарт вишневый"
+    ],
+    "description": "Песочное тесто, миндальная начинка, вишневое конфи, свежая черешня.",
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "image": "vishnevyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 120 г."
+      },
+      "большой": {
+        "price": 11000,
+        "image": "vishnevyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 700 г."
+      }
+    }
+  },
+  {
+    "canonical": "Грушевый тарт",
+    "aliases": [
+      "тарт груша",
+      "тарт грушевый"
+    ],
+    "description": "Песочное тесто, миндальная начинка, фламбированная груша, лепестки миндаля.",
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "image": "grushevyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 145 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "grushevyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 740 г."
+      }
+    }
+  },
+  {
+    "canonical": "Абрикосовый тарт",
+    "aliases": [
+      "тарт абрикос",
+      "тарт абрикосовый"
+    ],
+    "description": "Песочное тесто, миндальная начинка, абрикосы.",
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "image": "abrikosovyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 105 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "abrikosovyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 630 г."
+      }
+    }
+  },
+  {
+    "canonical": "Ягодный микс тарт",
+    "aliases": [
+      "тарт ягодный",
+      "тарт ягодный микс"
+    ],
+    "description": "Песочное тесто, миндальная начинка, конфи из микс ягод, свежие ягоды.",
+    "sizes": {
+      "мини": {
+        "price": 2100,
+        "image": "yagodnyi_miks_tart.jpg",
+        "detail": "Диаметр 10 см, вес 170 г."
+      },
+      "большой": {
+        "price": 12000,
+        "image": "yagodnyi_miks_tart.jpg",
+        "detail": "Диаметр 20 см, вес 880 г."
+      }
+    }
+  },
+  {
+    "canonical": "Яблоко-фисташка тарт",
+    "aliases": [
+      "тарт яблочный фисташковый",
+      "тарт фисташковый яблочный"
+    ],
+    "description": "Песочное тесто, фисташковая начинка, яблоки.",
+    "sizes": {
+      "мини": {
+        "price": 1800,
+        "image": "yabloko-fistashka_tart.jpg",
+        "detail": "Диаметр 10 см, вес 115 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "yabloko-fistashka_tart.jpg",
+        "detail": "Диаметр 20 см, вес 600 г."
+      }
+    }
+  },
+  {
+    "canonical": "Фисташка-малина тарт",
+    "aliases": [
+      "тарт фисташка малина",
+      "тарт фисташковый малина"
+    ],
+    "description": "Песочное тесто, фисташковая начинка, малина, фисташковый крем со свежей малиной.",
+    "sizes": {
+      "мини": {
+        "price": 2300,
+        "image": "fistashka-malina_tart.jpg",
+        "detail": "Диаметр 10 см, вес 145 г."
+      },
+      "большой": {
+        "price": 12000,
+        "image": "fistashka-malina_tart.jpg",
+        "detail": "Диаметр 20 см, вес 730 г."
+      }
+    }
+  },
+  {
+    "canonical": "Творожный тарт",
+    "aliases": [
+      "тарт творожный"
+    ],
+    "description": "Песочное тесто, творог, творожный сыр, сливки, свежая клубника.",
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "image": "tvorozhnyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 140 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "tvorozhnyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 690 г."
+      }
+    }
+  },
+  {
+    "canonical": "Лимонный тарт",
+    "aliases": [
+      "тарт лимонный",
+      "лимонно меренговый тарт",
+      "лимонно-меренговый тарт"
+    ],
+    "description": "Песочное тесто, лимонный курт, взбитая итальянская меренга.",
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "image": "limonnyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 120 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "limonnyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 680 г."
+      }
+    }
+  },
+  {
+    "canonical": "Шоколадный тарт",
+    "aliases": [
+      "тарт шоколадный",
+      "тарт шоколад"
+    ],
+    "description": "Шоколадно-песочное тесто, шоколадный франжипан, ганаш на тёмном шоколаде.",
+    "sizes": {
+      "мини": {
+        "price": 1600,
+        "image": "shokoladnyi_tart.jpg",
+        "detail": "Диаметр 10 см, вес 100 г."
+      },
+      "большой": {
+        "price": 8600,
+        "image": "shokoladnyi_tart.jpg",
+        "detail": "Диаметр 20 см, вес 550 г."
+      }
+    }
+  },
+  {
+    "canonical": "Клубничная галета",
+    "aliases": [
+      "галета клубника"
+    ],
+    "description": "Хрустящее песочное тесто на пшеничной и миндальной муке, сырная начинка, свежая клубника.",
+    "sizes": {
+      "мини": {
+        "price": 2650,
+        "image": "klubnichnaya_galeta.jpg",
+        "detail": "Диаметр 10 см."
+      },
+      "большая": {
+        "price": 5650,
+        "image": "klubnichnaya_galeta.jpg",
+        "detail": "Диаметр 18 см."
+      }
+    }
+  },
+  {
+    "canonical": "Абрикосовая галета",
+    "aliases": [
+      "галета абрикос"
+    ],
+    "description": "Песочная основа, миндальный франжипан, дольки свежих абрикосов.",
+    "sizes": {
+      "мини": {
+        "price": 2650,
+        "image": "abrikosovaya_galeta.jpg",
+        "detail": "Диаметр 10 см."
+      },
+      "большая": {
+        "price": 5650,
+        "image": "abrikosovaya_galeta.jpg",
+        "detail": "Диаметр 18 см."
+      }
+    }
+  },
+  {
+    "canonical": "Безглютеновая галета с нектаринами",
+    "aliases": [
+      "галета безглютеновая нектарин"
+    ],
+    "description": "Безглютеновая мука зеленой гречки с рисовой мукой, миндальный крем, свежие нектарины.",
+    "sizes": {
+      "мини": {
+        "price": 2650,
+        "image": "bezglyutenovaya_galeta_s_nektarinami.jpg",
+        "detail": "Диаметр 10 см."
+      },
+      "большая": {
+        "price": 5800,
+        "image": "bezglyutenovaya_galeta_s_nektarinami.jpg",
+        "detail": "Диаметр 18 см."
+      }
+    }
+  },
+  {
+    "canonical": "Сет с варениками",
+    "aliases": [
+      "пикник сет вареники"
+    ],
+    "description": "Пикник-сет с домашними варениками и фруктами.",
+    "sizes": {
+      "1шт": {
+        "price": 7500,
+        "image": "set_s_varenikami.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Сет с круассан сэндвичами",
+    "aliases": [
+      "пикник сет круассан сэндвичи"
+    ],
+    "description": "Пикник-сет с круассан-сэндвичами, фруктами и напитками.",
+    "sizes": {
+      "1шт": {
+        "price": 9500,
+        "image": "set_s_kruassan_sendvichami.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Фисташковый пирог с малиной",
+    "aliases": [
+      "фисташковый пирог малина"
+    ],
+    "description": "Фисташковый бисквит с творожно-сырным кремом с малиной и безе.",
+    "sizes": {
+      "порция": {
+        "price": 2300,
+        "image": "fistashkovyi_pirog_s_malinoi.jpg",
+        "detail": "Длина 5 см, высота 7 см, вес 200 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 21000,
+        "image": "fistashkovyi_pirog_s_malinoi.jpg",
+        "detail": "Длина 50 см, высота 7 см, вес 2000 г, 15-20 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Чизкейк с ягодами",
+    "aliases": [
+      "чизкейк ягоды"
+    ],
+    "description": "Песочное тесто с творожно-сырной начинкой со свежими ягодами.",
+    "sizes": {
+      "порция": {
+        "price": 2700,
+        "image": "chizkeik_s_yagodami.jpg",
+        "detail": "Длина 5 см, высота 5 см, вес 240 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 25000,
+        "image": "chizkeik_s_yagodami.jpg",
+        "detail": "Длина 50 см, высота 5 см, вес 2400 г, 12-15 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Меренговый рулет",
+    "aliases": [
+      "рулет меренговый"
+    ],
+    "description": "Меренга с творожным сыром, сливочным кремом и вишнёвым конфи.",
+    "sizes": {
+      "порция": {
+        "price": 2900,
+        "image": "merengovyi_rulet.jpg",
+        "detail": "Длина 5 см, высота 7 см, вес 170 г, 1-2 чел."
+      },
+      "большой": {
+        "price": 24000,
+        "image": "merengovyi_rulet.jpg",
+        "detail": "Длина 50 см, высота 7 см, вес 2700 г, 15-20 чел."
+      }
+    }
+  },
+  {
+    "canonical": "Творожное печенье и зефир",
+    "aliases": [],
+    "description": "Творожное печенье (250 г), смородиновый зефир (8 шт).",
+    "sizes": {
+      "1шт": {
+        "price": 3800,
+        "image": "tvorozhnoe_pechene_i_zefir.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Чайный набор Селин",
+    "aliases": [
+      "набор селин"
+    ],
+    "description": "Миндальное и фисташковое финансье, ореховые тарталетки, шоколадные и классические орешки.",
+    "sizes": {
+      "1шт": {
+        "price": 9500,
+        "image": "chainyi_nabor_selin.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Муравейник",
+    "aliases": [],
+    "description": "Набор пирожных из песочного теста со сгущённым молоком. 16 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 7500,
+        "image": "muraveinik.jpg",
+        "detail": "16 шт в наборе."
+      }
+    }
+  },
+  {
+    "canonical": "Набор профитроли с сырками",
+    "aliases": [
+      "профитроли сырки"
+    ],
+    "description": "Кокосовый и черничный сырки в шоколаде, профитроли с заварным кремом и ягодами.",
+    "sizes": {
+      "1шт": {
+        "price": 13000,
+        "image": "nabor_profitroli_s_syrkami.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Сладкая картошка",
+    "aliases": [],
+    "description": "Десерт из песочного теста со сгущенкой в глазури с миндалем и кокосовой стружкой.",
+    "sizes": {
+      "1шт": {
+        "price": 8000,
+        "image": "sladkaya_kartoshka.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Финансье",
+    "aliases": [],
+    "description": "Фисташковое, миндальное, шоколадное. 1 кг.",
+    "sizes": {
+      "1кг": {
+        "price": 16000,
+        "image": "finanse.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Орешки",
+    "aliases": [
+      "орешки классические",
+      "орешки шоколадные",
+      "орешки микс"
+    ],
+    "description": "Классические, шоколадные или микс.",
+    "sizes": {
+      "6шт": {
+        "price": 1800,
+        "image": "oreshki.jpg"
+      },
+      "32шт": {
+        "price": 8200,
+        "image": "oreshki.jpg"
+      },
+      "1кг": {
+        "price": 14500,
+        "image": "oreshki.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Чайный набор Монро",
+    "aliases": [
+      "набор монро"
+    ],
+    "description": "3 вида финансье + 8 орешков.",
+    "sizes": {
+      "1шт": {
+        "price": 9500,
+        "image": "chainyi_nabor_monro.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Орешки и муравейник",
+    "aliases": [],
+    "description": "8 муравейников, 6 классических орешков, 6 шоколадных орешков.",
+    "sizes": {
+      "1шт": {
+        "price": 7500,
+        "image": "oreshki_i_muraveinik.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "French baguette",
+    "aliases": [
+      "французский багет",
+      "багет"
+    ],
+    "description": "Французский хлеб с пористой, нежной белоснежной мякотью.",
+    "sizes": {
+      "1шт": {
+        "price": 950,
+        "image": "french_baguette.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Чиабатта",
+    "aliases": [],
+    "description": "Итальянский хлеб с хрустящей корочкой, воздушной пористой мякотью.",
+    "sizes": {
+      "1шт": {
+        "price": 850,
+        "image": "chiabatta.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Тартин",
+    "aliases": [
+      "хлеб тартин"
+    ],
+    "description": "Диетический хлеб с бронзовой корочкой и тягучим мякишем с тонкой кислинкой.",
+    "sizes": {
+      "1шт": {
+        "price": 950,
+        "image": "tartin.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Гречневый хлеб",
+    "aliases": [
+      "хлеб гречневый"
+    ],
+    "description": "Влажноватый внутри, с хрустящей корочкой снаружи.",
+    "sizes": {
+      "1шт": {
+        "price": 1100,
+        "image": "grechnevyi_hleb.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Зефир смородиновый",
+    "aliases": [
+      "зефир смородина"
+    ],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 900,
+        "image": "zefir_smorodinovyi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Пирожное картошка",
+    "aliases": [
+      "картошка пирожное"
+    ],
+    "description": "На основе бисквитного теста. 1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 1050,
+        "image": "pirozhnoe_kartoshka.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Сладкая колбаска",
+    "aliases": [
+      "шоколадная колбаска"
+    ],
+    "description": "Песочное тесто, сгущённое молоко и творожный сыр. 200 г.",
+    "sizes": {
+      "1шт": {
+        "price": 2200,
+        "image": "sladkaya_kolbaska.jpg",
+        "detail": "200 г."
+      }
+    }
+  },
+  {
+    "canonical": "Профитроли",
+    "aliases": [
+      "профитроль"
+    ],
+    "description": "Заварное тесто, сливочно-заварной крем с шоколадным ганашем, клубникой и голубикой.",
+    "sizes": {
+      "500г": {
+        "price": 6400,
+        "image": "profitroli.jpg"
+      },
+      "1кг": {
+        "price": 12700,
+        "image": "profitroli.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Кольца творожные",
+    "aliases": [
+      "творожные кольца"
+    ],
+    "description": "Заварное тесто, творог, сахар. 1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 1700,
+        "image": "kolca_tvorozhnye.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Чизкейк",
+    "aliases": [
+      "чизкейк печенье"
+    ],
+    "description": "Песочное тесто с мягкой творожной начинкой и с добавлением шоколада. 1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 800,
+        "image": "chizkeik.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Тыквенное печенье",
+    "aliases": [
+      "тыквенное"
+    ],
+    "description": "Песочное тесто с тыквой, грецким орехом и темным шоколадом. 1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 900,
+        "image": "tykvennoe_pechene.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Творожное печенье",
+    "aliases": [
+      "творожное"
+    ],
+    "description": "Печенье на творожном тесте с хрустящей сахарной посыпкой.",
+    "sizes": {
+      "500г": {
+        "price": 4700,
+        "image": "tvorozhnoe_pechene.jpg"
+      },
+      "1кг": {
+        "price": 9300,
+        "image": "tvorozhnoe_pechene.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Клюква печенье",
+    "aliases": [
+      "клюква"
+    ],
+    "description": "Песочное печенье с добавлением клюквы.",
+    "sizes": {
+      "500г": {
+        "price": 3700,
+        "image": "klyukva_pechene.jpg"
+      },
+      "1кг": {
+        "price": 7400,
+        "image": "klyukva_pechene.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Шоколад с фундуком",
+    "aliases": [
+      "шоколадное печенье фундук"
+    ],
+    "description": "Шоколадное печенье с добавлением фундука.",
+    "sizes": {
+      "500г": {
+        "price": 6000,
+        "image": "shokolad_s_fundukom.jpg"
+      },
+      "1кг": {
+        "price": 11000,
+        "image": "shokolad_s_fundukom.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Вафли конусные",
+    "aliases": [
+      "конусные вафли"
+    ],
+    "description": "Хрустящие тонкие, ароматные вафли. По предзаказу.",
+    "sizes": {
+      "500г": {
+        "price": 5600,
+        "image": "vafli_konusnye.jpg"
+      },
+      "1кг": {
+        "price": 9300,
+        "image": "vafli_konusnye.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Сочни безглютеновые",
+    "aliases": [
+      "безглютеновые сочни"
+    ],
+    "description": "Мука рисовая, тыквенная, кокосовая с творожной начинкой.",
+    "sizes": {
+      "1шт": {
+        "price": 1300,
+        "image": "sochni_bezglyutenovye.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Мадлен лимон",
+    "aliases": [
+      "мадлен лимонный"
+    ],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 600,
+        "image": "madlen_limon.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Мадлен шоколад",
+    "aliases": [
+      "мадлен шоколадный"
+    ],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 600,
+        "image": "madlen_shokolad.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Набор круассанов",
+    "aliases": [],
+    "description": "4 классических, 2 карамельных, 2 клубничных. 8 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 4900,
+        "image": "nabor_kruassanov.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон",
+    "aliases": [
+      "синнабоны",
+      "синабон",
+      "синабоны"
+    ],
+    "description": "Сдобное тесто, корица, сливочный крем, грецкий орех.",
+    "sizes": {
+      "1шт": {
+        "price": 1150,
+        "image": "sinnabon.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Булочка фисташковая",
+    "aliases": [
+      "фисташковая булочка"
+    ],
+    "description": "Нежное тесто с фисташковым пралине.",
+    "sizes": {
+      "1шт": {
+        "price": 1400,
+        "image": "bulochka_fistashkovaya.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Французская бриошь",
+    "aliases": [
+      "бриошь"
+    ],
+    "description": "Сдобное тесто, заварной крем, домашняя карамель.",
+    "sizes": {
+      "1шт": {
+        "price": 1500,
+        "image": "francuzskaya_briosh.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка творожная",
+    "aliases": [],
+    "description": "Слоёное тесто, творог.",
+    "sizes": {
+      "1шт": {
+        "price": 1200,
+        "image": "sloika_tvorozhnaya.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка черника",
+    "aliases": [],
+    "description": "Слоёное тесто, заварной крем, черника.",
+    "sizes": {
+      "1шт": {
+        "price": 900,
+        "image": "sloika_chernika.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка виноград",
+    "aliases": [],
+    "description": "Слоёное тесто, творожный сыр, виноград.",
+    "sizes": {
+      "1шт": {
+        "price": 1800,
+        "image": "sloika_vinograd.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Карамельный круассан",
+    "aliases": [],
+    "description": "Классический круассан с карамельным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 2100,
+        "image": "karamelnyi_kruassan.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Улитка с шоколадом",
+    "aliases": [
+      "шоколадная улитка"
+    ],
+    "description": "Слоёное тесто с заварным кремом и каплями шоколада.",
+    "sizes": {
+      "1шт": {
+        "price": 1450,
+        "image": "ulitka_s_shokoladom.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Вафли",
+    "aliases": [],
+    "description": "Хрустящие вафли-рожки.",
+    "sizes": {
+      "10шт": {
+        "price": 3600,
+        "image": "vafli.jpg"
+      },
+      "25шт": {
+        "price": 7300,
+        "image": "vafli.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Банановые рогалики",
+    "aliases": [],
+    "description": "Творожное тесто, банановая начинка. 250 г.",
+    "sizes": {
+      "1шт": {
+        "price": 1850,
+        "image": "bananovye_rogaliki.jpg",
+        "detail": "250 г."
+      }
+    }
+  },
+  {
+    "canonical": "Кекс шоколадный",
+    "aliases": [],
+    "description": "Шоколадное тесто с добавлением свежей малины.",
+    "sizes": {
+      "300г": {
+        "price": 4500,
+        "image": "keks_shokoladnyi.jpg"
+      },
+      "800г": {
+        "price": 7500,
+        "image": "keks_shokoladnyi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Кекс тыквенный",
+    "aliases": [],
+    "description": "С творожной начинкой. Тесто на основе тыквенного и яблочного пюре.",
+    "sizes": {
+      "240г": {
+        "price": 4500,
+        "image": "keks_tykvennyi.jpg"
+      },
+      "1200г": {
+        "price": 7500,
+        "image": "keks_tykvennyi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Завитушка с корицей",
+    "aliases": [
+      "слойка с корицей"
+    ],
+    "description": "Слоёное тесто, корица, тростниковый сахар.",
+    "sizes": {
+      "1шт": {
+        "price": 1450,
+        "image": "zavitushka_s_koricei.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Пирожок с вишней",
+    "aliases": [],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 1100,
+        "image": "pirozhok_s_vishnei.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Пирожок с яблоком",
+    "aliases": [],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 1100,
+        "image": "pirozhok_s_yablokom.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка овощная",
+    "aliases": [],
+    "description": "Болгарский перец, черри, грибы шампиньоны, баклажан, брынза.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "sloika_ovoschnaya.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка деревенская",
+    "aliases": [],
+    "description": "Курица, картофель, грибы шампиньоны, моцарелла, сливочный соус.",
+    "sizes": {
+      "1шт": {
+        "price": 1450,
+        "image": "sloika_derevenskaya.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка с колбаской",
+    "aliases": [],
+    "description": "Слоёное тесто, колбаска, горчица.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "sloika_s_kolbaskoi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Слойка черри",
+    "aliases": [],
+    "description": "Слоёное тесто, творожный соус, черри, прованские травы.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "sloika_cherri.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Пирожок с капустой",
+    "aliases": [],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 500,
+        "image": "pirozhok_s_kapustoi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Пирожок с картошкой",
+    "aliases": [],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 500,
+        "image": "pirozhok_s_kartoshkoi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Бутерброд с тунцом",
+    "aliases": [
+      "сэндвич тунец"
+    ],
+    "description": "Тартин из гречневой муки, вареные яйца, тунец, айоли, зелёный лук, зернистая горчица, солёные огурцы, руккола. 180 г.",
+    "sizes": {
+      "1шт": {
+        "price": 2800,
+        "image": "buterbrod_s_tuncom.jpg",
+        "detail": "180 г."
+      }
+    }
+  },
+  {
+    "canonical": "Тартин с томленной говядиной",
+    "aliases": [
+      "сэндвич говядина"
+    ],
+    "description": "Свежий тартин, томленая говядина 12 часов, острый чили, шпинат, солёные огурцы.",
+    "sizes": {
+      "1шт": {
+        "price": 3500,
+        "image": "tartin_s_tomlennoi_govyadinoi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Чиабатта с индейкой",
+    "aliases": [
+      "сэндвич индейка"
+    ],
+    "description": "Хрустящая чиабатта, клюквенный айоли, медовая горчица, моцарелла, шпинат, глазунья, копчёная индейка.",
+    "sizes": {
+      "1шт": {
+        "price": 3100,
+        "image": "chiabatta_s_indeikoi.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Клаб сэндвич с курицей",
+    "aliases": [
+      "клаб сэндвич",
+      "club sandwich с курицей"
+    ],
+    "description": "1 шт.",
+    "sizes": {
+      "1шт": {
+        "price": 2483,
+        "image": "coffi/Витрина кофи.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Тефтели в сливочно-грибном соусе с макаронами",
+    "aliases": [
+      "тефтели с макаронами",
+      "тефтели сливочно грибной соус"
+    ],
+    "description": "1 порция.",
+    "sizes": {
+      "1шт": {
+        "price": 3317,
+        "image": "coffi/Витрина кофи.jpg"
+      }
+    }
+  }
+]

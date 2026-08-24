@@ -21,18 +21,19 @@ import java.util.List;
 @RequestMapping("/api/users")
 @RequiredArgsConstructor
 @Tag(name = "User Management", description = "APIs for managing users")
-@CrossOrigin(origins = "*", maxAge = 3600)
 public class UserController {
     
     private final UserService userService;
     
     @GetMapping("/check-admin")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Check admin users")
     public ResponseEntity<List<UserDTO>> checkAdminUsers() {
         return ResponseEntity.ok(userService.getUsersByRole(UserRole.SUPER_ADMIN));
     }
     
     @GetMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get all users")
     // @RequirePermission(Permission.USER_READ)
     public ResponseEntity<List<UserDTO>> getAllUsers() {
@@ -41,13 +42,14 @@ public class UserController {
     
     @GetMapping("/paginated")
     @Operation(summary = "Get all users with pagination")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<Page<UserDTO>> getAllUsers(Pageable pageable) {
         Page<UserDTO> users = userService.getAllUsers(pageable);
         return ResponseEntity.ok(users);
     }
     
     @GetMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get user by ID")
     // @RequirePermission(Permission.USER_READ)
     public ResponseEntity<UserDTO> getUserById(@PathVariable Long id) {
@@ -55,6 +57,7 @@ public class UserController {
     }
     
     @GetMapping("/email/{email}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get user by email")
     public ResponseEntity<UserDTO> getUserByEmail(@PathVariable String email) {
         UserDTO user = userService.getUserByEmail(email);
@@ -63,7 +66,7 @@ public class UserController {
     
     @GetMapping("/role/{role}")
     @Operation(summary = "Get users by role")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<UserDTO>> getUsersByRole(@PathVariable UserRole role) {
         List<UserDTO> users = userService.getUsersByRole(role);
         return ResponseEntity.ok(users);
@@ -80,6 +83,7 @@ public class UserController {
     }
     
     @PostMapping
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Create a new user")
     public ResponseEntity<UserDTO> createUser(@Valid @RequestBody UserDTO userDTO) {
         UserDTO createdUser = userService.createUser(userDTO);
@@ -87,6 +91,7 @@ public class UserController {
     }
     
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update an existing user")
     // @RequirePermission(Permission.USER_UPDATE)
     public ResponseEntity<UserDTO> updateUser(@PathVariable Long id, @Valid @RequestBody UserDTO userDTO) {
@@ -94,6 +99,7 @@ public class UserController {
     }
     
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Delete a user")
     // @RequirePermission(Permission.USER_DELETE)
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
@@ -102,6 +108,7 @@ public class UserController {
     }
     
     @PutMapping("/{id}/role")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update user role")
     // @RequirePermission(Permission.USER_UPDATE)
     public ResponseEntity<UserDTO> updateUserRole(@PathVariable Long id, @RequestParam UserRole role) {
@@ -109,6 +116,7 @@ public class UserController {
     }
     
     @PutMapping("/{id}/status")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     @Operation(summary = "Update user status")
     // @RequirePermission(Permission.USER_UPDATE)
     public ResponseEntity<UserDTO> updateUserStatus(@PathVariable Long id, @RequestParam boolean active) {
@@ -117,7 +125,7 @@ public class UserController {
     
     @PatchMapping("/{id}/toggle-status")
     @Operation(summary = "Toggle user enabled status")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('SUPER_ADMIN')")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<UserDTO> toggleUserStatus(@PathVariable Long id) {
         UserDTO user = userService.toggleUserStatus(id);
         return ResponseEntity.ok(user);
@@ -143,7 +151,7 @@ public class UserController {
     
     @GetMapping("/available-managers")
     @Operation(summary = "Get available users for manager assignment")
-    @PreAuthorize("permitAll()")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
     public ResponseEntity<List<UserDTO>> getAvailableManagers() {
         List<UserDTO> availableManagers = userService.getAvailableManagers();
         return ResponseEntity.ok(availableManagers);

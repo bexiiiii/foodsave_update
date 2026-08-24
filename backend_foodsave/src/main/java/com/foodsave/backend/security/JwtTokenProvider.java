@@ -52,7 +52,7 @@ public class JwtTokenProvider {
     
     public boolean validateToken(String token) {
         try {
-            log.debug("Validating token: {}", token.substring(0, Math.min(token.length(), 20)) + "...");
+            log.debug("Validating JWT token");
             Jwts.parserBuilder()
                 .setSigningKey(getSigningKey())
                 .build()

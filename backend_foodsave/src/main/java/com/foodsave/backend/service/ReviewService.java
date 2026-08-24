@@ -7,6 +7,8 @@ import com.foodsave.backend.entity.User;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.ReviewRepository;
 import com.foodsave.backend.repository.UserRepository;
+import com.foodsave.backend.security.AuthorizationService;
+import com.foodsave.backend.exception.AccessDeniedException;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -22,12 +24,15 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final AuthorizationService authorizationService;
 
     public ReviewService(ReviewRepository reviewRepository, UserRepository userRepository,
-                        ProductRepository productRepository) {
+                        ProductRepository productRepository,
+                        AuthorizationService authorizationService) {
         this.reviewRepository = reviewRepository;
         this.userRepository = userRepository;
         this.productRepository = productRepository;
+        this.authorizationService = authorizationService;
     }
 
     public List<ReviewDTO> getProductReviews(Long productId) {
@@ -53,12 +58,22 @@ public class ReviewService {
     public ReviewDTO updateReview(Long id, ReviewDTO reviewDTO) {
         Review review = reviewRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Review not found"));
+        if (!authorizationService.isSuperAdmin()
+                && !authorizationService.isCurrentUser(review.getUser().getId())) {
+            throw new AccessDeniedException("You cannot update another user's review");
+        }
         updateReviewFromDTO(review, reviewDTO);
         return convertToDTO(reviewRepository.save(review));
     }
 
     public void deleteReview(Long id) {
-        reviewRepository.deleteById(id);
+        Review review = reviewRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Review not found"));
+        if (!authorizationService.isSuperAdmin()
+                && !authorizationService.isCurrentUser(review.getUser().getId())) {
+            throw new AccessDeniedException("You cannot delete another user's review");
+        }
+        reviewRepository.delete(review);
     }
 
     private ReviewDTO convertToDTO(Review review) {

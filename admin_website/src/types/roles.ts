@@ -25,6 +25,13 @@ export const ROUTE_PERMISSIONS: RoutePermission[] = [
         allowedRoles: [UserRole.ADMIN, UserRole.STORE_OWNER, UserRole.MANAGER]
     },
     {
+        path: '/communications',
+        label: 'Коммуникации',
+        icon: 'message-circle',
+        requiredPermissions: [Permission.ANALYTICS_READ],
+        allowedRoles: [UserRole.ADMIN, UserRole.STORE_OWNER, UserRole.MANAGER]
+    },
+    {
         path: '/users',
         label: 'Пользователи',
         icon: 'users',

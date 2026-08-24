@@ -129,6 +129,12 @@ const navItems: NavItem[] = [
     allowedRoles: ["SUPER_ADMIN", "STORE_OWNER"],
   },
   {
+    icon: <PieChartIcon />,
+    name: "Коммуникации",
+    path: "/communications",
+    allowedRoles: ["SUPER_ADMIN", "STORE_OWNER", "STORE_MANAGER"],
+  },
+  {
     icon: <PlugInIcon />,
     name: "Состояние системы",
     path: "/health",

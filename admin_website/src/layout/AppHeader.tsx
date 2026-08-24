@@ -160,7 +160,7 @@ const AppHeader: React.FC = () => {
         <div
           className={`${
             isApplicationMenuOpen ? "flex" : "hidden"
-          } items-center justify-between w-full gap-4 px-5 py-4 lg:flex shadow-theme-md lg:justify-end lg:px-0 lg:shadow-none`}
+          } fixed left-3 right-3 top-[76px] z-[100000] items-center justify-between gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-3 shadow-theme-lg dark:border-gray-800 dark:bg-gray-900 lg:static lg:flex lg:w-full lg:justify-end lg:border-0 lg:bg-transparent lg:px-0 lg:py-0 lg:shadow-none`}
         >
           <div className="flex items-center gap-2 2xsm:gap-3">
             <ThemeToggleButton />

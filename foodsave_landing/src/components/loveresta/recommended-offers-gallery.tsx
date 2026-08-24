@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   ChevronDown,
   Clock3,
-  Heart,
   MapPin,
   Share2,
   Star,
@@ -18,11 +17,11 @@ import { formatKztPrice } from '@/lib/utils';
 
 function TelegramIcon(props: React.ComponentProps<'svg'>) {
   return (
-    <svg aria-hidden="true" fill="none" viewBox="0 0 24 24" {...props}>
-      <circle cx="12" cy="12" fill="currentColor" r="10" />
+    <svg aria-hidden="true" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" {...props}>
+      <circle cx="12" cy="12" r="12" fill="#2AABEE" />
       <path
-        d="m16.6 7.77-1.58 8.06c-.12.57-.45.71-.91.45l-2.5-1.84-1.2 1.15c-.13.13-.25.25-.51.25l.18-2.56 4.67-4.21c.2-.18-.05-.28-.31-.1L8.67 12.6l-2.46-.77c-.53-.17-.54-.53.1-.78l9.61-3.7c.44-.17.83.1.68.8Z"
         fill="#fff"
+        d="M16.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"
       />
     </svg>
   );
@@ -83,9 +82,6 @@ export function RecommendedOffersGallery({
                 />
                 <div className="loveresta-offer-gallery-card__overlay">
                   <span className="loveresta-offer-gallery-card__pill">{offer.boxLabel}</span>
-                  <span className="loveresta-offer-gallery-card__heart" aria-hidden="true">
-                    <Heart size={20} strokeWidth={2} />
-                  </span>
                 </div>
                 <span
                   className={`loveresta-offer-gallery-card__brand loveresta-offer-gallery-card__brand--${offer.brandTone}`}
@@ -131,13 +127,6 @@ export function RecommendedOffersGallery({
                 sizes="(max-width: 900px) 100vw, 46vw"
                 src={activeOffer.image}
               />
-              <button
-                aria-label="Добавить в избранное"
-                className="loveresta-offer-modal__favorite"
-                type="button"
-              >
-                <Heart size={22} strokeWidth={2} />
-              </button>
             </div>
 
             <div className="loveresta-offer-modal__content">

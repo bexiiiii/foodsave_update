@@ -1,17 +1,17 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.dto.StoreDTO;
+import com.foodsave.backend.dto.StorePublicDTO;
 import com.foodsave.backend.dto.UserDTO;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.User;
-import com.foodsave.backend.domain.enums.FavoriteType;
 import com.foodsave.backend.domain.enums.StoreStatus;
 import com.foodsave.backend.exception.ResourceNotFoundException;
-import com.foodsave.backend.repository.FavoriteRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.security.SecurityUtils;
+import com.foodsave.backend.security.AuthorizationService;
 import com.foodsave.backend.util.SecurityUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -24,11 +24,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
-import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -40,9 +37,9 @@ public class StoreService {
     private final StoreRepository storeRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
-    private final FavoriteRepository favoriteRepository;
     private final SecurityUtils securityUtils;
     private final SecurityUtil securityUtil;
+    private final AuthorizationService authorizationService;
     private final PasswordEncoder passwordEncoder;
 
     public Page<StoreDTO> getAllStores(Pageable pageable) {
@@ -50,18 +47,16 @@ public class StoreService {
                 .map(StoreDTO::fromEntity);
     }
 
-    public List<StoreDTO> getActiveStores() {
-        Long currentUserId = securityUtil.getCurrentUserId();
-        Set<Long> favoriteStoreIds = currentUserId != null
-                ? favoriteRepository.findFavoriteStoreIds(currentUserId)
-                : Collections.emptySet();
-
+    public List<StorePublicDTO> getActiveStores() {
         return storeRepository.findByActiveAndStatus(true, StoreStatus.ACTIVE)
                 .stream()
-                .map(this::convertToStoreDTO)
-                .peek(dto -> dto.setIsFavorite(favoriteStoreIds.contains(dto.getId())))
-                .sorted(Comparator.comparing(StoreDTO::getIsFavorite).reversed())
+                .map(this::convertToPublicStoreDTO)
                 .toList();
+    }
+
+    private StorePublicDTO convertToPublicStoreDTO(Store store) {
+        long productCount = productRepository.countActiveByStoreId(store.getId());
+        return StorePublicDTO.fromEntity(store, (int) productCount);
     }
 
     private StoreDTO convertToStoreDTO(Store store) {
@@ -73,15 +68,21 @@ public class StoreService {
     }
 
     public StoreDTO getStoreById(Long id) {
-        StoreDTO dto = storeRepository.findById(id)
+        return storeRepository.findById(id)
                 .map(StoreDTO::fromEntity)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+    }
 
-        Long currentUserId = securityUtil.getCurrentUserId();
-        if (currentUserId != null) {
-            dto.setIsFavorite(favoriteRepository.existsByUserIdAndStoreIdAndType(currentUserId, id, FavoriteType.STORE));
-        }
-        return dto;
+    public StorePublicDTO getPublicStoreById(Long id) {
+        Store store = storeRepository.findById(id)
+                .filter(candidate -> candidate.isActive() && candidate.getStatus() == StoreStatus.ACTIVE)
+                .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        return convertToPublicStoreDTO(store);
+    }
+
+    public StoreDTO getAdminStoreById(Long id) {
+        authorizationService.requireCanManageStore(id);
+        return getStoreById(id);
     }
 
     public StoreDTO createStore(StoreDTO storeDTO) {
@@ -150,6 +151,7 @@ public class StoreService {
 
             // Назначаем менеджера, если указан
             if (storeDTO.getManagerId() != null) {
+                authorizationService.requireSuperAdmin();
                 User manager = userRepository.findById(storeDTO.getManagerId())
                         .orElseThrow(() -> new ResourceNotFoundException("Manager not found with id: " + storeDTO.getManagerId()));
                 
@@ -177,6 +179,7 @@ public class StoreService {
     public StoreDTO updateStore(Long id, StoreDTO storeDTO) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        authorizationService.requireCanManageStore(id);
 
         store.setName(storeDTO.getName());
         store.setDescription(storeDTO.getDescription());
@@ -198,6 +201,7 @@ public class StoreService {
             Long currentManagerId = store.getManager() != null ? store.getManager().getId() : null;
             
             if (!storeDTO.getManagerId().equals(currentManagerId)) {
+                authorizationService.requireSuperAdmin();
                 // Сбрасываем роль предыдущего менеджера, если он был и не управляет другими магазинами
                 if (store.getManager() != null) {
                     User previousManager = store.getManager();
@@ -235,6 +239,7 @@ public class StoreService {
     public void deleteStore(Long id) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        authorizationService.requireCanManageStore(id);
         
         // Если у магазина есть менеджер, проверяем, нужно ли сбросить его роль
         if (store.getManager() != null) {
@@ -252,16 +257,17 @@ public class StoreService {
     public StoreDTO updateStoreStatus(Long id, StoreStatus status) {
         Store store = storeRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + id));
+        authorizationService.requireCanManageStore(id);
         store.setStatus(status);
         return StoreDTO.fromEntity(storeRepository.save(store));
     }
 
-    public Page<StoreDTO> searchStores(String query, Pageable pageable) {
+    public Page<StorePublicDTO> searchStores(String query, Pageable pageable) {
         return storeRepository.searchStores(query, pageable)
-                .map(StoreDTO::fromEntity);
+                .map(this::convertToPublicStoreDTO);
     }
 
-    public Page<StoreDTO> findNearbyStores(double latitude, double longitude, double radius, Pageable pageable) {
+    public Page<StorePublicDTO> findNearbyStores(double latitude, double longitude, double radius, Pageable pageable) {
         // Convert radius from kilometers to degrees (approximate)
         double latDelta = radius / 111.0;
         double lngDelta = radius / (111.0 * Math.cos(Math.toRadians(latitude)));
@@ -272,12 +278,12 @@ public class StoreService {
                 longitude - lngDelta,
                 longitude + lngDelta,
                 pageable
-        ).map(StoreDTO::fromEntity);
+        ).map(this::convertToPublicStoreDTO);
     }
 
-    public Page<StoreDTO> getStoresByLocation(String location, Pageable pageable) {
+    public Page<StorePublicDTO> getStoresByLocation(String location, Pageable pageable) {
         return storeRepository.findByAddressContaining(location, pageable)
-                .map(StoreDTO::fromEntity);
+                .map(this::convertToPublicStoreDTO);
     }
 
     public Page<StoreDTO> getStoresByOwner(String ownerEmail, Pageable pageable) {
@@ -338,6 +344,7 @@ public class StoreService {
      * Assign a user to a store
      */
     public void assignUserToStore(Long storeId, Long userId) {
+        authorizationService.requireSuperAdmin();
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + storeId));
         
@@ -353,6 +360,7 @@ public class StoreService {
      * Unassign a user from a store
      */
     public void unassignUserFromStore(Long storeId, Long userId) {
+        authorizationService.requireSuperAdmin();
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + storeId));
         
@@ -368,6 +376,7 @@ public class StoreService {
      * Get users assigned to a store
      */
     public Page<UserDTO> getStoreUsers(Long storeId, Pageable pageable) {
+        authorizationService.requireCanManageStore(storeId);
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + storeId));
         

@@ -1,4 +1,3 @@
--- Extends favorites to support store favorites, not just product favorites.
 CREATE TABLE IF NOT EXISTS favorites (
     id BIGSERIAL PRIMARY KEY,
     user_id BIGINT NOT NULL,

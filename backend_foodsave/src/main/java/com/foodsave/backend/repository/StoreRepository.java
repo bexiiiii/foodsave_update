@@ -79,4 +79,6 @@ public interface StoreRepository extends JpaRepository<Store, Long> {
             Pageable pageable);
 
     boolean existsByIdAndOwner(Long id, User owner);
+    boolean existsByIdAndOwnerId(Long id, Long ownerId);
+    boolean existsByIdAndManagerId(Long id, Long managerId);
 }

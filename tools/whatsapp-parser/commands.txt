@@ -1,0 +1,6 @@
+cd /home/shindenis/programming-projects/pate
+python3 -m pip install requests pymupdf pytesseract pillow --break-system-packages
+cp config.example.json config.json
+python3 -m unittest discover -s tests -v
+python3 parse_daily.py message_examples.txt catalog_paste.json > result.json
+python3 upload_to_crm.py result.json --config config.json --dry-run

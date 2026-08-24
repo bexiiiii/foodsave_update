@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,6 +21,7 @@ import java.util.Set;
 public class PermissionController {
 
     @GetMapping("/user/{userId}")
+    @PreAuthorize("#userId == principal.id or hasRole('SUPER_ADMIN')")
     @Operation(summary = "Get user permissions", description = "Get permissions for a specific user")
     public ResponseEntity<Set<Permission>> getUserPermissions(@PathVariable Long userId) {
         try {

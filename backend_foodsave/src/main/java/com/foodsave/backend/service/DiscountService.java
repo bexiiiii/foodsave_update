@@ -8,6 +8,7 @@ import com.foodsave.backend.repository.DiscountRepository;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.exception.ResourceNotFoundException;
+import com.foodsave.backend.security.AuthorizationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class DiscountService {
     private final DiscountRepository discountRepository;
     private final ProductRepository productRepository;
     private final StoreRepository storeRepository;
+    private final AuthorizationService authorizationService;
 
     public List<DiscountDTO> getAllDiscounts() {
         return discountRepository.findAll().stream()
@@ -32,14 +34,16 @@ public class DiscountService {
     }
 
     public DiscountDTO getDiscountById(Long id) {
-        return discountRepository.findById(id)
-                .map(DiscountDTO::fromEntity)
+        Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Discount not found with id: " + id));
+        authorizationService.requireCanManageStore(discount.getStore().getId());
+        return DiscountDTO.fromEntity(discount);
     }
 
     public DiscountDTO createDiscount(DiscountDTO discountDTO) {
         Store store = storeRepository.findById(discountDTO.getStoreId())
                 .orElseThrow(() -> new ResourceNotFoundException("Store not found with id: " + discountDTO.getStoreId()));
+        authorizationService.requireCanManageStore(store.getId());
 
         Discount discount = new Discount();
         discount.setCode(discountDTO.getCode());
@@ -58,6 +62,7 @@ public class DiscountService {
     public DiscountDTO updateDiscount(Long id, DiscountDTO discountDTO) {
         Discount discount = discountRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Discount not found with id: " + id));
+        authorizationService.requireCanManageStore(discount.getStore().getId());
 
         discount.setCode(discountDTO.getCode());
         discount.setDescription(discountDTO.getDescription());
@@ -72,10 +77,10 @@ public class DiscountService {
     }
 
     public void deleteDiscount(Long id) {
-        if (!discountRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Discount not found with id: " + id);
-        }
-        discountRepository.deleteById(id);
+        Discount discount = discountRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Discount not found with id: " + id));
+        authorizationService.requireCanManageStore(discount.getStore().getId());
+        discountRepository.delete(discount);
     }
 
     public DiscountDTO applyDiscount(String code) {

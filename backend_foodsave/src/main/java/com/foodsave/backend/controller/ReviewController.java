@@ -4,6 +4,7 @@ import com.foodsave.backend.domain.enums.Permission;
 import com.foodsave.backend.dto.ReviewDTO;
 import com.foodsave.backend.service.ReviewService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public class ReviewController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
     // @RequirePermission(Permission.REVIEW_DELETE)
     public ResponseEntity<Void> deleteReview(@PathVariable Long id) {
         reviewService.deleteReview(id);

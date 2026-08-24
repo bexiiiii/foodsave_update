@@ -12,10 +12,22 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.security.access.AccessDeniedException;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler({AccessDeniedException.class, com.foodsave.backend.exception.AccessDeniedException.class})
+    public ResponseEntity<ErrorResponse> handleAccessDeniedException(Exception ex, WebRequest request) {
+        ErrorResponse errorResponse = new ErrorResponse(
+                "Access denied",
+                HttpStatus.FORBIDDEN.value(),
+                HttpStatus.FORBIDDEN.getReasonPhrase(),
+                request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.FORBIDDEN);
+    }
     
     @ExceptionHandler(ApiException.class)
     public ResponseEntity<ErrorResponse> handleApiException(ApiException ex, WebRequest request) {

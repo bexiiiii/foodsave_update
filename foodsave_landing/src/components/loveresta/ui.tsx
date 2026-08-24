@@ -166,13 +166,15 @@ export function SectionHeading({
   );
 }
 
-export function CatalogCategories() {
-  const categories = ['Все', 'Кафе', 'Рестораны', 'Магазины', 'Пекарни', 'Десерты'];
+export function CatalogCategories({ categories }: { categories?: string[] }) {
+  const visibleCategories = categories?.length
+    ? categories
+    : ['Все', 'Кафе', 'Рестораны', 'Магазины', 'Пекарни', 'Десерты'];
 
   return (
     <section className="loveresta-container loveresta-categories">
       <div className="loveresta-chip-row">
-        {categories.map((category, index) => (
+        {visibleCategories.map((category, index) => (
           <span
             key={category}
             className={`loveresta-chip ${index === 0 ? 'loveresta-chip--active' : ''}`}
@@ -216,7 +218,7 @@ export function OfferCard({ offer }: { offer: Offer }) {
 
 export function StatStrip() {
   const stats = [
-    { value: '120+', label: 'заведений уже доверяют платформе' },
+    { value: '30+', label: 'заведений уже доверяют платформе' },
     { value: '50–70%', label: 'средняя скидка на surprise box' },
     { value: '1 минута', label: 'на публикацию бокса в личном кабинете' },
     { value: '0 списаний', label: 'идеальный сценарий для продукта, который успели продать' },
@@ -278,7 +280,7 @@ export function MarketingHero({
         </div>
         <div className="loveresta-surface__stats">
           <div className="loveresta-mini-stat">
-            <strong>120+</strong>
+            <strong>30+</strong>
             <span>заведений в листе ожидания и каталоге</span>
           </div>
           <div className="loveresta-mini-stat">

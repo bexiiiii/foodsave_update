@@ -23,7 +23,7 @@ export default function SupportPage() {
 
       {/* Support Hero */}
       <div className="flex flex-col items-center mt-8 px-4">
-        <div className="w-24 h-24 bg-[#73be61] rounded-full flex items-center justify-center mb-6">
+        <div className="w-24 h-24 bg-[#4CAD73] rounded-full flex items-center justify-center mb-6">
           <MessageCircle className="w-12 h-12 text-white" strokeWidth={1.5} />
         </div>
         
@@ -41,7 +41,7 @@ export default function SupportPage() {
           {/* Telegram Support */}
           <button
             onClick={handleTelegramSupport}
-            className="w-full bg-[#73be61] rounded-2xl p-6 transition-all duration-300 hover:bg-[#68a356] active:scale-95"
+            className="w-full bg-[#4CAD73] rounded-2xl p-6 transition-all duration-300 hover:bg-[#429565] active:scale-95"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -157,7 +157,7 @@ export default function SupportPage() {
           </Link>
           
           <Link href="/profile" className="flex flex-col items-center gap-1 group">
-            <div className="w-12 h-12 bg-[#73be61] rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95">
+            <div className="w-12 h-12 bg-[#4CAD73] rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95">
               <svg className="w-6 h-6 text-white transition-transform duration-300" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>

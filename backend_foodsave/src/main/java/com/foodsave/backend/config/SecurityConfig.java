@@ -41,12 +41,9 @@ public class SecurityConfig {
                 // Always allow CORS preflight checks
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-                // Swagger UI
-                .requestMatchers("/swagger-ui/**").permitAll()
-                .requestMatchers("/swagger-ui.html").permitAll()
-                .requestMatchers("/v3/api-docs/**").permitAll()
-                .requestMatchers("/swagger-resources/**").permitAll()
-                .requestMatchers("/webjars/**").permitAll()
+                // API documentation is administrative surface, never public in production.
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
+                        "/swagger-resources/**", "/webjars/**").hasRole("SUPER_ADMIN")
 
                 // Static uploads
                 .requestMatchers("/uploads/**").permitAll()
@@ -61,8 +58,8 @@ public class SecurityConfig {
                 // Telegram webhooks - only Telegram servers should call these endpoints
                 .requestMatchers("/api/telegram/webhook/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/analytics/events").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/notifications/groups/**").permitAll()
-                .requestMatchers(HttpMethod.POST, "/api/notifications/groups/*/opened").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/notifications/groups/**").authenticated()
+                .requestMatchers(HttpMethod.POST, "/api/notifications/groups/*/opened").authenticated()
                 
                 // ЗАКРЫТО: /api/users/** требует аутентификации
                 // ЗАКРЫТО: /api/permissions/** требует аутентификации
@@ -74,7 +71,11 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/products/featured").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/store/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products/*").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/category/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/discounted").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/{id}").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/{id}/stock/check").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products").permitAll()
                 // ЗАКРЫТО: POST/PUT/DELETE требуют аутентификации
                 .requestMatchers(HttpMethod.POST, "/api/products/**").authenticated()
@@ -82,8 +83,12 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.DELETE, "/api/products/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/categories/**").permitAll()
                 
-                // Public store endpoints - только GET
-                .requestMatchers(HttpMethod.GET, "/api/stores/*").permitAll()
+                // Public store endpoints return StorePublicDTO only.
+                .requestMatchers(HttpMethod.GET, "/api/stores/active").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/stores/search").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/stores/nearby").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/stores/by-location").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/stores/{id}").permitAll()
                 
                 // Actuator - только health endpoint
                 .requestMatchers("/actuator/health").permitAll()

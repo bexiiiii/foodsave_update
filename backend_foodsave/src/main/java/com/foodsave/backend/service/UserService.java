@@ -71,7 +71,7 @@ public class UserService {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        updateUserFromDTO(user, userDTO);
+        updateProfileFromDTO(user, userDTO);
         return UserDTO.fromEntity(userRepository.save(user));
     }
 
@@ -185,6 +185,24 @@ public class UserService {
         }
         if (dto.getTelegramRegisteredAt() != null) {
             user.setTelegramRegisteredAt(dto.getTelegramRegisteredAt());
+        }
+    }
+
+    private void updateProfileFromDTO(User user, UserDTO dto) {
+        if (dto.getFirstName() != null) {
+            user.setFirstName(dto.getFirstName());
+        }
+        if (dto.getLastName() != null) {
+            user.setLastName(dto.getLastName());
+        }
+        if (dto.getPhone() != null) {
+            user.setPhone(dto.getPhone());
+        }
+        if (dto.getProfilePicture() != null) {
+            user.setProfilePicture(dto.getProfilePicture());
+        }
+        if (dto.getAddress() != null) {
+            user.setAddress(dto.getAddress());
         }
     }
 

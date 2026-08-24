@@ -5,8 +5,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-const KZT_PRICE_MULTIPLIER = 100;
-
 export function formatKztPrice(value: number) {
-  return `${new Intl.NumberFormat("ru-RU").format(Math.round(value * KZT_PRICE_MULTIPLIER))} ₸`;
+  return `${new Intl.NumberFormat("ru-RU").format(Math.round(value))} ₸`;
 }

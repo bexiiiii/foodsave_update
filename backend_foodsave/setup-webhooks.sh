@@ -2,8 +2,9 @@
 
 set -euo pipefail
 
-if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_MANAGER_BOT_TOKEN:-}" ]; then
-    echo "❌ Ошибка: Установите TELEGRAM_BOT_TOKEN и TELEGRAM_MANAGER_BOT_TOKEN"
+if [ -z "${TELEGRAM_BOT_TOKEN:-}" ] || [ -z "${TELEGRAM_MANAGER_BOT_TOKEN:-}" ] || \
+   [ -z "${TELEGRAM_WEBHOOK_SECRET:-}" ] || [ -z "${TELEGRAM_MANAGER_WEBHOOK_SECRET:-}" ]; then
+    echo "Ошибка: установите токены ботов и секреты webhook"
     exit 1
 fi
 
@@ -19,7 +20,7 @@ echo ""
 echo "Setting up client bot webhook..."
 curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/setWebhook" \
   -H "Content-Type: application/json" \
-  -d "{\"url\":\"${CLIENT_WEBHOOK_URL}\"}" | python3 -m json.tool
+  -d "{\"url\":\"${CLIENT_WEBHOOK_URL}\",\"secret_token\":\"${TELEGRAM_WEBHOOK_SECRET}\",\"drop_pending_updates\":false}" | python3 -m json.tool
 
 echo ""
 echo "Client bot webhook info:"
@@ -33,7 +34,7 @@ echo ""
 echo "Setting up manager bot webhook..."
 curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_MANAGER_BOT_TOKEN}/setWebhook" \
   -H "Content-Type: application/json" \
-  -d "{\"url\":\"${MANAGER_WEBHOOK_URL}\"}" | python3 -m json.tool
+  -d "{\"url\":\"${MANAGER_WEBHOOK_URL}\",\"secret_token\":\"${TELEGRAM_MANAGER_WEBHOOK_SECRET}\",\"drop_pending_updates\":false}" | python3 -m json.tool
 
 echo ""
 echo "Manager bot webhook info:"

@@ -188,8 +188,7 @@
                     <debugSentryCli>true</debugSentryCli>
                     <org>bex-development</org>
                     <project>java-spring-boot</project>
-                    <!-- Auth token hardcoded for production use -->
-                    <authToken>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</authToken>
+                    <authToken>${env.SENTRY_AUTH_TOKEN}</authToken>
                 </configuration>
                 <executions>
                     <execution>

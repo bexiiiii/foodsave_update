@@ -5,6 +5,7 @@ export type Venue = {
   kind: VenueKind;
   name: string;
   posterWordmark?: string;
+  logo?: string;
   summary: string;
   address: string;
   rating: string;

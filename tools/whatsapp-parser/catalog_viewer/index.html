@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pâté — Каталог товаров</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0e14;
+    --surface: #161821;
+    --card: #1c1e2a;
+    --card-hover: #222435;
+    --border: rgba(255,255,255,0.07);
+    --primary: #c8a96e;
+    --primary-glow: rgba(200,169,110,0.18);
+    --new: #4ade80;
+    --new-bg: rgba(74,222,128,0.1);
+    --updated: #60a5fa;
+    --updated-bg: rgba(96,165,250,0.1);
+    --unchanged: #a3a3b3;
+    --unchanged-bg: rgba(163,163,179,0.08);
+    --old: #f87171;
+    --old-bg: rgba(248,113,113,0.1);
+    --text: #e8e9f0;
+    --text-muted: #7a7b8e;
+    --text-dim: #4a4b5e;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Header ─── */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(13,14,20,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+
+  .header-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    height: 64px;
+  }
+
+  .logo {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    color: var(--primary);
+  }
+
+  .logo span { color: var(--text-muted); font-weight: 400; font-size: 14px; margin-left: 8px; }
+
+  .search-wrap {
+    flex: 1;
+    max-width: 380px;
+    position: relative;
+  }
+
+  .search-wrap input {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 16px 9px 40px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+    outline: none;
+    transition: border-color .2s;
+  }
+
+  .search-wrap input:focus { border-color: var(--primary); }
+  .search-wrap input::placeholder { color: var(--text-dim); }
+
+  .search-icon {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-dim);
+    pointer-events: none;
+  }
+
+  /* ─── Stats bar ─── */
+  .stats-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+  }
+
+  .stats-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .stat-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all .2s;
+    white-space: nowrap;
+    background: transparent;
+    color: var(--text-muted);
+  }
+
+  .stat-btn:hover { background: var(--card); color: var(--text); }
+
+  .stat-btn.active-all   { background: var(--primary-glow); border-color: var(--primary); color: var(--primary); }
+  .stat-btn.active-new   { background: var(--new-bg); border-color: var(--new); color: var(--new); }
+  .stat-btn.active-updated { background: var(--updated-bg); border-color: var(--updated); color: var(--updated); }
+  .stat-btn.active-unchanged { background: var(--unchanged-bg); border-color: var(--unchanged); color: var(--unchanged); }
+  .stat-btn.active-old_only  { background: var(--old-bg); border-color: var(--old); color: var(--old); }
+
+  .stat-count {
+    font-size: 11px;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 20px;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .stat-divider { width: 1px; height: 24px; background: var(--border); margin: 0 4px; }
+
+  /* ─── Category filters ─── */
+  .cat-filters {
+    padding: 0 24px 12px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .cat-filters-inner {
+    max-width: 1400px;
+    margin: 0 auto;
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .cat-btn {
+    padding: 5px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 12px;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all .15s;
+  }
+
+  .cat-btn:hover, .cat-btn.active {
+    background: var(--primary-glow);
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  /* ─── Main grid ─── */
+  .main {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  .results-info {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-bottom: 16px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 16px;
+  }
+
+  /* ─── Product Card ─── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: transform .2s, border-color .2s, box-shadow .2s;
+    cursor: default;
+    position: relative;
+  }
+
+  .card:hover {
+    transform: translateY(-3px);
+    border-color: rgba(200,169,110,0.25);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+  }
+
+  .card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    background: var(--surface);
+    display: block;
+  }
+
+  .card-img-placeholder {
+    width: 100%;
+    height: 180px;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--card-hover) 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+    color: var(--text-dim);
+  }
+
+  .card-body {
+    padding: 16px;
+  }
+
+  .card-badges {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+
+  .badge {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+  }
+
+  .badge-new       { background: var(--new-bg); color: var(--new); border: 1px solid rgba(74,222,128,.2); }
+  .badge-updated   { background: var(--updated-bg); color: var(--updated); border: 1px solid rgba(96,165,250,.2); }
+  .badge-unchanged { background: var(--unchanged-bg); color: var(--unchanged); border: 1px solid rgba(163,163,179,.15); }
+  .badge-old_only  { background: var(--old-bg); color: var(--old); border: 1px solid rgba(248,113,113,.2); }
+  .badge-new-in-catalog { background: rgba(251,191,36,.1); color: #fbbf24; border: 1px solid rgba(251,191,36,.2); }
+
+  .card-category {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .card-name {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.3;
+    margin-bottom: 8px;
+  }
+
+  .card-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-prices {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .price-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+
+  .price-size {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-weight: 500;
+  }
+
+  .price-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .price-old {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: line-through;
+  }
+
+  .price-current {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .price-current.changed { color: var(--updated); }
+  .price-current.new-price { color: var(--new); }
+
+  /* ─── Empty state ─── */
+  .empty {
+    grid-column: 1/-1;
+    text-align: center;
+    padding: 80px 24px;
+    color: var(--text-muted);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 16px; }
+  .empty-text { font-size: 16px; font-weight: 500; }
+  .empty-sub { font-size: 13px; margin-top: 6px; color: var(--text-dim); }
+
+  /* ─── Loading ─── */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 60vh;
+    font-size: 15px;
+    color: var(--text-muted);
+    gap: 12px;
+  }
+
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border);
+    border-top-color: var(--primary);
+    border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Modal ─── */
+  .modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(13, 14, 20, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    padding: 16px;
+  }
+
+  .modal-overlay.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .modal-container {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    max-width: 700px;
+    width: 100%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    transform: scale(0.95);
+    transition: transform 0.3s ease;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+
+  .modal-overlay.open .modal-container {
+    transform: scale(1);
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid var(--border);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text);
+    cursor: pointer;
+    font-size: 18px;
+    z-index: 10;
+    transition: background 0.2s, color 0.2s;
+  }
+
+  .modal-close:hover {
+    background: var(--primary);
+    color: #000;
+    border-color: var(--primary);
+  }
+
+  .modal-hero {
+    width: 100%;
+    height: 300px;
+    position: relative;
+    background: var(--card);
+  }
+
+  .modal-hero img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .modal-hero .placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 80px;
+    background: linear-gradient(135deg, var(--surface) 0%, var(--card-hover) 100%);
+  }
+
+  .modal-content {
+    padding: 24px;
+  }
+
+  .modal-title {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 8px;
+    line-height: 1.2;
+  }
+
+  .modal-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 16px 0;
+    padding: 16px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .meta-item label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    font-weight: 600;
+  }
+
+  .meta-item span {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .modal-desc {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .modal-section-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+    font-weight: 700;
+  }
+
+  /* ─── Scrollbar ─── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 600px) {
+    .header-inner { gap: 12px; }
+    .logo span { display: none; }
+    .search-wrap { max-width: unset; }
+    .grid { grid-template-columns: 1fr; }
+    .modal-meta-grid { grid-template-columns: 1fr; }
+    .modal-hero { height: 200px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">Pâté <span>каталог товаров</span></div>
+    <div class="search-wrap">
+      <svg class="search-icon" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+      </svg>
+      <input type="text" id="search" placeholder="Поиск товара...">
+    </div>
+  </div>
+</header>
+
+<div class="stats-bar">
+  <div class="stats-inner" id="stats-bar">
+    <button class="stat-btn active-all" data-filter="all" onclick="setFilter('all')">
+      Все <span class="stat-count" id="cnt-all">—</span>
+    </button>
+    <div class="stat-divider"></div>
+    <button class="stat-btn" data-filter="new" onclick="setFilter('new')">
+      🆕 Новые <span class="stat-count" id="cnt-new">—</span>
+    </button>
+    <button class="stat-btn" data-filter="updated" onclick="setFilter('updated')">
+      🔄 Обновлённые <span class="stat-count" id="cnt-updated">—</span>
+    </button>
+    <button class="stat-btn" data-filter="unchanged" onclick="setFilter('unchanged')">
+      ✅ Без изменений <span class="stat-count" id="cnt-unchanged">—</span>
+    </button>
+    <button class="stat-btn" data-filter="old_only" onclick="setFilter('old_only')">
+      📦 Только в старом <span class="stat-count" id="cnt-old_only">—</span>
+    </button>
+  </div>
+</div>
+
+<div class="cat-filters">
+  <div class="cat-filters-inner" id="cat-filters"></div>
+</div>
+
+<main class="main">
+  <div id="results-info" class="results-info"></div>
+  <div class="loading" id="loading">
+    <div class="spinner"></div> Загрузка каталога...
+  </div>
+  <div class="grid" id="grid" style="display:none"></div>
+</main>
+
+<!-- ─── Modal Detail Popup ─── -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal-container" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-hero-container"></div>
+    <div class="modal-content">
+      <div class="card-badges" id="modal-badges"></div>
+      <h2 class="modal-title" id="modal-title"></h2>
+      
+      <div class="modal-meta-grid">
+        <div class="meta-item">
+          <label>Категория</label>
+          <span id="modal-category"></span>
+        </div>
+        <div class="meta-item">
+          <label>Статус в системе</label>
+          <span id="modal-status"></span>
+        </div>
+      </div>
+
+      <div class="modal-section-title">Описание</div>
+      <p class="modal-desc" id="modal-desc"></p>
+
+      <div class="modal-section-title">Цены и размеры</div>
+      <div class="card-prices" id="modal-prices" style="margin-bottom:16px;"></div>
+
+      <div id="modal-aliases-container" style="display:none;">
+        <div class="modal-section-title">Псевдонимы / Синонимы названия</div>
+        <div style="display:flex; gap:6px; flex-wrap:wrap;" id="modal-aliases"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allItems = [];
+let currentFilter = 'all';
+let currentCategory = 'all';
+let searchQuery = '';
+
+const IMAGES_PATH = '../images_from_pdf/';
+const FALLBACK_EMOJI = {
+  'ТАРТЫ': '🥧', 'ГАЛЕТЫ': '🫓', 'СЛАДКИЕ ПИРОГИ': '🎂',
+  'СЫТНЫЕ ПИРОГИ': '🥐', 'КИШ': '🥧', 'ДЕСЕРТЫ': '🍮',
+  'СЛАДКАЯ ВЫПЕЧКА': '🍪', 'ХЛЕБ НА ЗАКВАСКЕ': '🍞',
+  'СЭНДВИЧИ': '🥪', 'ЗАВТРАКИ': '🍳', 'НАПИТКИ': '☕',
+  'ЧАЙНЫЕ НАБОРЫ': '🫖', 'СЕТЫ': '📦', 'ПИКНИК СЕТЫ': '🧺',
+};
+
+// ─── Load data ───
+fetch('../catalog_merged.json')
+  .then(r => r.json())
+  .then(data => {
+    allItems = data;
+    init();
+  })
+  .catch(err => {
+    document.getElementById('loading').innerHTML = `
+      <div style="text-align:center">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div>Ошибка загрузки каталога</div>
+        <div style="font-size:12px;color:#4a4b5e;margin-top:8px">${err.message}</div>
+        <div style="font-size:12px;color:#4a4b5e;margin-top:4px">Убедитесь что файл открыт через локальный сервер</div>
+      </div>`;
+  });
+
+function init() {
+  // Статистика
+  const counts = { all: allItems.length, new: 0, updated: 0, unchanged: 0, old_only: 0 };
+  const categories = new Set();
+  allItems.forEach(item => {
+    counts[item.status] = (counts[item.status] || 0) + 1;
+    if (item.category) categories.add(item.category);
+  });
+
+  Object.entries(counts).forEach(([k, v]) => {
+    const el = document.getElementById('cnt-' + k);
+    if (el) el.textContent = v;
+  });
+
+  // Категории
+  const catBar = document.getElementById('cat-filters');
+  const allBtn = createCatBtn('Все категории', 'all', true);
+  catBar.appendChild(allBtn);
+
+  [...categories].sort().forEach(cat => {
+    catBar.appendChild(createCatBtn(cat, cat, false));
+  });
+
+  // Поиск
+  document.getElementById('search').addEventListener('input', e => {
+    searchQuery = e.target.value.toLowerCase();
+    render();
+  });
+
+  // Listen Esc key to close modal
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeModal();
+  });
+
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('grid').style.display = '';
+  render();
+}
+
+function createCatBtn(label, value, active) {
+  const btn = document.createElement('button');
+  btn.className = 'cat-btn' + (active ? ' active' : '');
+  btn.textContent = label;
+  btn.onclick = () => {
+    document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentCategory = value;
+    render();
+  };
+  return btn;
+}
+
+function setFilter(filter) {
+  currentFilter = filter;
+  document.querySelectorAll('.stat-btn').forEach(b => {
+    b.className = 'stat-btn';
+    if (b.dataset.filter === filter) b.classList.add('active-' + filter);
+  });
+  render();
+}
+
+function render() {
+  let items = allItems;
+
+  // Фильтр по статусу
+  if (currentFilter !== 'all') {
+    items = items.filter(x => x.status === currentFilter);
+  }
+
+  // Фильтр по категории
+  if (currentCategory !== 'all') {
+    items = items.filter(x => x.category === currentCategory);
+  }
+
+  // Поиск
+  if (searchQuery) {
+    items = items.filter(x =>
+      x.canonical.toLowerCase().includes(searchQuery) ||
+      (x.description || '').toLowerCase().includes(searchQuery) ||
+      (x.category || '').toLowerCase().includes(searchQuery)
+    );
+  }
+
+  // Info
+  document.getElementById('results-info').textContent =
+    `Показано ${items.length} товаров` +
+    (searchQuery ? ` по запросу «${searchQuery}»` : '');
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+
+  if (!items.length) {
+    grid.innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-text">Товары не найдены</div>
+        <div class="empty-sub">Попробуйте другой фильтр или поисковый запрос</div>
+      </div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    grid.appendChild(createCard(item));
+  });
+}
+
+function createCard(item) {
+  const el = document.createElement('div');
+  el.className = 'card';
+  el.onclick = () => openModal(item);
+
+  // Картинка
+  const firstImg = Object.values(item.sizes || {}).find(s => s.image)?.image;
+  let imgHtml = '';
+  if (firstImg) {
+    imgHtml = `<img class="card-img" src="${IMAGES_PATH}${firstImg}"
+      onerror="this.parentNode.replaceChild(makePlaceholder('${item.category || ''}'), this)"
+      alt="${item.canonical}">`;
+  } else {
+    imgHtml = makePlaceholderHTML(item.category || '');
+  }
+
+  // Бейджи
+  const statusLabels = { new: '🆕 Новый', updated: '🔄 Обновлён',
+    unchanged: '✅ Без изм.', old_only: '📦 Только в старом' };
+  let badges = `<span class="badge badge-${item.status}">${statusLabels[item.status]}</span>`;
+  if (item.is_new_in_catalog) badges += `<span class="badge badge-new-in-catalog">NEW в каталоге</span>`;
+
+  // Цены
+  const sizes = item.sizes || {};
+  let pricesHtml = '';
+  for (const [sz, info] of Object.entries(sizes)) {
+    if (!info.price) continue;
+    const oldP = info.old_price ? `<span class="price-old">${fmt(info.old_price)} ₸</span>` : '';
+    const priceClass = info.old_price ? 'changed' : (item.status === 'new' ? 'new-price' : '');
+    pricesHtml += `
+      <div class="price-row">
+        <span class="price-size">${sz}</span>
+        <div class="price-right">
+          ${oldP}
+          <span class="price-current ${priceClass}">${fmt(info.price)} ₸</span>
+        </div>
+      </div>`;
+  }
+
+  el.innerHTML = `
+    ${imgHtml}
+    <div class="card-body">
+      <div class="card-badges">${badges}</div>
+      <div class="card-category">${item.category || ''}</div>
+      <div class="card-name">${item.canonical}</div>
+      ${item.description ? `<div class="card-desc">${item.description}</div>` : ''}
+      <div class="card-prices">${pricesHtml}</div>
+    </div>`;
+
+  return el;
+}
+
+function makePlaceholderHTML(category) {
+  const emoji = FALLBACK_EMOJI[category] || '🍽️';
+  return `<div class="card-img-placeholder">${emoji}</div>`;
+}
+
+function makePlaceholder(category) {
+  const div = document.createElement('div');
+  div.className = 'card-img-placeholder';
+  div.textContent = FALLBACK_EMOJI[category] || '🍽️';
+  return div;
+}
+
+function fmt(n) {
+  return n ? n.toLocaleString('ru-RU') : '—';
+}
+
+// ─── Modal Functions ───
+function openModal(item) {
+  const modal = document.getElementById('modal-overlay');
+  
+  // Hero Image
+  const heroContainer = document.getElementById('modal-hero-container');
+  const firstImg = Object.values(item.sizes || {}).find(s => s.image)?.image;
+  if (firstImg) {
+    heroContainer.innerHTML = `<div class="modal-hero"><img src="${IMAGES_PATH}${firstImg}" onerror="this.parentNode.innerHTML='<div class=&quot;placeholder&quot;>${FALLBACK_EMOJI[item.category] || '🍽️'}</div>'" alt="${item.canonical}"></div>`;
+  } else {
+    heroContainer.innerHTML = `<div class="modal-hero"><div class="placeholder">${FALLBACK_EMOJI[item.category] || '🍽️'}</div></div>`;
+  }
+
+  // Text contents
+  document.getElementById('modal-title').textContent = item.canonical;
+  document.getElementById('modal-category').textContent = item.category || 'Без категории';
+  document.getElementById('modal-desc').textContent = item.description || 'Описание отсутствует.';
+
+  const statusMap = {
+    new: 'Новый товар (добавлен в новом каталоге)',
+    updated: 'Обновленный товар (изменились цены)',
+    unchanged: 'Без изменений (присутствует в обоих каталогах)',
+    old_only: 'Только в старом каталоге (устаревшая позиция)'
+  };
+  document.getElementById('modal-status').textContent = statusMap[item.status] || item.status;
+
+  // Badges
+  const badgesContainer = document.getElementById('modal-badges');
+  const statusLabels = { new: '🆕 Новый', updated: '🔄 Обновлён', unchanged: '✅ Без изм.', old_only: '📦 Только в старом' };
+  let badgesHtml = `<span class="badge badge-${item.status}">${statusLabels[item.status]}</span>`;
+  if (item.is_new_in_catalog) {
+    badgesHtml += `<span class="badge badge-new-in-catalog">NEW в каталоге</span>`;
+  }
+  badgesContainer.innerHTML = badgesHtml;
+
+  // Prices
+  const pricesContainer = document.getElementById('modal-prices');
+  let pricesHtml = '';
+  const sizes = item.sizes || {};
+  for (const [sz, info] of Object.entries(sizes)) {
+    if (!info.price) continue;
+    const oldP = info.old_price ? `<span class="price-old">${fmt(info.old_price)} ₸</span>` : '';
+    const priceClass = info.old_price ? 'changed' : (item.status === 'new' ? 'new-price' : '');
+    pricesHtml += `
+      <div class="price-row">
+        <span class="price-size">${sz}</span>
+        <div class="price-right">
+          ${oldP}
+          <span class="price-current ${priceClass}">${fmt(info.price)} ₸</span>
+        </div>
+      </div>`;
+  }
+  pricesContainer.innerHTML = pricesHtml;
+
+  // Aliases
+  const aliasesContainer = document.getElementById('modal-aliases-container');
+  const aliasesList = document.getElementById('modal-aliases');
+  if (item.aliases && item.aliases.length > 0) {
+    aliasesContainer.style.display = 'block';
+    aliasesList.innerHTML = item.aliases.map(a => `<span class="badge badge-unchanged" style="text-transform:none;">${a}</span>`).join('');
+  } else {
+    aliasesContainer.style.display = 'none';
+  }
+
+  // Open modal
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal(event) {
+  const modal = document.getElementById('modal-overlay');
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+</script>
+</body>
+</html>

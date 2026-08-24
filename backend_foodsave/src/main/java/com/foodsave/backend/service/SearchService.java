@@ -43,12 +43,7 @@ public class SearchService {
 
         // Search products
         Page<Product> productPage = productRepository.searchProducts(
-                query,
-                ProductAvailability.visibilityCutoff(),
-                ProductAvailability.currentTimeText(),
-                null,
-                null,
-                pageRequest);
+                query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageRequest);
         List<Product> products = productPage.getContent();
 
         // Search stores

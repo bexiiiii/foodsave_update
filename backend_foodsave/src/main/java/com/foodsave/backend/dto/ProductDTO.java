@@ -78,9 +78,7 @@ public class ProductDTO {
     private Boolean isFeatured;
     private Double rating;
     private Boolean isFavorite;
-    private Boolean closingSoon;
-    private Integer closingSoonMinutes;
-
+    
     private String createdAt;
     private String updatedAt;
     
@@ -98,7 +96,6 @@ public class ProductDTO {
         Double discountPercentage = product.getDiscountPercentage();
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         boolean isAvailable = ProductAvailability.isAvailable(product);
-        Integer minutesUntilClose = ProductAvailability.minutesUntilClose(product.getStore());
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -127,8 +124,6 @@ public class ProductDTO {
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
                 .isFavorite(false)
-                .closingSoon(minutesUntilClose != null)
-                .closingSoonMinutes(minutesUntilClose)
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .build();

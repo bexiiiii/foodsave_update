@@ -135,31 +135,6 @@ export const useFeaturedProducts = (page = 0, size = 20) => {
   );
 };
 
-// Hook for fetching personalized recommended products
-export const useRecommendedProducts = (page = 0, size = 20) => {
-  const queryFn = useCallback(
-    () => apiClient.getRecommendedProducts(page, size),
-    [page, size]
-  );
-
-  const defaultValue: PaginationResponse<Product> = {
-    content: [],
-    totalElements: 0,
-    totalPages: 0,
-    size: size,
-    number: page,
-    first: true,
-    last: true
-  };
-
-  return useSafeQuery(
-    queryFn,
-    defaultValue,
-    [page, size],
-    { cacheTime: 30 * 1000, refetchOnMount: true }
-  );
-};
-
 // Hook for fetching single store with error handling
 export const useStore = (storeId: number | null) => {
   const queryFn = useCallback(async () => {

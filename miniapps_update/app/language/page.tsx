@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useTranslation, Language } from "../../hooks/useTranslation";
 
 const languages = [
@@ -13,6 +14,7 @@ const languages = [
 
 export default function LanguagePage() {
   const { language, changeLanguage } = useTranslation();
+  const router = useRouter();
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.Telegram?.WebApp) {
@@ -22,12 +24,23 @@ export default function LanguagePage() {
     }
   }, []);
 
+  const getReturnPath = () => {
+    if (typeof window === "undefined") return "/profile";
+    const storedPath = sessionStorage.getItem("languageReturnTo");
+    return storedPath && storedPath !== "/language" ? storedPath : "/profile";
+  };
+
+  const handleLanguageChange = (lang: Language) => {
+    changeLanguage(lang);
+    router.replace(getReturnPath());
+  };
+
   return (
     <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/profile" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
+          <Link href={getReturnPath()} className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
           <ArrowLeft className="w-5 h-5 text-gray-800" />
           </Link>
           <h1 className="text-xl font-bold text-black font-inter">Тіл / Язык / Language</h1>
@@ -40,7 +53,7 @@ export default function LanguagePage() {
           {languages.map((lang) => (
             <button
               key={lang.id}
-              onClick={() => changeLanguage(lang.id)}
+              onClick={() => handleLanguageChange(lang.id)}
               className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-200 transition-colors"
             >
               <div className="flex items-center gap-3">
@@ -48,7 +61,7 @@ export default function LanguagePage() {
                 <span className="text-base font-medium text-black font-inter">{lang.name}</span>
               </div>
               {language === lang.id && (
-                <div className="w-5 h-5 bg-[#73be61] rounded-full flex items-center justify-center">
+                <div className="w-5 h-5 bg-[#4CAD73] rounded-full flex items-center justify-center">
                   <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
