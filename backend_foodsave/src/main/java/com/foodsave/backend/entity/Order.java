@@ -131,6 +131,9 @@ public class Order extends BaseEntity {
     @Column(name = "customer_arrived_at")
     private LocalDateTime customerArrivedAt;
 
+    @Column(name = "pickup_reminder_sent_at")
+    private LocalDateTime pickupReminderSentAt;
+
     @Column(name = "acquisition_source")
     private String acquisitionSource;
 

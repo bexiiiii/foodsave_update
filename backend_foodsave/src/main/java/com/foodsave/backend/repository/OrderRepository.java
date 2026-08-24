@@ -36,6 +36,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.store.id IN :storeIds ORDER BY o.createdAt DESC")
     List<Order> findByStoreIdInWithItemsOptimized(@Param("storeIds") Set<Long> storeIds);
 
+    @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
+    @Query("SELECT o FROM Order o WHERE o.pickupReminderSentAt IS NULL " +
+           "AND o.status IN :statuses " +
+           "AND o.createdAt <= :cutoff " +
+           "ORDER BY o.createdAt ASC")
+    Page<Order> findPickupReminderCandidates(@Param("statuses") Set<OrderStatus> statuses,
+                                             @Param("cutoff") LocalDateTime cutoff,
+                                             Pageable pageable);
+
     @Query("SELECT o FROM Order o WHERE o.user = :user")
     List<Order> findByUser(@Param("user") User user);
     

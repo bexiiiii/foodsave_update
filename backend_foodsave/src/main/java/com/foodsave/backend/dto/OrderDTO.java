@@ -62,6 +62,7 @@ public class OrderDTO {
     private LocalDateTime noShowAt;
     private LocalDateTime rejectedAt;
     private LocalDateTime customerArrivedAt;
+    private LocalDateTime pickupReminderSentAt;
     private String acquisitionSource;
     private String campaignId;
     private Long notificationId;
@@ -114,6 +115,7 @@ public class OrderDTO {
                 .noShowAt(order.getNoShowAt())
                 .rejectedAt(order.getRejectedAt())
                 .customerArrivedAt(order.getCustomerArrivedAt())
+                .pickupReminderSentAt(order.getPickupReminderSentAt())
                 .acquisitionSource(order.getAcquisitionSource())
                 .campaignId(order.getCampaignId())
                 .notificationId(order.getNotificationId())

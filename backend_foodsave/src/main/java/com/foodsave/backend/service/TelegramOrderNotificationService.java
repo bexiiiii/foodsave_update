@@ -39,6 +39,12 @@ public class TelegramOrderNotificationService {
     @Value("${telegram.order-notifications.chat-ids:}")
     private String recipientChatIds;
 
+    public enum PickupReminderResult {
+        SENT,
+        SKIPPED,
+        FAILED
+    }
+
     @Transactional(readOnly = true)
     public void notifyNewOrder(Order order) {
         if (order == null) {
@@ -96,8 +102,60 @@ public class TelegramOrderNotificationService {
         if (customerChatId != null && customerNotificationsEnabled) {
             telegramBotService.sendMessage(customerChatId,
                     new TelegramBotService.TelegramMessagePayload(message, null, "Открыть заказ",
-                            telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
+                    telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
         }
+    }
+
+    public PickupReminderResult notifyPickupReminder(Order order) {
+        if (order == null || order.getUser() == null || order.getUser().getTelegramUserId() == null) {
+            return PickupReminderResult.SKIPPED;
+        }
+        boolean customerNotificationsEnabled = notificationSettingsRepository.findByUser(order.getUser())
+                .map(com.foodsave.backend.entity.NotificationSettings::isOrderUpdates)
+                .orElse(true);
+        if (!customerNotificationsEnabled) {
+            return PickupReminderResult.SKIPPED;
+        }
+
+        String message = buildPickupReminderMessage(order);
+        boolean sent = telegramBotService.sendMessage(order.getUser().getTelegramUserId(),
+                new TelegramBotService.TelegramMessagePayload(
+                        message,
+                        null,
+                        "Открыть заказ",
+                        telegramBotService.resolveButtonUrl("/orders/" + order.getId())
+                ));
+        return sent ? PickupReminderResult.SENT : PickupReminderResult.FAILED;
+    }
+
+    private String buildPickupReminderMessage(Order order) {
+        Store store = order.getStore();
+        OrderItem firstItem = order.getItems() != null && !order.getItems().isEmpty()
+                ? order.getItems().get(0)
+                : null;
+        Product product = firstItem != null ? firstItem.getProduct() : null;
+
+        StringBuilder text = new StringBuilder();
+        text.append("<b>⏰ Напоминание о заказе #").append(html(resolveOrderNumber(order))).append("</b>\n");
+        text.append("Ваш бокс всё ещё ждёт вас");
+        if (store != null && store.getName() != null && !store.getName().isBlank()) {
+            text.append(" в ").append(html(store.getName().trim()));
+        }
+        text.append(".\n\n");
+
+        if (product != null && product.getName() != null && !product.getName().isBlank()) {
+            int quantity = firstItem.getQuantity() != null ? firstItem.getQuantity() : 1;
+            text.append("Бокс: ").append(html(product.getName())).append(" × ").append(quantity).append("\n");
+        }
+        if (store != null && store.getAddress() != null && !store.getAddress().isBlank()) {
+            text.append("Адрес: ").append(html(store.getAddress())).append("\n");
+        }
+        if (store != null && store.getClosingHours() != null && !store.getClosingHours().isBlank()) {
+            text.append("Заберите до: ").append(html(store.getClosingHours())).append("\n");
+        }
+
+        text.append("\nЕсли планы изменились, отмените заказ в приложении, чтобы бокс увидели другие.");
+        return text.toString();
     }
 
     private String statusLabel(OrderStatus status) {
