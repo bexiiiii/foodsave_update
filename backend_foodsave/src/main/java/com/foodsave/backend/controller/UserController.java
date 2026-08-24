@@ -1,6 +1,7 @@
 package com.foodsave.backend.controller;
 
 import com.foodsave.backend.entity.User;
+import com.foodsave.backend.dto.UserBlacklistRequest;
 import com.foodsave.backend.dto.UserDTO;
 import com.foodsave.backend.service.UserService;
 import com.foodsave.backend.domain.enums.UserRole;
@@ -129,6 +130,16 @@ public class UserController {
     public ResponseEntity<UserDTO> toggleUserStatus(@PathVariable Long id) {
         UserDTO user = userService.toggleUserStatus(id);
         return ResponseEntity.ok(user);
+    }
+
+    @PatchMapping("/{id}/blacklist")
+    @Operation(summary = "Update user blacklist status")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<UserDTO> updateUserBlacklist(
+            @PathVariable Long id,
+            @RequestBody UserBlacklistRequest request
+    ) {
+        return ResponseEntity.ok(userService.updateUserBlacklist(id, request));
     }
     
     @PutMapping("/change-password")

@@ -146,6 +146,30 @@ export default function UsersPage() {
         }
     };
 
+    const handleToggleBlacklist = async (user: UserDTO) => {
+        const shouldBlacklist = !user.blacklisted;
+        let reason: string | undefined;
+
+        if (shouldBlacklist) {
+            const answer = prompt('Почему добавляем пользователя в черный список? Можно оставить пустым.');
+            if (answer === null) return;
+            reason = answer.trim() || undefined;
+        } else if (!confirm('Убрать пользователя из черного списка?')) {
+            return;
+        }
+
+        try {
+            const updatedUser = await userApi.updateBlacklist(user.id, shouldBlacklist, reason);
+            setUsers((currentUsers) =>
+                currentUsers.map((item) => item.id === updatedUser.id ? updatedUser : item)
+            );
+            toast.success(shouldBlacklist ? 'Пользователь добавлен в черный список' : 'Пользователь убран из черного списка');
+        } catch (error) {
+            console.error('Failed to update blacklist status:', error);
+            toast.error('Не удалось обновить черный список');
+        }
+    };
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
@@ -374,6 +398,15 @@ export default function UsersPage() {
                                                             TG ID: {user.telegramUserId}
                                                         </span>
                                                     )}
+                                                    {user.blacklisted && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="w-fit border-red-300 bg-red-50 text-xs text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300"
+                                                            title={user.blacklistReason || 'Клиент в черном списке'}
+                                                        >
+                                                            Черный список
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </TableCell>
                                             <TableCell>
@@ -403,6 +436,16 @@ export default function UsersPage() {
                                                         }}
                                                     >
                                                         Редактировать
+                                                    </Button>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => handleToggleBlacklist(user)}
+                                                        className={user.blacklisted
+                                                            ? 'border-green-200 text-green-700 hover:text-green-800'
+                                                            : 'border-red-200 text-red-600 hover:text-red-700'}
+                                                    >
+                                                        {user.blacklisted ? 'Убрать ЧС' : 'В ЧС'}
                                                     </Button>
                                                     <Button
                                                         variant="outline"

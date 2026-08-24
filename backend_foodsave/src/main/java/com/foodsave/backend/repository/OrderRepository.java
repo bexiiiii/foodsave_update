@@ -4,6 +4,8 @@ import com.foodsave.backend.entity.Order;
 import com.foodsave.backend.entity.User;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.domain.enums.OrderStatus;
+import com.foodsave.backend.domain.enums.StoreStatus;
+import com.foodsave.backend.domain.enums.UserRole;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -39,10 +41,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
     @Query("SELECT o FROM Order o WHERE o.pickupReminderSentAt IS NULL " +
            "AND o.status IN :statuses " +
+           "AND o.createdAt >= :oldestCreatedAt " +
            "AND o.createdAt <= :cutoff " +
+           "AND o.user.active = true " +
+           "AND o.user.role = :customerRole " +
+           "AND o.user.telegramUserId IS NOT NULL " +
+           "AND o.store.active = true " +
+           "AND o.store.status = :activeStoreStatus " +
            "ORDER BY o.createdAt ASC")
     Page<Order> findPickupReminderCandidates(@Param("statuses") Set<OrderStatus> statuses,
+                                             @Param("oldestCreatedAt") LocalDateTime oldestCreatedAt,
                                              @Param("cutoff") LocalDateTime cutoff,
+                                             @Param("customerRole") UserRole customerRole,
+                                             @Param("activeStoreStatus") StoreStatus activeStoreStatus,
                                              Pageable pageable);
 
     @Query("SELECT o FROM Order o WHERE o.user = :user")

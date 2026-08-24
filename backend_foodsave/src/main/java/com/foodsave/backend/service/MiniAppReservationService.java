@@ -269,6 +269,7 @@ public class MiniAppReservationService {
         text.append("\nИтого: ").append(formatPrice(order.getTotal())).append("\n");
         text.append("Клиент: ").append(customerName).append("\n");
         text.append("Телефон: ").append(phone);
+        appendBlacklistWarning(text, customer);
 
         for (Long chatId : sellerChatIds) {
             try {
@@ -280,6 +281,17 @@ public class MiniAppReservationService {
             }
         }
         log.info("Order {} seller notification sent to {} chat(s)", order.getOrderNumber(), sellerChatIds.size());
+    }
+
+    private void appendBlacklistWarning(StringBuilder text, User customer) {
+        if (customer == null || !customer.isBlacklisted()) {
+            return;
+        }
+
+        text.append("\n\n<b>⚠️ Внимание! Клиент в черном списке.</b>");
+        if (customer.getBlacklistReason() != null && !customer.getBlacklistReason().isBlank()) {
+            text.append("\nПричина: ").append(html(customer.getBlacklistReason().trim()));
+        }
     }
 
     private void sendTelegramConfirmation(User user, Order order, Product product) {
@@ -350,6 +362,16 @@ public class MiniAppReservationService {
             return "не указано";
         }
         return value;
+    }
+
+    private String html(String value) {
+        if (value == null) {
+            return "";
+        }
+        return value
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;");
     }
 
     private String resolvePhone(User user) {

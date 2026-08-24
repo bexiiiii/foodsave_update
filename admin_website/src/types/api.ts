@@ -50,6 +50,9 @@ export interface UserDTO {
     telegramLanguageCode?: string;
     telegramRegisteredAt?: string;
     registrationSource?: string;
+    blacklisted?: boolean;
+    blacklistReason?: string;
+    blacklistedAt?: string;
 }
 
 export interface UserCreateRequest {

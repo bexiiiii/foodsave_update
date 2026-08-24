@@ -1,6 +1,7 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.entity.User;
+import com.foodsave.backend.dto.UserBlacklistRequest;
 import com.foodsave.backend.dto.UserDTO;
 import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.domain.enums.UserRole;
@@ -15,6 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,19 +31,19 @@ public class UserService {
 
     public List<UserDTO> getAllUsers() {
         return userRepository.findAll().stream()
-                .map(UserDTO::fromEntity)
+                .map(user -> UserDTO.fromEntity(user, true))
                 .collect(Collectors.toList());
     }
 
     public Page<UserDTO> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable)
-                .map(UserDTO::fromEntity);
+                .map(user -> UserDTO.fromEntity(user, true));
     }
 
     public UserDTO getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("User not found"));
-        return UserDTO.fromEntity(user);
+        return UserDTO.fromEntity(user, true);
     }
 
     public UserDTO getCurrentUserProfile() {
@@ -213,7 +215,7 @@ public class UserService {
     public UserDTO getUserByEmail(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return UserDTO.fromEntity(user);
+        return UserDTO.fromEntity(user, true);
     }
 
     @Transactional
@@ -222,12 +224,12 @@ public class UserService {
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setActive(!user.isActive());
         user = userRepository.save(user);
-        return UserDTO.fromEntity(user);
+        return UserDTO.fromEntity(user, true);
     }
 
     public List<UserDTO> getUsersByRole(UserRole role) {
         return userRepository.findByRole(role).stream()
-                .map(UserDTO::fromEntity)
+                .map(user -> UserDTO.fromEntity(user, true))
                 .collect(Collectors.toList());
     }
 
@@ -235,14 +237,38 @@ public class UserService {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setRole(role);
-        return UserDTO.fromEntity(userRepository.save(user));
+        return UserDTO.fromEntity(userRepository.save(user), true);
     }
 
     public UserDTO updateUserStatus(Long id, boolean active) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setActive(active);
-        return UserDTO.fromEntity(userRepository.save(user));
+        return UserDTO.fromEntity(userRepository.save(user), true);
+    }
+
+    public UserDTO updateUserBlacklist(Long id, UserBlacklistRequest request) {
+        if (request == null || request.blacklisted() == null) {
+            throw new IllegalArgumentException("Blacklist status is required");
+        }
+
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        boolean blacklisted = request.blacklisted();
+        user.setBlacklisted(blacklisted);
+        if (blacklisted) {
+            String reason = request.reason() == null ? null : request.reason().trim();
+            user.setBlacklistReason(reason != null && !reason.isBlank() ? reason : null);
+            if (user.getBlacklistedAt() == null) {
+                user.setBlacklistedAt(LocalDateTime.now());
+            }
+        } else {
+            user.setBlacklistReason(null);
+            user.setBlacklistedAt(null);
+        }
+
+        return UserDTO.fromEntity(userRepository.save(user), true);
     }
 
     public List<UserDTO> getAvailableManagers() {

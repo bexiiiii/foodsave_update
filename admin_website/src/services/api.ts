@@ -394,6 +394,8 @@ export const userApi = {
     updateRole: (id: number, role: string) => api.put<UserDTO>(`${API_ENDPOINTS.USERS.BASE}/${id}/role`, null, { params: { role } }).then(response => response.data),
     updateStatus: (id: number, active: boolean) => api.put<UserDTO>(`${API_ENDPOINTS.USERS.BASE}/${id}/status`, null, { params: { active } }).then(response => response.data),
     toggleStatus: (id: number) => api.patch<UserDTO>(`${API_ENDPOINTS.USERS.BASE}/${id}/toggle-status`).then(response => response.data),
+    updateBlacklist: (id: number, blacklisted: boolean, reason?: string) =>
+        api.patch<UserDTO>(`${API_ENDPOINTS.USERS.BASE}/${id}/blacklist`, { blacklisted, reason }).then(response => response.data),
     changePassword: (newPassword: string) => api.put(API_ENDPOINTS.USERS.CHANGE_PASSWORD, newPassword).then(response => response.data),
     register: (data: UserCreateRequest) => api.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, data).then(response => response.data),
 };

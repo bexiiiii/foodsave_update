@@ -1,5 +1,6 @@
 package com.foodsave.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import com.foodsave.backend.domain.enums.UserRole;
 import com.foodsave.backend.entity.User;
 import jakarta.validation.constraints.Email;
@@ -60,11 +61,24 @@ public class UserDTO {
 
     private LocalDateTime telegramRegisteredAt;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean blacklisted;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String blacklistReason;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocalDateTime blacklistedAt;
+
     public static UserDTO fromEntity(User user) {
+        return fromEntity(user, false);
+    }
+
+    public static UserDTO fromEntity(User user, boolean includeInternalFlags) {
         if (user == null) {
             return null;
         }
-        return UserDTO.builder()
+        UserDTOBuilder builder = UserDTO.builder()
                 .id(user.getId())
                 .firstName(user.getFirstName())
                 .lastName(user.getLastName())
@@ -83,7 +97,14 @@ public class UserDTO {
                 .telegramPhotoUrl(user.getTelegramPhotoUrl())
                 .telegramLanguageCode(user.getTelegramLanguageCode())
                 .telegramRegisteredAt(user.getTelegramRegisteredAt())
-                .password(null) // Никогда не возвращаем пароль!
-                .build();
+                .password(null); // Никогда не возвращаем пароль!
+
+        if (includeInternalFlags) {
+            builder.blacklisted(user.isBlacklisted())
+                    .blacklistReason(user.getBlacklistReason())
+                    .blacklistedAt(user.getBlacklistedAt());
+        }
+
+        return builder.build();
     }
 }

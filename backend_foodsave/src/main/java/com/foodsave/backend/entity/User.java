@@ -94,6 +94,15 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "is_telegram_user", nullable = false)
     private boolean telegramUser = false;
 
+    @Column(name = "blacklisted", nullable = false)
+    private boolean blacklisted = false;
+
+    @Column(name = "blacklist_reason", columnDefinition = "TEXT")
+    private String blacklistReason;
+
+    @Column(name = "blacklisted_at")
+    private LocalDateTime blacklistedAt;
+
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     private Set<Store> stores = new HashSet<>();
 

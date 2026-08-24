@@ -19,6 +19,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
+import java.util.Collections;
+import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Locale;
 import java.util.Set;
@@ -107,28 +109,63 @@ public class TelegramOrderNotificationService {
     }
 
     public PickupReminderResult notifyPickupReminder(Order order) {
-        if (order == null || order.getUser() == null || order.getUser().getTelegramUserId() == null) {
+        return notifyPickupReminders(order == null ? Collections.emptyList() : Collections.singletonList(order));
+    }
+
+    public PickupReminderResult notifyPickupReminders(List<Order> orders) {
+        if (orders == null || orders.isEmpty()) {
             return PickupReminderResult.SKIPPED;
         }
-        boolean customerNotificationsEnabled = notificationSettingsRepository.findByUser(order.getUser())
+
+        Order firstOrder = orders.stream()
+                .filter(order -> order != null && order.getUser() != null)
+                .findFirst()
+                .orElse(null);
+        if (firstOrder == null || firstOrder.getUser().getTelegramUserId() == null) {
+            return PickupReminderResult.SKIPPED;
+        }
+        User user = firstOrder.getUser();
+        boolean customerNotificationsEnabled = notificationSettingsRepository.findByUser(user)
                 .map(com.foodsave.backend.entity.NotificationSettings::isOrderUpdates)
                 .orElse(true);
         if (!customerNotificationsEnabled) {
             return PickupReminderResult.SKIPPED;
         }
 
-        String message = buildPickupReminderMessage(order);
-        boolean sent = telegramBotService.sendMessage(order.getUser().getTelegramUserId(),
+        String message = buildPickupReminderMessage(orders);
+        boolean sent = telegramBotService.sendMessage(user.getTelegramUserId(),
                 new TelegramBotService.TelegramMessagePayload(
                         message,
                         null,
-                        "Открыть заказ",
-                        telegramBotService.resolveButtonUrl("/orders/" + order.getId())
+                        orders.size() == 1 ? "Открыть заказ" : "Открыть заказы",
+                        telegramBotService.resolveButtonUrl(orders.size() == 1 ? "/orders/" + firstOrder.getId() : "/orders")
                 ));
         return sent ? PickupReminderResult.SENT : PickupReminderResult.FAILED;
     }
 
-    private String buildPickupReminderMessage(Order order) {
+    private String buildPickupReminderMessage(List<Order> orders) {
+        if (orders.size() == 1) {
+            return buildSinglePickupReminderMessage(orders.get(0));
+        }
+
+        StringBuilder text = new StringBuilder();
+        text.append("<b>⏰ Напоминание о заказах</b>\n");
+        text.append("Ваши боксы всё ещё ждут вас:\n\n");
+
+        int visibleOrders = Math.min(orders.size(), 10);
+        for (int i = 0; i < visibleOrders; i++) {
+            appendPickupReminderOrderLine(text, orders.get(i));
+        }
+
+        if (orders.size() > visibleOrders) {
+            text.append("\nИ ещё ").append(orders.size() - visibleOrders).append(" заказ(ов) в приложении.\n");
+        }
+
+        text.append("\nЕсли планы изменились, отмените лишние заказы в приложении, чтобы боксы увидели другие.");
+        return text.toString();
+    }
+
+    private String buildSinglePickupReminderMessage(Order order) {
         Store store = order.getStore();
         OrderItem firstItem = order.getItems() != null && !order.getItems().isEmpty()
                 ? order.getItems().get(0)
@@ -156,6 +193,31 @@ public class TelegramOrderNotificationService {
 
         text.append("\nЕсли планы изменились, отмените заказ в приложении, чтобы бокс увидели другие.");
         return text.toString();
+    }
+
+    private void appendPickupReminderOrderLine(StringBuilder text, Order order) {
+        Store store = order.getStore();
+        OrderItem firstItem = order.getItems() != null && !order.getItems().isEmpty()
+                ? order.getItems().get(0)
+                : null;
+        Product product = firstItem != null ? firstItem.getProduct() : null;
+        int quantity = firstItem != null && firstItem.getQuantity() != null ? firstItem.getQuantity() : 1;
+
+        text.append("• #").append(html(resolveOrderNumber(order)));
+        if (store != null && store.getName() != null && !store.getName().isBlank()) {
+            text.append(" — ").append(html(store.getName().trim()));
+        }
+        text.append("\n");
+
+        if (product != null && product.getName() != null && !product.getName().isBlank()) {
+            text.append("  Бокс: ").append(html(product.getName())).append(" × ").append(quantity).append("\n");
+        }
+        if (store != null && store.getAddress() != null && !store.getAddress().isBlank()) {
+            text.append("  Адрес: ").append(html(store.getAddress())).append("\n");
+        }
+        if (store != null && store.getClosingHours() != null && !store.getClosingHours().isBlank()) {
+            text.append("  Заберите до: ").append(html(store.getClosingHours())).append("\n");
+        }
     }
 
     private String statusLabel(OrderStatus status) {
@@ -226,6 +288,7 @@ public class TelegramOrderNotificationService {
         }
 
         text.append("Телефон: ").append(html(orDash(order.getContactPhone()))).append("\n");
+        appendBlacklistWarning(text, customer);
 
         if (order.getDeliveryNotes() != null && !order.getDeliveryNotes().isBlank()) {
             text.append("Комментарий: ").append(html(order.getDeliveryNotes().trim())).append("\n");
@@ -281,6 +344,17 @@ public class TelegramOrderNotificationService {
             return "TG ID " + customer.getTelegramUserId();
         }
         return "";
+    }
+
+    private void appendBlacklistWarning(StringBuilder text, User customer) {
+        if (customer == null || !customer.isBlacklisted()) {
+            return;
+        }
+
+        text.append("\n<b>⚠️ Внимание! Клиент в черном списке.</b>\n");
+        if (customer.getBlacklistReason() != null && !customer.getBlacklistReason().isBlank()) {
+            text.append("Причина: ").append(html(customer.getBlacklistReason().trim())).append("\n");
+        }
     }
 
     private String resolveDeliveryLabel(Order order) {
