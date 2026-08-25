@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CreditCard, Loader2, MapPin, Store as StoreIcon, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, CreditCard, Loader2, MapPin, Store as StoreIcon, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import BottomNav from "../../../components/BottomNav";
@@ -23,6 +23,8 @@ const getStatusText = (status?: string) => {
       return "Готовится";
     case "READY_FOR_PICKUP":
       return "Готов к выдаче";
+    case "PICKED_UP":
+      return "Забран";
     case "OUT_FOR_DELIVERY":
       return "В пути";
     case "DELIVERED":
@@ -51,11 +53,14 @@ export default function OrderDetailsPage() {
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancelling, setIsCancelling] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false);
 
-  const cancellableStatuses = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
+  const cancellableStatuses: Order["status"][] = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
+  const pickupConfirmableStatuses: Order["status"][] = cancellableStatuses;
   const canCancelOrder = order ? cancellableStatuses.includes(order.status) : false;
+  const canConfirmPickup = order ? pickupConfirmableStatuses.includes(order.status) : false;
 
   useEffect(() => {
     const orderId = Number(params.id);
@@ -107,6 +112,30 @@ export default function OrderDetailsPage() {
       setCancelError("Не удалось отменить заказ. Попробуйте еще раз.");
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleMarkPickedUp = async () => {
+    if (!order || isCompleting) return;
+
+    setCancelError(null);
+    setIsCompleting(true);
+    try {
+      const pickedUpOrder = await apiClient.markOrderPickedUp(order.id);
+      setOrder({
+        ...order,
+        ...pickedUpOrder,
+        orderItems: Array.isArray(pickedUpOrder.orderItems)
+          ? pickedUpOrder.orderItems
+          : Array.isArray(pickedUpOrder.items)
+            ? pickedUpOrder.items
+            : order.orderItems,
+      });
+    } catch (error) {
+      console.error("Failed to mark order picked up:", error);
+      setCancelError(error instanceof Error && error.message ? error.message : "Не удалось отметить заказ забранным. Попробуйте еще раз.");
+    } finally {
+      setIsCompleting(false);
     }
   };
 
@@ -198,6 +227,27 @@ export default function OrderDetailsPage() {
                 </div>
               </div>
             </section>
+
+            {canConfirmPickup && (
+              <button
+                type="button"
+                onClick={handleMarkPickedUp}
+                disabled={isCompleting}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#4CAD73] text-sm font-bold text-white shadow-sm transition-colors active:scale-[0.99] disabled:bg-[#4CAD73]/50 font-inter"
+              >
+                {isCompleting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Сохраняем...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Уже забрала
+                  </>
+                )}
+              </button>
+            )}
 
             {canCancelOrder && (
               <button

@@ -1146,6 +1146,9 @@ export default function ProductsPage() {
                             {/* Images */}
                             <div>
                                 <Label>Изображения товара</Label>
+                                <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                    Первое фото будет обложкой. Остальные появятся в галерее бокса.
+                                </p>
                                 <div className="space-y-3">
                                     {formData.images.length === 0 ? (
                                         <div className="space-y-2">
@@ -1164,6 +1167,9 @@ export default function ProductsPage() {
                                     ) : (
                                         formData.images.map((image, index) => (
                                             <div key={index} className="space-y-2">
+                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                                    {index === 0 ? 'Обложка бокса' : `Дополнительное фото ${index + 1}`}
+                                                </p>
                                                 <div className="flex items-center space-x-3">
                                                     <Input
                                                         type="file"

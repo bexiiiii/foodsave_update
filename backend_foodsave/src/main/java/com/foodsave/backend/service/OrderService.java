@@ -489,7 +489,56 @@ public class OrderService {
         return result;
     }
 
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "storeOrders", allEntries = true)
+    })
+    public OrderDTO markCurrentUserOrderPickedUp(Long id) {
+        Long currentUserId = securityUtil.getCurrentUserId();
+        if (currentUserId == null) {
+            throw new ApiException("Войдите в приложение, чтобы отметить заказ забранным.", HttpStatus.UNAUTHORIZED);
+        }
+
+        Order order = orderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
+        if (order.getUser() == null || !currentUserId.equals(order.getUser().getId())) {
+            throw new ResourceNotFoundException("Order not found with id: " + id);
+        }
+        if (order.getStatus() == OrderStatus.PICKED_UP
+                || order.getStatus() == OrderStatus.COMPLETED
+                || order.getStatus() == OrderStatus.DELIVERED) {
+            return OrderDTO.fromEntity(order);
+        }
+        if (!canUserConfirmPickup(order.getStatus())) {
+            throw new ApiException("Этот заказ уже нельзя отметить забранным.", HttpStatus.CONFLICT);
+        }
+
+        OrderStatus previous = order.getStatus();
+        OrderStatusUpdateRequest request = new OrderStatusUpdateRequest(
+                OrderStatus.PICKED_UP,
+                ReservationActorType.USER,
+                null,
+                null
+        );
+        Order saved = reservationStatusService.changeStatus(order, request);
+        OrderDTO result = OrderDTO.fromEntity(saved);
+        telegramNotificationExecutor.execute(() -> telegramOrderNotificationService.notifyStatusChanged(saved, previous, saved.getStatus()));
+        realtimeEventService.publish(saved.getUser().getId(), "order-status-changed", result);
+        if (saved.getStore() != null && saved.getStore().getOwner() != null) {
+            realtimeEventService.publish(saved.getStore().getOwner().getId(), "order-status-changed", result);
+        }
+        return result;
+    }
+
     private boolean canUserCancel(OrderStatus status) {
+        return status == OrderStatus.CREATED
+                || status == OrderStatus.PENDING
+                || status == OrderStatus.CONFIRMED
+                || status == OrderStatus.PREPARING
+                || status == OrderStatus.READY_FOR_PICKUP;
+    }
+
+    private boolean canUserConfirmPickup(OrderStatus status) {
         return status == OrderStatus.CREATED
                 || status == OrderStatus.PENDING
                 || status == OrderStatus.CONFIRMED

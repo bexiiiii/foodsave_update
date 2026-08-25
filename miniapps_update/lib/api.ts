@@ -127,6 +127,7 @@ export interface Product {
   name: string;
   description?: string;
   imageUrl?: string;
+  images?: string[];
   originalPrice: number;
   price?: number; // Backend sends this field - the calculated discounted price
   discountedPrice?: number; // Alternative field name for compatibility
@@ -793,6 +794,28 @@ class ApiClient {
         cancellationReason,
         cancellationComment: cancellationComment?.trim() || undefined,
       }),
+    });
+
+    return {
+      ...response,
+      orderItems: Array.isArray(response.orderItems)
+        ? response.orderItems
+        : Array.isArray(response.items)
+          ? response.items
+          : [],
+      totalAmount: response.totalAmount || response.total || 0,
+      storeName: response.storeName || 'Unknown Store',
+      notes: response.notes || response.deliveryNotes || ''
+    };
+  }
+
+  async markOrderPickedUp(id: number): Promise<Order> {
+    if (!this.token) {
+      throw new Error('Authentication required');
+    }
+
+    const response = await this.makeRequest<Order>(`/orders/${id}/picked-up`, {
+      method: 'PUT',
     });
 
     return {

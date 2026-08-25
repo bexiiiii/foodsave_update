@@ -483,7 +483,7 @@ export default function UsersPage() {
 
                 <Modal
                     isOpen={!!blacklistUser}
-                    onClose={closeBlacklistModal}
+                    onClose={() => closeBlacklistModal()}
                     className="max-w-lg mx-auto"
                     showCloseButton={false}
                 >
@@ -537,7 +537,7 @@ export default function UsersPage() {
                                 <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={closeBlacklistModal}
+                                    onClick={() => closeBlacklistModal()}
                                     disabled={blacklistSubmitting}
                                 >
                                     Отмена

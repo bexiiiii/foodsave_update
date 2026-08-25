@@ -117,6 +117,11 @@ public class OrderController {
         return ResponseEntity.ok(orderService.cancelCurrentUserOrder(id, reason, comment));
     }
 
+    @PutMapping("/{id}/picked-up")
+    public ResponseEntity<OrderDTO> markCurrentUserOrderPickedUp(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.markCurrentUserOrderPickedUp(id));
+    }
+
     private ReservationCancellationReason parseCancellationReason(Object rawReason) {
         if (rawReason == null || String.valueOf(rawReason).isBlank()) {
             throw new ApiException("Выберите причину отмены.", HttpStatus.BAD_REQUEST);

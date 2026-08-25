@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
@@ -22,6 +22,18 @@ type OrderModalState =
   | { type: "error"; message: string }
   | null;
 
+const galleryLabels = ["Обложка", "Внутри", "Снаружи", "Детали"];
+
+function resolveProductImages(product: Product | null): string[] {
+  if (!product) return [];
+
+  const images = [...(product.images || []), product.imageUrl]
+    .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+    .map((image) => image.trim());
+
+  return Array.from(new Set(images));
+}
+
 export default function ProductDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -38,6 +50,7 @@ export default function ProductDetailsPage() {
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showDecisionHelpPrompt, setShowDecisionHelpPrompt] = useState(false);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
 
   // Phone modal state
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -119,6 +132,10 @@ export default function ProductDetailsPage() {
       isMounted = false;
     };
   }, [productId]);
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [product?.id]);
 
   const handleReserve = async (deliveryType: 'PICKUP' | 'COURIER' = 'PICKUP', contactPhone?: string) => {
     if (!product) return;
@@ -298,6 +315,16 @@ export default function ProductDetailsPage() {
     );
   }
 
+  const productImages = resolveProductImages(product);
+  const activeImage = productImages[activeImageIndex] || null;
+  const hasMultipleImages = productImages.length > 1;
+  const showPreviousImage = () => {
+    setActiveImageIndex((current) => (current === 0 ? productImages.length - 1 : current - 1));
+  };
+  const showNextImage = () => {
+    setActiveImageIndex((current) => (current + 1) % productImages.length);
+  };
+
   return (
     <div className="min-h-screen bg-white pb-36" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
@@ -368,12 +395,12 @@ export default function ProductDetailsPage() {
         )}
       </div>
 
-      {/* Product Image */}
+      {/* Product Gallery */}
       <div className="px-4 mt-6">
-        <div className="bg-gray-100 rounded-2xl h-64 overflow-hidden">
-          {product.imageUrl ? (
+        <div className="relative h-72 overflow-hidden rounded-[28px] bg-gray-100">
+          {activeImage ? (
             <img
-              src={product.imageUrl}
+              src={activeImage}
               alt={product.name}
               className="w-full h-full object-cover"
             />
@@ -382,7 +409,55 @@ export default function ProductDetailsPage() {
               <span className="text-white text-4xl font-bold">FS</span>
             </div>
           )}
+          {product.discountPercentage && product.discountPercentage > 0 && (
+            <div className="absolute left-4 top-4 rounded-full bg-[#EC405A] px-3 py-1.5 text-sm font-bold text-white shadow-lg">
+              -{product.discountPercentage}%
+            </div>
+          )}
+          {hasMultipleImages && (
+            <>
+              <button
+                type="button"
+                aria-label="Предыдущее фото"
+                onClick={showPreviousImage}
+                className="absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-lg backdrop-blur active:scale-95"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Следующее фото"
+                onClick={showNextImage}
+                className="absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-black shadow-lg backdrop-blur active:scale-95"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <div className="absolute bottom-4 right-4 rounded-full bg-black/55 px-3 py-1 text-xs font-semibold text-white backdrop-blur">
+                {activeImageIndex + 1}/{productImages.length}
+              </div>
+            </>
+          )}
         </div>
+        {hasMultipleImages && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {productImages.map((image, index) => (
+              <button
+                key={`${image}-${index}`}
+                type="button"
+                onClick={() => setActiveImageIndex(index)}
+                className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 bg-gray-100 transition ${
+                  activeImageIndex === index ? "border-[#4CAD73]" : "border-transparent"
+                }`}
+                aria-label={`Открыть фото ${index + 1}`}
+              >
+                <img src={image} alt="" className="h-full w-full object-cover" />
+                <span className="absolute inset-x-1 bottom-1 truncate rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                  {galleryLabels[index] || `Фото ${index + 1}`}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Product Info */}

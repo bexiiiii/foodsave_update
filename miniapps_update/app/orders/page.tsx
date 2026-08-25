@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Clock, Loader2, XCircle } from "lucide-react";
+import { ArrowLeft, CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "../../components/BottomNav";
 import CancelOrderSheet from "../../components/CancelOrderSheet";
@@ -21,12 +21,25 @@ const isTodayOrder = (order: Order) => {
   );
 };
 
+const activeStatuses: Order["status"][] = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
+const cancellableStatuses: Order["status"][] = activeStatuses;
+const pickupConfirmableStatuses: Order["status"][] = activeStatuses;
+
+const normalizeOrder = (order: Order): Order => ({
+  ...order,
+  orderItems: Array.isArray(order.orderItems) ? order.orderItems : Array.isArray(order.items) ? order.items : [],
+  totalAmount: order.totalAmount || order.total || 0,
+  storeName: order.storeName || "Unknown Store",
+  notes: order.notes || order.deliveryNotes || "",
+});
+
 export default function OrdersPage() {
   const { t } = useTranslation();
   const {} = useTelegram();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCancellingOrderId, setIsCancellingOrderId] = useState<number | null>(null);
+  const [isCompletingOrderId, setIsCompletingOrderId] = useState<number | null>(null);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"active" | "history">("active");
   const [orderPendingCancellation, setOrderPendingCancellation] = useState<Order | null>(null);
@@ -64,12 +77,12 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeOrders = orders.filter(isTodayOrder);
-  const historyOrders = orders.filter((order) => !isTodayOrder(order));
+  const activeOrders = orders.filter((order) => isTodayOrder(order) && activeStatuses.includes(order.status));
+  const historyOrders = orders.filter((order) => !isTodayOrder(order) || !activeStatuses.includes(order.status));
   const visibleOrders = activeTab === "active" ? activeOrders : historyOrders;
-  const cancellableStatuses: Order["status"][] = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
 
   const canCancelOrder = (status: Order["status"]) => cancellableStatuses.includes(status);
+  const canConfirmPickup = (status: Order["status"]) => pickupConfirmableStatuses.includes(status);
 
   const handleCancelOrder = async (reason: ReservationCancellationReason, comment?: string) => {
     const order = orderPendingCancellation;
@@ -90,6 +103,26 @@ export default function OrdersPage() {
       setCancelError(error instanceof Error && error.message ? error.message : "Не удалось отменить заказ. Попробуйте еще раз.");
     } finally {
       setIsCancellingOrderId(null);
+    }
+  };
+
+  const handleMarkPickedUp = async (order: Order) => {
+    if (isCompletingOrderId !== null) return;
+    setCancelError(null);
+    setIsCompletingOrderId(order.id);
+
+    try {
+      const pickedUpOrder = await apiClient.markOrderPickedUp(order.id);
+      setOrders((previousOrders) =>
+        previousOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? normalizeOrder({ ...currentOrder, ...pickedUpOrder }) : currentOrder,
+        ),
+      );
+    } catch (error) {
+      console.error("Failed to mark order picked up:", error);
+      setCancelError(error instanceof Error && error.message ? error.message : "Не удалось отметить заказ забранным. Попробуйте еще раз.");
+    } finally {
+      setIsCompletingOrderId(null);
     }
   };
 
@@ -137,6 +170,8 @@ export default function OrdersPage() {
         return "Готовится";
       case "READY_FOR_PICKUP":
         return "Готов";
+      case "PICKED_UP":
+        return "Забран";
       case "OUT_FOR_DELIVERY":
         return "В пути";
       case "DELIVERED":
@@ -242,26 +277,48 @@ export default function OrdersPage() {
                     </div>
                   </Link>
 
-                  {canCancelOrder(order.status) && (
-                    <button
-                      type="button"
-                      onClick={() => setOrderPendingCancellation(order)}
-                      disabled={isCancellingOrderId === order.id}
-                      className="mt-7 inline-flex shrink-0 items-center justify-end gap-1 text-xs font-semibold text-red-600 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:text-red-300"
-                    >
-                      {isCancellingOrderId === order.id ? (
-                        <>
-                          <Loader2 className="w-3 h-3 animate-spin" />
-                          Отмена...
-                        </>
-                      ) : (
-                        <>
-                          <XCircle className="w-3 h-3" />
-                          Отменить
-                        </>
-                      )}
-                    </button>
-                  )}
+                  <div className="mt-6 flex shrink-0 flex-col items-end gap-2">
+                    {canConfirmPickup(order.status) && (
+                      <button
+                        type="button"
+                        onClick={() => handleMarkPickedUp(order)}
+                        disabled={isCompletingOrderId === order.id}
+                        className="inline-flex items-center justify-end gap-1 rounded-full bg-[#4CAD73]/10 px-2.5 py-1 text-xs font-semibold text-[#15551F] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:text-[#4CAD73]/50"
+                      >
+                        {isCompletingOrderId === order.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Сохраняем...
+                          </>
+                        ) : (
+                          <>
+                            <CheckCircle className="w-3 h-3" />
+                            Уже забрала
+                          </>
+                        )}
+                      </button>
+                    )}
+                    {canCancelOrder(order.status) && (
+                      <button
+                        type="button"
+                        onClick={() => setOrderPendingCancellation(order)}
+                        disabled={isCancellingOrderId === order.id}
+                        className="inline-flex items-center justify-end gap-1 text-xs font-semibold text-red-600 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:text-red-300"
+                      >
+                        {isCancellingOrderId === order.id ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Отмена...
+                          </>
+                        ) : (
+                          <>
+                            <XCircle className="w-3 h-3" />
+                            Отменить
+                          </>
+                        )}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
