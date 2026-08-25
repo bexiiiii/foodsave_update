@@ -499,9 +499,27 @@ public class OrderService {
             throw new ApiException("Войдите в приложение, чтобы отметить заказ забранным.", HttpStatus.UNAUTHORIZED);
         }
 
+        return markUserOrderPickedUp(id, currentUserId);
+    }
+
+    @Caching(evict = {
+            @CacheEvict(value = "userOrders", allEntries = true),
+            @CacheEvict(value = "storeOrders", allEntries = true)
+    })
+    public OrderDTO markTelegramUserOrderPickedUp(Long id, Long telegramUserId) {
+        if (telegramUserId == null) {
+            throw new ApiException("Не удалось определить пользователя Telegram.", HttpStatus.UNAUTHORIZED);
+        }
+        User user = userRepository.findByTelegramUserId(telegramUserId)
+                .orElseThrow(() -> new ApiException("Откройте FoodSave через бота и попробуйте снова.", HttpStatus.UNAUTHORIZED));
+
+        return markUserOrderPickedUp(id, user.getId());
+    }
+
+    private OrderDTO markUserOrderPickedUp(Long id, Long userId) {
         Order order = orderRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + id));
-        if (order.getUser() == null || !currentUserId.equals(order.getUser().getId())) {
+        if (order.getUser() == null || !userId.equals(order.getUser().getId())) {
             throw new ResourceNotFoundException("Order not found with id: " + id);
         }
         if (order.getStatus() == OrderStatus.PICKED_UP

@@ -219,33 +219,60 @@ public class TelegramBotService {
         postWithRetry(url, payload, "sendWebAppMessage", chatId);
     }
 
-    public void sendMessageWithKeyboard(Long chatId,
-                                        String text,
-                                        List<List<Map<String, Object>>> inlineKeyboard) {
-        sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
+    public boolean sendMessageWithKeyboard(Long chatId,
+                                           String text,
+                                           List<List<Map<String, Object>>> inlineKeyboard) {
+        return sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
     }
 
-    public void sendManagerMessageWithKeyboard(Long chatId,
-                                               String text,
-                                               List<List<Map<String, Object>>> inlineKeyboard) {
-        sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
+    public boolean sendManagerMessageWithKeyboard(Long chatId,
+                                                  String text,
+                                                  List<List<Map<String, Object>>> inlineKeyboard) {
+        return sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
     }
 
-    private void sendMessageWithKeyboard(String token,
-                                         Long chatId,
-                                         String text,
-                                         List<List<Map<String, Object>>> inlineKeyboard) {
+    public boolean answerCallbackQuery(String callbackQueryId, String text, boolean showAlert) {
+        return answerCallbackQueryWithToken(botToken, callbackQueryId, text, showAlert);
+    }
+
+    private boolean answerCallbackQueryWithToken(String token,
+                                                 String callbackQueryId,
+                                                 String text,
+                                                 boolean showAlert) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram bot token is not configured");
-            return;
+            return false;
+        }
+        if (callbackQueryId == null || callbackQueryId.isBlank()) {
+            log.warn("Cannot answer Telegram callback without callback query id");
+            return false;
+        }
+
+        String url = "https://api.telegram.org/bot" + token + "/answerCallbackQuery";
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("callback_query_id", callbackQueryId);
+        payload.put("show_alert", showAlert);
+        if (text != null && !text.isBlank()) {
+            payload.put("text", text);
+        }
+        return postWithRetry(url, payload, "answerCallbackQuery", null);
+    }
+
+    private boolean sendMessageWithKeyboard(String token,
+                                            Long chatId,
+                                            String text,
+                                            List<List<Map<String, Object>>> inlineKeyboard) {
+        if (token == null || token.isBlank()) {
+            log.warn("Telegram bot token is not configured");
+            return false;
         }
         if (chatId == null) {
             log.warn("Cannot send Telegram message without chat id");
-            return;
+            return false;
         }
         if (text == null || text.isBlank()) {
             log.warn("Telegram message text is empty");
-            return;
+            return false;
         }
 
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
@@ -258,7 +285,7 @@ public class TelegramBotService {
             payload.put("reply_markup", Map.of("inline_keyboard", inlineKeyboard));
         }
 
-        postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
+        return postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
     }
 
     private boolean postWithRetry(String url, Map<String, Object> payload, String operation, Long chatId) {

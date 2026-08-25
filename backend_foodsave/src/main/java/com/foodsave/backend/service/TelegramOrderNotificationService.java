@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.LinkedHashSet;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 @Service
@@ -47,7 +48,7 @@ public class TelegramOrderNotificationService {
         FAILED
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public void notifyNewOrder(Order order) {
         if (order == null) {
             return;
@@ -56,6 +57,12 @@ public class TelegramOrderNotificationService {
         Set<Long> chatIds = parseRecipientChatIds();
         if (chatIds.isEmpty()) {
             log.debug("Telegram order notification recipients are not configured");
+            return;
+        }
+
+        if (order.getId() != null && orderRepository.markOrderNotificationPending(order.getId()) == 0) {
+            log.info("Telegram order notification for order id={} was already sent or queued, skipping duplicate",
+                    order.getId());
             return;
         }
 
@@ -133,12 +140,36 @@ public class TelegramOrderNotificationService {
         }
 
         String message = buildPickupReminderMessage(orders);
+        if (orders.size() == 1 && firstOrder.getId() != null) {
+            try {
+                boolean sent = telegramBotService.sendMessageWithKeyboard(
+                        user.getTelegramUserId(),
+                        message,
+                        List.of(
+                                List.of(Map.of(
+                                        "text", "Открыть заказ",
+                                        "web_app", Map.of("url", telegramBotService.resolveButtonUrl("/orders/" + firstOrder.getId()))
+                                )),
+                                List.of(Map.of(
+                                        "text", "Забрал(а)",
+                                        "callback_data", "order:pickup:" + firstOrder.getId()
+                                ))
+                        )
+                );
+                return sent ? PickupReminderResult.SENT : PickupReminderResult.FAILED;
+            } catch (Exception e) {
+                log.warn("Failed to send pickup reminder with callback button for orderId={}",
+                        firstOrder.getId(), e);
+                return PickupReminderResult.FAILED;
+            }
+        }
+
         boolean sent = telegramBotService.sendMessage(user.getTelegramUserId(),
                 new TelegramBotService.TelegramMessagePayload(
                         message,
                         null,
-                        orders.size() == 1 ? "Открыть заказ" : "Открыть заказы",
-                        telegramBotService.resolveButtonUrl(orders.size() == 1 ? "/orders/" + firstOrder.getId() : "/orders")
+                        "Открыть заказы",
+                        telegramBotService.resolveButtonUrl("/orders")
                 ));
         return sent ? PickupReminderResult.SENT : PickupReminderResult.FAILED;
     }

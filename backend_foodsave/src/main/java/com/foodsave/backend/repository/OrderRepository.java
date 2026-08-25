@@ -10,6 +10,7 @@ import com.foodsave.backend.domain.enums.PaymentMethod;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.repository.query.Param;
@@ -55,6 +56,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
                                              @Param("customerRole") UserRole customerRole,
                                              @Param("activeStoreStatus") StoreStatus activeStoreStatus,
                                              Pageable pageable);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query(value = "UPDATE orders " +
+            "SET order_notification_sent_at = CURRENT_TIMESTAMP " +
+            "WHERE id = :orderId AND order_notification_sent_at IS NULL",
+            nativeQuery = true)
+    int markOrderNotificationPending(@Param("orderId") Long orderId);
 
     @Query("SELECT o FROM Order o WHERE o.user = :user")
     List<Order> findByUser(@Param("user") User user);

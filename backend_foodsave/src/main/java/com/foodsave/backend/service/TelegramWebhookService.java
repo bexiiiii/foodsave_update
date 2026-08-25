@@ -16,6 +16,7 @@ import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.PaymentMethod;
 import com.foodsave.backend.domain.enums.PaymentStatus;
 import com.foodsave.backend.repository.OrderRepository;
+import com.foodsave.backend.exception.ApiException;
 import com.foodsave.backend.exception.InsufficientStockException;
 import com.foodsave.backend.repository.UserRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -45,6 +46,7 @@ public class TelegramWebhookService {
     private final OrderRepository orderRepository;
     private final ProductService productService;
     private final TelegramOrderNotificationService telegramOrderNotificationService;
+    private final OrderService orderService;
     // Note: TelegramStoreManagerBotService is for a separate manager bot (token: 8489367964)
 
     @Value("${telegram.miniapp.base-url:https://miniapp.foodsave.kz}")
@@ -98,6 +100,11 @@ public class TelegramWebhookService {
             return;
         }
 
+        if (handleCallbackQuery(update, from)) {
+            log.info("Callback query handled");
+            return;
+        }
+
         if (handleWebAppData(update, message, from, chatId)) {
             log.info("WebAppData handled");
             return;
@@ -129,7 +136,7 @@ public class TelegramWebhookService {
         }
         TelegramCallbackQuery callbackQuery = update.callbackQuery();
         if (callbackQuery != null) {
-            if (callbackQuery.webAppData() != null && callbackQuery.from() != null) {
+            if (callbackQuery.from() != null) {
                 return callbackQuery.from();
             }
             TelegramMessage message = callbackQuery.message();
@@ -138,6 +145,49 @@ public class TelegramWebhookService {
             }
         }
         return null;
+    }
+
+    private boolean handleCallbackQuery(TelegramUpdate update, TelegramUser from) {
+        TelegramCallbackQuery callbackQuery = update.callbackQuery();
+        if (callbackQuery == null || callbackQuery.data() == null || callbackQuery.data().isBlank()) {
+            return false;
+        }
+
+        String data = callbackQuery.data().trim();
+        if (!data.startsWith("order:pickup:")) {
+            return false;
+        }
+
+        Long telegramUserId = from != null ? from.id() : null;
+        try {
+            Long orderId = Long.parseLong(data.substring("order:pickup:".length()));
+            orderService.markTelegramUserOrderPickedUp(orderId, telegramUserId);
+            telegramBotService.answerCallbackQuery(
+                    callbackQuery.id(),
+                    "Готово, отметили заказ забранным.",
+                    false
+            );
+        } catch (NumberFormatException e) {
+            log.warn("Invalid pickup callback data: {}", data);
+            telegramBotService.answerCallbackQuery(
+                    callbackQuery.id(),
+                    "Не удалось определить заказ. Откройте заказ в приложении.",
+                    true
+            );
+        } catch (ApiException e) {
+            log.warn("Pickup callback rejected for telegramUserId={} data={}: {}",
+                    telegramUserId, data, e.getMessage());
+            telegramBotService.answerCallbackQuery(callbackQuery.id(), e.getMessage(), true);
+        } catch (Exception e) {
+            log.error("Failed to handle pickup callback for telegramUserId={} data={}",
+                    telegramUserId, data, e);
+            telegramBotService.answerCallbackQuery(
+                    callbackQuery.id(),
+                    "Не получилось отметить заказ. Откройте заказ в приложении.",
+                    true
+            );
+        }
+        return true;
     }
 
     private Long resolveChatId(TelegramMessage message) {
