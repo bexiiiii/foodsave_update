@@ -25,6 +25,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -51,6 +52,9 @@ public class MiniAppReservationService {
     private final UserRepository userRepository;
     private final ProductEventService productEventService;
     private final ReservationStatusService reservationStatusService;
+
+    @Value("${telegram.order-notifications.notify-store-users:false}")
+    private boolean notifyStoreUsersDirectly;
 
     @Transactional
     @Caching(evict = {
@@ -218,10 +222,12 @@ public class MiniAppReservationService {
             log.error("Failed to send Telegram confirmation", e);
         }
 
-        try {
-            sendSellerNotification(user, savedOrder, product);
-        } catch (Exception e) {
-            log.error("Failed to send seller notification for order {}", savedOrder.getOrderNumber(), e);
+        if (notifyStoreUsersDirectly) {
+            try {
+                sendSellerNotification(user, savedOrder, product);
+            } catch (Exception e) {
+                log.error("Failed to send seller notification for order {}", savedOrder.getOrderNumber(), e);
+            }
         }
 
         try {

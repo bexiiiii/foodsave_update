@@ -62,6 +62,9 @@ public class OrderService {
     private final RealtimeEventService realtimeEventService;
     private final ReservationStatusService reservationStatusService;
 
+    @org.springframework.beans.factory.annotation.Value("${telegram.order-notifications.notify-store-users:false}")
+    private boolean notifyStoreUsersDirectly;
+
     private static final String ORDER_NUMBER_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
     private static final int ORDER_NUMBER_LENGTH = 6;
     private final SecureRandom random = new SecureRandom();
@@ -311,7 +314,7 @@ public class OrderService {
             }
         }
 
-        if (!sellerChatIds.isEmpty()) {
+        if (notifyStoreUsersDirectly && !sellerChatIds.isEmpty()) {
             String customerName = customer != null
                     ? java.util.stream.Stream.of(customer.getFirstName(), customer.getLastName())
                             .filter(s -> s != null && !s.isBlank())
