@@ -113,7 +113,7 @@ public class AnalyticsService {
                 List<Order> dayOrders = ordersByStoreAndDate.getOrDefault(key, List.of());
                 
                 List<Order> completedOrders = dayOrders.stream()
-                        .filter(order -> order.getStatus() == OrderStatus.DELIVERED)
+                        .filter(order -> isSuccessfulOrderStatus(order.getStatus()))
                         .collect(Collectors.toList());
                 
                 List<Order> canceledOrders = dayOrders.stream()
@@ -213,14 +213,14 @@ public class AnalyticsService {
                 
                 List<Order> todayOrders = orderRepository.findByStoreIdInAndCreatedAtBetween(storeIds, today, endOfToday);
                 long todayCompletedOrders = todayOrders.stream()
-                    .filter(order -> order.getStatus() == OrderStatus.DELIVERED)
+                    .filter(order -> isSuccessfulOrderStatus(order.getStatus()))
                     .count();
                 long todayCancelledOrders = todayOrders.stream()
                     .filter(order -> order.getStatus() == OrderStatus.CANCELLED)
                     .count();
                 
                 BigDecimal todayRevenue = todayOrders.stream()
-                    .filter(order -> order.getStatus() == OrderStatus.DELIVERED)
+                    .filter(order -> isSuccessfulOrderStatus(order.getStatus()))
                     .map(Order::getTotal)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
@@ -413,6 +413,12 @@ public class AnalyticsService {
                 .limit(10)
                 .map(Aggregate::toStoreMap)
                 .collect(Collectors.toList());
+    }
+
+    private boolean isSuccessfulOrderStatus(OrderStatus status) {
+        return status == OrderStatus.PICKED_UP
+                || status == OrderStatus.DELIVERED
+                || status == OrderStatus.COMPLETED;
     }
 
     private List<Map<String, Object>> buildTopCategories(List<Order> orders) {

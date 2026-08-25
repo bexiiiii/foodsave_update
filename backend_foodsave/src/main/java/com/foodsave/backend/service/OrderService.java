@@ -642,9 +642,13 @@ public class OrderService {
         long readyOrders = orders.stream()
                 .mapToLong(order -> order.getStatus() == OrderStatus.READY_FOR_PICKUP ? 1 : 0)
                 .sum();
+
+        long pickedUpOrders = orders.stream()
+                .mapToLong(order -> order.getStatus() == OrderStatus.PICKED_UP ? 1 : 0)
+                .sum();
         
         long deliveredOrders = orders.stream()
-                .mapToLong(order -> order.getStatus() == OrderStatus.DELIVERED || order.getStatus() == OrderStatus.COMPLETED ? 1 : 0)
+                .mapToLong(order -> isSuccessfulOrderStatus(order.getStatus()) ? 1 : 0)
                 .sum();
         
         long cancelledOrders = orders.stream()
@@ -656,7 +660,6 @@ public class OrderService {
                         || order.getStatus() == OrderStatus.REJECTED ? 1 : 0)
                 .sum();
         
-        // Успешные заказы - это те, что доставлены
         long successfulOrders = deliveredOrders;
         
         // Неуспешные заказы - это отмененные
@@ -670,9 +673,15 @@ public class OrderService {
                 confirmedOrders,
                 preparingOrders,
                 readyOrders,
-                0L, // pickedUpOrders - не используется в текущем enum
+                pickedUpOrders,
                 deliveredOrders,
                 cancelledOrders
         );
+    }
+
+    private boolean isSuccessfulOrderStatus(OrderStatus status) {
+        return status == OrderStatus.PICKED_UP
+                || status == OrderStatus.DELIVERED
+                || status == OrderStatus.COMPLETED;
     }
 }

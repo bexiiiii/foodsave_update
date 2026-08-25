@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { Suspense } from "react";
 import "./globals.css";
 import Script from "next/script";
@@ -8,11 +7,6 @@ import { ErrorBoundary } from "../components/ErrorBoundary";
 import RealtimeBridge from "../components/RealtimeBridge";
 import NavigationTracker from "../components/NavigationTracker";
 import StartParamRouter from "../components/StartParamRouter";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin", "cyrillic"],
-});
 
 export const metadata: Metadata = {
   title: "FoodSave - Экономь на еде",
@@ -52,8 +46,8 @@ export default function RootLayout({
         </Script>
       </head>
       <body
-        className={`${inter.variable} font-sans antialiased bg-[#F5F5F5]`}
-        style={{ fontFamily: 'var(--font-inter), Inter, system-ui, sans-serif' }}
+        className="font-sans antialiased bg-[#F5F5F5]"
+        style={{ fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
       >
         <ErrorBoundary>
           <TelegramProvider>

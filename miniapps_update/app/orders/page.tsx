@@ -5,21 +5,11 @@ import { ArrowLeft, CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import BottomNav from "../../components/BottomNav";
 import CancelOrderSheet from "../../components/CancelOrderSheet";
+import PickedUpOrderSheet from "../../components/PickedUpOrderSheet";
 import { useTranslation } from "../../hooks/useTranslation";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, Order, ReservationCancellationReason } from "../../lib/api";
 import { formatOrderTotal } from "../../lib/orders";
-
-const isTodayOrder = (order: Order) => {
-  const createdAt = new Date(order.createdAt);
-  const today = new Date();
-
-  return (
-    createdAt.getFullYear() === today.getFullYear() &&
-    createdAt.getMonth() === today.getMonth() &&
-    createdAt.getDate() === today.getDate()
-  );
-};
 
 const activeStatuses: Order["status"][] = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
 const cancellableStatuses: Order["status"][] = activeStatuses;
@@ -43,6 +33,7 @@ export default function OrdersPage() {
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"active" | "history">("active");
   const [orderPendingCancellation, setOrderPendingCancellation] = useState<Order | null>(null);
+  const [orderPendingPickupConfirmation, setOrderPendingPickupConfirmation] = useState<Order | null>(null);
 
   const loadOrders = async (showLoader = true) => {
     if (showLoader) setIsLoading(true);
@@ -77,8 +68,8 @@ export default function OrdersPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const activeOrders = orders.filter((order) => isTodayOrder(order) && activeStatuses.includes(order.status));
-  const historyOrders = orders.filter((order) => !isTodayOrder(order) || !activeStatuses.includes(order.status));
+  const activeOrders = orders.filter((order) => activeStatuses.includes(order.status));
+  const historyOrders = orders.filter((order) => !activeStatuses.includes(order.status));
   const visibleOrders = activeTab === "active" ? activeOrders : historyOrders;
 
   const canCancelOrder = (status: Order["status"]) => cancellableStatuses.includes(status);
@@ -87,6 +78,7 @@ export default function OrdersPage() {
   const handleCancelOrder = async (reason: ReservationCancellationReason, comment?: string) => {
     const order = orderPendingCancellation;
     if (!order) return;
+    if (isCompletingOrderId === order.id) return;
     setCancelError(null);
     setIsCancellingOrderId(order.id);
 
@@ -106,8 +98,11 @@ export default function OrdersPage() {
     }
   };
 
-  const handleMarkPickedUp = async (order: Order) => {
+  const handleMarkPickedUp = async () => {
+    const order = orderPendingPickupConfirmation;
+    if (!order) return;
     if (isCompletingOrderId !== null) return;
+    if (isCancellingOrderId === order.id) return;
     setCancelError(null);
     setIsCompletingOrderId(order.id);
 
@@ -118,6 +113,7 @@ export default function OrdersPage() {
           currentOrder.id === order.id ? normalizeOrder({ ...currentOrder, ...pickedUpOrder }) : currentOrder,
         ),
       );
+      setOrderPendingPickupConfirmation(null);
     } catch (error) {
       console.error("Failed to mark order picked up:", error);
       setCancelError(error instanceof Error && error.message ? error.message : "Не удалось отметить заказ забранным. Попробуйте еще раз.");
@@ -281,8 +277,8 @@ export default function OrdersPage() {
                     {canConfirmPickup(order.status) && (
                       <button
                         type="button"
-                        onClick={() => handleMarkPickedUp(order)}
-                        disabled={isCompletingOrderId === order.id}
+                        onClick={() => setOrderPendingPickupConfirmation(order)}
+                        disabled={isCompletingOrderId === order.id || isCancellingOrderId === order.id}
                         className="inline-flex items-center justify-end gap-1 rounded-full bg-[#4CAD73]/10 px-2.5 py-1 text-xs font-semibold text-[#15551F] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:text-[#4CAD73]/50"
                       >
                         {isCompletingOrderId === order.id ? (
@@ -293,7 +289,7 @@ export default function OrdersPage() {
                         ) : (
                           <>
                             <CheckCircle className="w-3 h-3" />
-                            Уже забрала
+                            Забрал(а)
                           </>
                         )}
                       </button>
@@ -302,7 +298,7 @@ export default function OrdersPage() {
                       <button
                         type="button"
                         onClick={() => setOrderPendingCancellation(order)}
-                        disabled={isCancellingOrderId === order.id}
+                        disabled={isCancellingOrderId === order.id || isCompletingOrderId === order.id}
                         className="inline-flex items-center justify-end gap-1 text-xs font-semibold text-red-600 transition-colors hover:text-red-700 disabled:cursor-not-allowed disabled:text-red-300"
                       >
                         {isCancellingOrderId === order.id ? (
@@ -340,6 +336,15 @@ export default function OrdersPage() {
         isSubmitting={isCancellingOrderId !== null}
         onClose={() => setOrderPendingCancellation(null)}
         onConfirm={handleCancelOrder}
+      />
+
+      <PickedUpOrderSheet
+        isOpen={Boolean(orderPendingPickupConfirmation)}
+        orderLabel={orderPendingPickupConfirmation?.orderNumber || String(orderPendingPickupConfirmation?.id || "")}
+        storeName={orderPendingPickupConfirmation?.storeName}
+        isSubmitting={isCompletingOrderId !== null}
+        onClose={() => setOrderPendingPickupConfirmation(null)}
+        onConfirm={handleMarkPickedUp}
       />
 
       <BottomNav active="orders" />

@@ -100,7 +100,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
             @Param("endDate") LocalDateTime endDate,
             Pageable pageable);
     
-    @Query("SELECT SUM(o.total) FROM Order o WHERE o.store = :store AND o.status = 'DELIVERED'")
+    @Query("SELECT SUM(o.total) FROM Order o WHERE o.store = :store AND o.status IN ('PICKED_UP', 'DELIVERED', 'COMPLETED')")
     BigDecimal getTotalRevenueByStore(@Param("store") Store store);
     
     @Query("SELECT COUNT(o) FROM Order o WHERE o.user = :user")

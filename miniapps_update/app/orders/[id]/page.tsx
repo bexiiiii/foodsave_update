@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import BottomNav from "../../../components/BottomNav";
 import CancelOrderSheet from "../../../components/CancelOrderSheet";
+import PickedUpOrderSheet from "../../../components/PickedUpOrderSheet";
 import { useTranslation } from "../../../hooks/useTranslation";
 import { apiClient, Order, ReservationCancellationReason } from "../../../lib/api";
 import { formatOrderTotal } from "../../../lib/orders";
@@ -56,6 +57,7 @@ export default function OrderDetailsPage() {
   const [isCompleting, setIsCompleting] = useState(false);
   const [cancelError, setCancelError] = useState<string | null>(null);
   const [isCancelSheetOpen, setIsCancelSheetOpen] = useState(false);
+  const [isPickedUpSheetOpen, setIsPickedUpSheetOpen] = useState(false);
 
   const cancellableStatuses: Order["status"][] = ["CREATED", "PENDING", "CONFIRMED", "PREPARING", "READY_FOR_PICKUP"];
   const pickupConfirmableStatuses: Order["status"][] = cancellableStatuses;
@@ -91,7 +93,7 @@ export default function OrderDetailsPage() {
   }, [params.id]);
 
   const handleCancelOrder = async (reason: ReservationCancellationReason, comment?: string) => {
-    if (!order || isCancelling) return;
+    if (!order || isCancelling || isCompleting) return;
 
     setCancelError(null);
     setIsCancelling(true);
@@ -106,6 +108,7 @@ export default function OrderDetailsPage() {
             ? cancelledOrder.items
             : order.orderItems,
       });
+      setIsPickedUpSheetOpen(false);
       setIsCancelSheetOpen(false);
     } catch (error) {
       console.error("Failed to cancel order:", error);
@@ -116,7 +119,7 @@ export default function OrderDetailsPage() {
   };
 
   const handleMarkPickedUp = async () => {
-    if (!order || isCompleting) return;
+    if (!order || isCompleting || isCancelling) return;
 
     setCancelError(null);
     setIsCompleting(true);
@@ -231,8 +234,8 @@ export default function OrderDetailsPage() {
             {canConfirmPickup && (
               <button
                 type="button"
-                onClick={handleMarkPickedUp}
-                disabled={isCompleting}
+                onClick={() => setIsPickedUpSheetOpen(true)}
+                disabled={isCompleting || isCancelling}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#4CAD73] text-sm font-bold text-white shadow-sm transition-colors active:scale-[0.99] disabled:bg-[#4CAD73]/50 font-inter"
               >
                 {isCompleting ? (
@@ -243,7 +246,7 @@ export default function OrderDetailsPage() {
                 ) : (
                   <>
                     <CheckCircle className="h-4 w-4" />
-                    Уже забрала
+                    Забрал(а)
                   </>
                 )}
               </button>
@@ -253,7 +256,7 @@ export default function OrderDetailsPage() {
               <button
                 type="button"
                 onClick={() => setIsCancelSheetOpen(true)}
-                disabled={isCancelling}
+                disabled={isCancelling || isCompleting}
                 className="flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#E5484D] text-sm font-bold text-white shadow-sm transition-colors active:scale-[0.99] disabled:bg-red-300 font-inter"
               >
                 {isCancelling ? (
@@ -279,6 +282,15 @@ export default function OrderDetailsPage() {
         isSubmitting={isCancelling}
         onClose={() => setIsCancelSheetOpen(false)}
         onConfirm={handleCancelOrder}
+      />
+
+      <PickedUpOrderSheet
+        isOpen={isPickedUpSheetOpen}
+        orderLabel={order?.orderNumber || String(order?.id || "")}
+        storeName={order?.storeName}
+        isSubmitting={isCompleting}
+        onClose={() => setIsPickedUpSheetOpen(false)}
+        onConfirm={handleMarkPickedUp}
       />
 
       <BottomNav active="orders" />

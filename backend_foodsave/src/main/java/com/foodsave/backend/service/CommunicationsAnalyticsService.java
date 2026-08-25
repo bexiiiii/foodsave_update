@@ -39,7 +39,8 @@ public class CommunicationsAnalyticsService {
         long miniAppOpened = eventCounts.getOrDefault(ProductEventType.MINI_APP_OPENED.name(), 0L);
         long boxViewed = eventCounts.getOrDefault(ProductEventType.BOX_VIEWED.name(), 0L);
         long reservationsCreated = eventCounts.getOrDefault(ProductEventType.RESERVATION_CREATED.name(), 0L);
-        long completed = eventCounts.getOrDefault(ProductEventType.ORDER_COMPLETED.name(), 0L);
+        long completed = eventCounts.getOrDefault(ProductEventType.ORDER_COMPLETED.name(), 0L)
+                + eventCounts.getOrDefault(ProductEventType.ORDER_PICKED_UP.name(), 0L);
         long suppressed = frequencyStateRepository.findAll().stream()
                 .filter(state -> state.getSuppressedUntil() != null && state.getSuppressedUntil().isAfter(LocalDateTime.now()))
                 .count();
