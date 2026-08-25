@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { toast } from 'react-hot-toast';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { validateImageFile } from '@/utils/fileValidation';
 import {
     Table,
@@ -54,6 +55,9 @@ export default function UsersPage() {
     });
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string>('');
+    const [blacklistUser, setBlacklistUser] = useState<UserDTO | null>(null);
+    const [blacklistReason, setBlacklistReason] = useState('');
+    const [blacklistSubmitting, setBlacklistSubmitting] = useState(false);
 
     useEffect(() => {
         fetchUsers();
@@ -146,27 +150,38 @@ export default function UsersPage() {
         }
     };
 
-    const handleToggleBlacklist = async (user: UserDTO) => {
-        const shouldBlacklist = !user.blacklisted;
-        let reason: string | undefined;
+    const openBlacklistModal = (user: UserDTO) => {
+        setBlacklistUser(user);
+        setBlacklistReason(user.blacklistReason || '');
+    };
 
-        if (shouldBlacklist) {
-            const answer = prompt('Почему добавляем пользователя в черный список? Можно оставить пустым.');
-            if (answer === null) return;
-            reason = answer.trim() || undefined;
-        } else if (!confirm('Убрать пользователя из черного списка?')) {
-            return;
-        }
+    const closeBlacklistModal = (force = false) => {
+        if (blacklistSubmitting && !force) return;
+        setBlacklistUser(null);
+        setBlacklistReason('');
+    };
 
+    const handleSubmitBlacklist = async () => {
+        if (!blacklistUser) return;
+
+        const shouldBlacklist = !blacklistUser.blacklisted;
         try {
-            const updatedUser = await userApi.updateBlacklist(user.id, shouldBlacklist, reason);
+            setBlacklistSubmitting(true);
+            const updatedUser = await userApi.updateBlacklist(
+                blacklistUser.id,
+                shouldBlacklist,
+                shouldBlacklist ? blacklistReason.trim() || undefined : undefined
+            );
             setUsers((currentUsers) =>
                 currentUsers.map((item) => item.id === updatedUser.id ? updatedUser : item)
             );
             toast.success(shouldBlacklist ? 'Пользователь добавлен в черный список' : 'Пользователь убран из черного списка');
+            closeBlacklistModal(true);
         } catch (error) {
             console.error('Failed to update blacklist status:', error);
             toast.error('Не удалось обновить черный список');
+        } finally {
+            setBlacklistSubmitting(false);
         }
     };
 
@@ -440,7 +455,7 @@ export default function UsersPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => handleToggleBlacklist(user)}
+                                                        onClick={() => openBlacklistModal(user)}
                                                         className={user.blacklisted
                                                             ? 'border-green-200 text-green-700 hover:text-green-800'
                                                             : 'border-red-200 text-red-600 hover:text-red-700'}
@@ -465,6 +480,84 @@ export default function UsersPage() {
                         </Table>
                     </CardContent>
                 </Card>
+
+                <Modal
+                    isOpen={!!blacklistUser}
+                    onClose={closeBlacklistModal}
+                    className="max-w-lg mx-auto"
+                    showCloseButton={false}
+                >
+                    {blacklistUser && (
+                        <div className="p-6">
+                            <div className="mb-6 flex items-start gap-4">
+                                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ${
+                                    blacklistUser.blacklisted
+                                        ? 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-300'
+                                        : 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300'
+                                }`}>
+                                    {blacklistUser.blacklisted ? '✓' : '!'}
+                                </div>
+                                <div className="min-w-0">
+                                    <p className="text-sm font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                                        {blacklistUser.blacklisted ? 'Снять ограничение' : 'Черный список'}
+                                    </p>
+                                    <h2 className="mt-1 text-xl font-semibold text-gray-900 dark:text-white">
+                                        {blacklistUser.blacklisted ? 'Убрать пользователя из ЧС?' : 'Добавить пользователя в ЧС?'}
+                                    </h2>
+                                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                                        {blacklistUser.firstName} {blacklistUser.lastName} · ID: {blacklistUser.id}
+                                    </p>
+                                </div>
+                            </div>
+
+                            {!blacklistUser.blacklisted ? (
+                                <div className="space-y-2">
+                                    <Label htmlFor="blacklistReason" className="text-sm font-medium text-gray-700 dark:text-gray-200">
+                                        Причина
+                                    </Label>
+                                    <Textarea
+                                        id="blacklistReason"
+                                        value={blacklistReason}
+                                        onChange={(event) => setBlacklistReason(event.target.value)}
+                                        placeholder="Например: частые отмены, не забирает брони..."
+                                        className="min-h-[110px] resize-none rounded-xl border-gray-200 bg-white text-sm dark:border-gray-700 dark:bg-gray-800"
+                                        maxLength={500}
+                                    />
+                                    <p className="text-xs text-gray-400">
+                                        Клиент это не увидит. Текст появится только во внутренних уведомлениях.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 dark:border-gray-800 dark:bg-gray-900 dark:text-gray-300">
+                                    После снятия из ЧС новые брони этого клиента будут приходить без предупреждения.
+                                </div>
+                            )}
+
+                            <div className="mt-6 flex justify-end gap-3 border-t border-gray-100 pt-5 dark:border-gray-800">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    onClick={closeBlacklistModal}
+                                    disabled={blacklistSubmitting}
+                                >
+                                    Отмена
+                                </Button>
+                                <Button
+                                    type="button"
+                                    onClick={handleSubmitBlacklist}
+                                    disabled={blacklistSubmitting}
+                                    className={blacklistUser.blacklisted
+                                        ? 'bg-green-600 text-white hover:bg-green-700'
+                                        : 'bg-red-600 text-white hover:bg-red-700'}
+                                >
+                                    {blacklistSubmitting
+                                        ? 'Сохраняем...'
+                                        : blacklistUser.blacklisted ? 'Убрать из ЧС' : 'Добавить в ЧС'}
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </Modal>
 
                 <Modal
                     isOpen={isCreateModalOpen}
