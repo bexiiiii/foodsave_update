@@ -32,6 +32,19 @@ declare global {
           }
         ) => void) => void;
         openTelegramLink?: (url: string) => void;
+        LocationManager?: {
+          isInited: boolean;
+          isLocationAvailable: boolean;
+          isAccessRequested: boolean;
+          isAccessGranted: boolean;
+          init: (callback?: () => void) => void;
+          getLocation: (callback: (data: {
+            latitude: number;
+            longitude: number;
+            horizontal_accuracy?: number;
+          } | null) => void) => void;
+          openSettings?: () => void;
+        };
       };
     };
   }

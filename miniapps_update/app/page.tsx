@@ -21,14 +21,10 @@ import { safeArray } from "../lib/api";
 import { apiClient, Category, Product, isProductVisibleInMiniApp } from "../lib/api";
 import { getProductRecommendationScore, seedRecommendationsFromOrders } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
+import { readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
 
 const getCurrentPrice = (product: Partial<Product>) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
-
-type UserLocation = {
-  latitude: number;
-  longitude: number;
-};
 
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
@@ -199,6 +195,8 @@ export default function HomePage() {
     const savedLocation = {
       latitude: user.lastLatitude,
       longitude: user.lastLongitude,
+      accuracyMeters: user.lastLocationAccuracyMeters,
+      updatedAt: user.lastLocationUpdatedAt || new Date().toISOString(),
     };
     setUserLocation(savedLocation);
     setLocationStatus("ready");
@@ -235,59 +233,33 @@ export default function HomePage() {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const storedLocation = localStorage.getItem("foodsaveLastLocation");
-    if (!storedLocation) return;
-
-    try {
-      const parsed = JSON.parse(storedLocation) as UserLocation;
-      if (typeof parsed.latitude === "number" && typeof parsed.longitude === "number") {
-        setUserLocation(parsed);
-        setLocationStatus("ready");
-      }
-    } catch {
-      localStorage.removeItem("foodsaveLastLocation");
+    const storedLocation = readSavedLocation();
+    if (storedLocation) {
+      setUserLocation(storedLocation);
+      setLocationStatus("ready");
     }
   }, []);
 
-  const requestUserLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      setLocationStatus("unsupported");
-      return;
-    }
-
+  const requestUserLocation = async () => {
     setLocationStatus("loading");
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const nextLocation = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
-        };
+    try {
+      const nextLocation = await requestCurrentLocation();
+      setUserLocation(nextLocation);
+      setLocationStatus("ready");
 
-        setUserLocation(nextLocation);
-        setLocationStatus("ready");
-        localStorage.setItem("foodsaveLastLocation", JSON.stringify(nextLocation));
+      if (user) {
+        await apiClient.updateMyLocation(
+          nextLocation.latitude,
+          nextLocation.longitude,
+          nextLocation.accuracyMeters,
+        );
+        setLocationSavedForUserId(user.id);
+      }
 
-        if (user) {
-          apiClient.updateMyLocation(
-            position.coords.latitude,
-            position.coords.longitude,
-            position.coords.accuracy,
-          )
-            .then(() => setLocationSavedForUserId(user.id))
-            .catch((error) => {
-              console.error("Failed to save user location:", error);
-            });
-        }
-      },
-      () => {
-        setLocationStatus("denied");
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 8000,
-        maximumAge: 10 * 60 * 1000,
-      },
-    );
+      router.push("/map?focus=user");
+    } catch (error) {
+      setLocationStatus(error instanceof Error && error.message === "LOCATION_DENIED" ? "denied" : "unsupported");
+    }
   };
 
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
