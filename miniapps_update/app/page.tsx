@@ -62,15 +62,15 @@ const getLocationRecommendationBoost = (from: UserLocation | null, product: Prod
 
 const categoryVisuals: Array<{
   keywords: string[];
-  spriteIndex: number;
+  image: string;
 }> = [
-  { keywords: ["ресторан", "restaurant", "мейрамхана"], spriteIndex: 0 },
-  { keywords: ["коф", "coffee"], spriteIndex: 1 },
-  { keywords: ["кондитер", "confection"], spriteIndex: 2 },
-  { keywords: ["пекар", "bakery", "наубай"], spriteIndex: 3 },
-  { keywords: ["клубник", "strawber", "құлпынай"], spriteIndex: 4 },
-  { keywords: ["слад", "sweet", "тәтті"], spriteIndex: 5 },
-  { keywords: ["быстро", "fast", "жылдам"], spriteIndex: 6 },
+  { keywords: ["ресторан", "restaurant", "мейрамхана"], image: "/categories-v3/restaurant.png" },
+  { keywords: ["коф", "coffee"], image: "/categories-v3/coffee.png" },
+  { keywords: ["кондитер", "confection"], image: "/categories-v3/confectionery.png" },
+  { keywords: ["пекар", "bakery", "наубай"], image: "/categories-v3/bakery.png" },
+  { keywords: ["клубник", "strawber", "құлпынай"], image: "/categories-v3/strawberry.png" },
+  { keywords: ["слад", "sweet", "тәтті"], image: "/categories-v3/sweets.png" },
+  { keywords: ["быстро", "fast", "жылдам"], image: "/categories-v3/fast-food.png" },
 ];
 
 const getCategoryVisual = (name?: string) => {
@@ -78,7 +78,7 @@ const getCategoryVisual = (name?: string) => {
   return (
     categoryVisuals.find((category) =>
       category.keywords.some((keyword) => normalizedName.includes(keyword.normalize("NFC").toLowerCase())),
-    ) || { spriteIndex: 0 }
+    ) || { image: "/categories-v3/restaurant.png" }
   );
 };
 
@@ -402,14 +402,12 @@ export default function HomePage() {
 
                   return (
                     <Link key={category.id} href={`/markets?view=products&categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
-                      <div
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={categoryVisual.image}
+                        alt=""
                         aria-hidden="true"
-                        className="h-14 w-14 bg-transparent bg-no-repeat"
-                        style={{
-                          backgroundImage: "url('/categories-v2/category-sprite.png')",
-                          backgroundSize: "700% auto",
-                          backgroundPosition: `${(categoryVisual.spriteIndex / 6) * 100}% center`,
-                        }}
+                        className="h-14 w-14 object-contain"
                       />
                       <span className="w-full truncate text-center text-sm font-medium text-black/80 font-inter">
                         {categoryLabel}
