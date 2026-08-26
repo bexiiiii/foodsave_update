@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { ArrowLeft, ChevronDown, Clock, SlidersHorizontal, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -11,7 +12,7 @@ import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
 
-type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "rating_desc" | "closing_soon" | "name_asc";
+type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "rating_desc" | "name_asc";
 
 const getProductPrice = (product: Product) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
@@ -49,11 +50,6 @@ const sortStores = (items: Store[], sortMode: CatalogSortMode = "recommended") =
     if (sortMode === "rating_desc") {
       return (b.rating || 0) - (a.rating || 0);
     }
-    if (sortMode === "closing_soon") {
-      const aMinutes = a.closingSoonMinutes ?? Number.MAX_SAFE_INTEGER;
-      const bMinutes = b.closingSoonMinutes ?? Number.MAX_SAFE_INTEGER;
-      return aMinutes - bMinutes;
-    }
     if (sortMode === "name_asc") {
       return a.name.localeCompare(b.name, "ru");
     }
@@ -85,10 +81,10 @@ function MarketsContent() {
   const [appliedMaxPrice, setAppliedMaxPrice] = useState("");
   const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
-  const [closingSoonOnly, setClosingSoonOnly] = useState(false);
   const [discountOnly, setDiscountOnly] = useState(false);
   const [storesWithBoxesOnly, setStoresWithBoxesOnly] = useState(false);
   const [selectedProductStoreId, setSelectedProductStoreId] = useState("");
+  const [selectedProductCategoryId, setSelectedProductCategoryId] = useState("");
   const [sortMode, setSortMode] = useState<CatalogSortMode>("recommended");
 
   const appliedMinPriceValue = Number(appliedMinPrice);
@@ -108,17 +104,15 @@ function MarketsContent() {
   const showProductFilters = showAllProducts || products.length > 0;
   const showStoreFilters = stores.length > 0 && !showAllProducts;
   const isPriceFilterActive = minFilterValue !== undefined || maxFilterValue !== undefined;
-  const hasExtraFilters = favoritesOnly || closingSoonOnly || discountOnly || storesWithBoxesOnly || sortMode !== "recommended";
   const activeFilterCount = [
     showProductFilters && isPriceFilterActive,
     showProductFilters && selectedProductStoreId !== "",
+    showProductFilters && selectedProductCategoryId !== "",
     favoritesOnly,
-    closingSoonOnly,
     showProductFilters && discountOnly,
     showStoreFilters && storesWithBoxesOnly,
     sortMode !== "recommended",
   ].filter(Boolean).length;
-  const hasPendingPriceChanges = minPrice !== appliedMinPrice || maxPrice !== appliedMaxPrice;
   const priceFilterLabel = minFilterValue !== undefined && maxFilterValue !== undefined
     ? `${formatPrice(minFilterValue)} - ${formatPrice(maxFilterValue)}`
     : minFilterValue !== undefined
@@ -128,7 +122,7 @@ function MarketsContent() {
         : "Любая цена";
   const filterSummary = activeFilterCount > 0
     ? `${activeFilterCount} фильтр${activeFilterCount === 1 ? "" : activeFilterCount < 5 ? "а" : "ов"}`
-    : priceFilterLabel;
+    : "Без фильтров";
 
   const applyPriceFilter = () => {
     setAppliedMinPrice(minPrice.trim());
@@ -142,10 +136,10 @@ function MarketsContent() {
     setAppliedMinPrice("");
     setAppliedMaxPrice("");
     setFavoritesOnly(false);
-    setClosingSoonOnly(false);
     setDiscountOnly(false);
     setStoresWithBoxesOnly(false);
     setSelectedProductStoreId("");
+    setSelectedProductCategoryId("");
     setSortMode("recommended");
     setIsPriceFilterOpen(false);
   };
@@ -309,7 +303,6 @@ function MarketsContent() {
 
   const filteredStores = sortStores(stores.filter((store) => {
     if (favoritesOnly && !store.isFavorite) return false;
-    if (closingSoonOnly && !store.closingSoon) return false;
     if (storesWithBoxesOnly && store.productCount === 0) return false;
     return true;
   }), sortMode);
@@ -326,16 +319,87 @@ function MarketsContent() {
       return map;
     }, new Map<string, string>()))
   ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
+  const productCategoryOptions = Array.from(
+    products.reduce((map, product) => {
+      if (product.categoryId && product.categoryName) {
+        map.set(String(product.categoryId), product.categoryName);
+      }
+      return map;
+    }, new Map<string, string>())
+  ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
   const filteredProducts = sortProducts(products.filter((product) => {
     const price = getProductPrice(product);
     if (minFilterValue !== undefined && price < minFilterValue) return false;
     if (maxFilterValue !== undefined && price > maxFilterValue) return false;
     if (selectedProductStoreId && String(product.storeId) !== selectedProductStoreId) return false;
+    if (selectedProductCategoryId && String(product.categoryId) !== selectedProductCategoryId) return false;
     if (favoritesOnly && !product.isFavorite) return false;
-    if (closingSoonOnly && !product.closingSoon) return false;
     if (discountOnly && getProductDiscount(product) <= 0) return false;
     return true;
   }), sortMode);
+  const selectedProductStoreName = productStoreOptions.find(([id]) => id === selectedProductStoreId)?.[1];
+  const selectedProductCategoryName = productCategoryOptions.find(([id]) => id === selectedProductCategoryId)?.[1];
+  const sortOptions = (showProductFilters
+    ? [
+      ["recommended", "Рекомендуем"],
+      ["price_asc", "Сначала дешевле"],
+      ["discount_desc", "Больше скидка"],
+    ]
+    : [
+      ["recommended", "Рекомендуем"],
+      ["rating_desc", "С высоким рейтингом"],
+      ["name_asc", "По названию"],
+    ]) as [CatalogSortMode, string][];
+  const sortLabel = sortOptions.find(([value]) => value === sortMode)?.[1];
+  const activeFilterChips = [
+    isPriceFilterActive ? priceFilterLabel : null,
+    selectedProductStoreName ? selectedProductStoreName : null,
+    selectedProductCategoryName ? selectedProductCategoryName : null,
+    favoritesOnly ? "Избранные" : null,
+    discountOnly && showProductFilters ? "Со скидкой" : null,
+    storesWithBoxesOnly && showStoreFilters ? "Есть боксы" : null,
+    sortMode !== "recommended" && sortLabel ? `Сначала: ${sortLabel}` : null,
+  ].filter(Boolean) as string[];
+  const hasDiscountedProducts = products.some((product) => getProductDiscount(product) > 0);
+  const hasStoresWithBoxes = stores.some((store) => (store.productCount ?? 0) > 0);
+  const canChooseProductStore = productStoreOptions.length > 1;
+  const visibleResultCount = showProductFilters && showStoreFilters
+    ? filteredProducts.length + filteredStores.length
+    : showProductFilters
+      ? filteredProducts.length
+      : filteredStores.length;
+
+  const FilterToggle = ({
+    active,
+    children,
+    onClick,
+  }: {
+    active: boolean;
+    children: ReactNode;
+    onClick: () => void;
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full px-4 py-2.5 text-sm font-bold transition-colors font-inter ${
+        active ? "bg-[#15551F] text-white" : "bg-white text-black/55"
+      }`}
+    >
+      {children}
+    </button>
+  );
+
+  const SortButton = ({ value, label }: { value: CatalogSortMode; label: string }) => (
+    <button
+      type="button"
+      onClick={() => setSortMode(value)}
+      className={`min-h-11 rounded-2xl px-3 py-2 text-sm font-bold leading-tight transition-colors font-inter ${
+        sortMode === value ? "bg-[#15551F] text-white" : "bg-white text-black/55"
+      }`}
+    >
+      {label}
+    </button>
+  );
 
   const StoreCard = ({ store }: { store: Store }) => {
     const isFavorite = !!store.isFavorite;
@@ -499,168 +563,199 @@ function MarketsContent() {
         ) : (
           <div className="space-y-4">
             {(showProductFilters || showStoreFilters) && !notificationGroup && (
-              <div className="rounded-2xl border border-gray-100 bg-gray-50 p-2.5">
-                <div className="flex items-center gap-2">
+              <>
+                <div className="space-y-3">
                   <button
                     type="button"
                     onClick={() => setIsPriceFilterOpen((open) => !open)}
-                    className="flex h-10 flex-1 items-center justify-between rounded-xl bg-white px-3 text-left font-inter"
+                    className="flex h-12 w-full items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 px-4 text-left font-inter"
                   >
-                    <span className="flex items-center gap-2 text-sm font-bold text-black">
-                      <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
+                    <span className="flex items-center gap-3 text-base font-bold text-black">
+                      <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white">
+                        <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
+                      </span>
                       Фильтр
                     </span>
-                    <span className="max-w-[130px] truncate text-xs font-semibold text-black/45">
-                      {filterSummary}
+                    <span className="flex items-center gap-2 text-sm font-bold text-black/45">
+                      {activeFilterCount > 0 ? activeFilterCount : "Без фильтров"}
+                      <ChevronDown className="h-4 w-4" />
                     </span>
                   </button>
-                  {(isPriceFilterActive || hasExtraFilters) && (
-                    <button
-                      type="button"
-                      onClick={resetPriceFilter}
-                      aria-label="Сбросить фильтр"
-                      className="flex h-10 w-10 items-center justify-center rounded-xl bg-white text-black/45"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
+                  <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+                    <FilterToggle active={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>
+                      Избранные
+                    </FilterToggle>
+                    {showProductFilters && hasDiscountedProducts && (
+                      <FilterToggle active={discountOnly} onClick={() => setDiscountOnly((value) => !value)}>
+                        Со скидкой
+                      </FilterToggle>
+                    )}
+                    {showStoreFilters && hasStoresWithBoxes && (
+                      <FilterToggle active={storesWithBoxesOnly} onClick={() => setStoresWithBoxesOnly((value) => !value)}>
+                        Есть боксы
+                      </FilterToggle>
+                    )}
+                  </div>
+                  {activeFilterChips.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      {activeFilterChips.slice(0, 4).map((chip) => (
+                        <span
+                          key={chip}
+                          className="rounded-full bg-[#15551F]/10 px-3 py-1.5 text-xs font-bold text-[#15551F] font-inter"
+                        >
+                          {chip}
+                        </span>
+                      ))}
+                      {activeFilterChips.length > 4 && (
+                        <span className="rounded-full bg-gray-100 px-3 py-1.5 text-xs font-bold text-black/45 font-inter">
+                          +{activeFilterChips.length - 4}
+                        </span>
+                      )}
+                    </div>
                   )}
                 </div>
                 {isPriceFilterOpen && (
-                  <form
-                    className="mt-3 grid grid-cols-2 gap-3"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      applyPriceFilter();
-                    }}
+                  <div
+                    className="fixed inset-0 z-50 flex items-end bg-black/35"
+                    onClick={() => setIsPriceFilterOpen(false)}
                   >
-                    {showProductFilters && (
-                      <>
-                        <label className="col-span-2 block">
-                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">Заведение</span>
-                          <div className="relative">
-                            <select
-                              value={selectedProductStoreId}
-                              onChange={(event) => setSelectedProductStoreId(event.target.value)}
-                              className="h-10 w-full appearance-none rounded-xl border border-gray-200 bg-white px-3 pr-10 text-sm font-semibold text-black shadow-sm outline-none transition-colors focus:border-[#4CAD73] font-inter"
-                            >
-                              <option value="">Все заведения</option>
-                              {productStoreOptions.map(([storeId, storeName]) => (
-                                <option key={storeId} value={storeId}>
-                                  {storeName}
-                                </option>
-                              ))}
-                            </select>
-                            <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" />
-                          </div>
-                        </label>
-                        <label className="block">
-                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">От</span>
-                          <input
-                            value={minPrice}
-                            onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
-                            inputMode="numeric"
-                            placeholder="0 ₸"
-                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
-                          />
-                        </label>
-                        <label className="block">
-                          <span className="mb-1 block text-xs font-medium text-black/45 font-inter">До</span>
-                          <input
-                            value={maxPrice}
-                            onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
-                            inputMode="numeric"
-                            placeholder="2 000 ₸"
-                            className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm font-semibold text-black outline-none focus:border-[#4CAD73] font-inter"
-                          />
-                        </label>
-                      </>
-                    )}
-                    <div className="col-span-2">
-                      <span className="mb-2 block text-xs font-medium text-black/45 font-inter">Показать</span>
-                      <div className="flex flex-wrap gap-2">
+                    <form
+                      className="max-h-[86vh] w-full overflow-y-auto rounded-t-[28px] bg-gray-50 px-4 pb-6 pt-3 shadow-2xl"
+                      onClick={(event) => event.stopPropagation()}
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        applyPriceFilter();
+                      }}
+                    >
+                      <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/15" />
+                      <div className="mb-5 flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-black text-black font-inter">Фильтры</h2>
+                          <p className="mt-1 text-sm font-medium text-black/45 font-inter">{filterSummary}</p>
+                        </div>
                         <button
                           type="button"
-                          onClick={() => setFavoritesOnly((value) => !value)}
-                          className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
-                            favoritesOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
-                          }`}
+                          onClick={() => setIsPriceFilterOpen(false)}
+                          aria-label="Закрыть фильтры"
+                          className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-black"
                         >
-                          Избранные
+                          <X className="h-5 w-5" />
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setClosingSoonOnly((value) => !value)}
-                          className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
-                            closingSoonOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
-                          }`}
-                        >
-                          Закрываются скоро
-                        </button>
+                      </div>
+
+                      <div className="space-y-5">
                         {showProductFilters && (
-                          <button
-                            type="button"
-                            onClick={() => setDiscountOnly((value) => !value)}
-                            className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
-                              discountOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
-                            }`}
-                          >
-                            Со скидкой
-                          </button>
+                          <>
+                            {canChooseProductStore && (
+                            <label className="block">
+                              <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Где искать</span>
+                              <div className="relative">
+                                <select
+                                  value={selectedProductStoreId}
+                                  onChange={(event) => setSelectedProductStoreId(event.target.value)}
+                                  className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-11 text-base font-bold text-black outline-none transition-colors focus:border-[#4CAD73] font-inter"
+                                >
+                                  <option value="">Все заведения</option>
+                                  {productStoreOptions.map(([storeId, storeName]) => (
+                                    <option key={storeId} value={storeId}>
+                                      {storeName}
+                                    </option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black/35" />
+                              </div>
+                            </label>
+                            )}
+                            {productCategoryOptions.length > 1 && (
+                              <label className="block">
+                                <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Что показать</span>
+                                <div className="relative">
+                                  <select
+                                    value={selectedProductCategoryId}
+                                    onChange={(event) => setSelectedProductCategoryId(event.target.value)}
+                                    className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-11 text-base font-bold text-black outline-none transition-colors focus:border-[#4CAD73] font-inter"
+                                  >
+                                    <option value="">Все категории</option>
+                                    {productCategoryOptions.map(([categoryIdValue, categoryName]) => (
+                                      <option key={categoryIdValue} value={categoryIdValue}>
+                                        {categoryName}
+                                      </option>
+                                    ))}
+                                  </select>
+                                  <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-black/35" />
+                                </div>
+                              </label>
+                            )}
+                            <div>
+                              <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Цена</span>
+                              <div className="grid grid-cols-2 gap-3">
+                                <input
+                                  value={minPrice}
+                                  onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
+                                  inputMode="numeric"
+                                  placeholder="От 0 ₸"
+                                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base font-bold text-black outline-none focus:border-[#4CAD73] font-inter"
+                                />
+                                <input
+                                  value={maxPrice}
+                                  onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
+                                  inputMode="numeric"
+                                  placeholder="До 2 000 ₸"
+                                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base font-bold text-black outline-none focus:border-[#4CAD73] font-inter"
+                                />
+                              </div>
+                            </div>
+                          </>
                         )}
-                        {showStoreFilters && (
-                          <button
-                            type="button"
-                            onClick={() => setStoresWithBoxesOnly((value) => !value)}
-                            className={`rounded-full px-3 py-2 text-xs font-bold font-inter ${
-                              storesWithBoxesOnly ? "bg-[#15551F] text-white" : "bg-white text-black/60"
-                            }`}
-                          >
-                            С боксами
-                          </button>
-                        )}
+
+                        <div>
+                          <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Быстрый выбор</span>
+                          <div className="flex flex-wrap gap-2">
+                            <FilterToggle active={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>
+                              Избранные
+                            </FilterToggle>
+                            {showProductFilters && hasDiscountedProducts && (
+                              <FilterToggle active={discountOnly} onClick={() => setDiscountOnly((value) => !value)}>
+                                Со скидкой
+                              </FilterToggle>
+                            )}
+                            {showStoreFilters && hasStoresWithBoxes && (
+                              <FilterToggle active={storesWithBoxesOnly} onClick={() => setStoresWithBoxesOnly((value) => !value)}>
+                                Есть боксы
+                              </FilterToggle>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Сначала показывать</span>
+                          <div className="grid grid-cols-2 gap-2">
+                            {sortOptions.map(([value, label]) => (
+                              <SortButton key={value} value={value} label={label} />
+                            ))}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="mb-2 block text-xs font-medium text-black/45 font-inter">Сортировка</span>
-                      <div className="grid grid-cols-3 gap-2">
-                        {(showProductFilters
-                          ? [
-                            ["recommended", "Лучшие"],
-                            ["price_asc", "Дешевле"],
-                            ["discount_desc", "Скидка"],
-                          ]
-                          : [
-                            ["recommended", "Лучшие"],
-                            ["rating_desc", "Рейтинг"],
-                            ["closing_soon", "Закрытие"],
-                            ["name_asc", "А-Я"],
-                          ]
-                        ).map(([value, label]) => (
-                          <button
-                            key={value}
-                            type="button"
-                            onClick={() => setSortMode(value as CatalogSortMode)}
-                            className={`h-9 rounded-xl text-xs font-bold font-inter ${
-                              sortMode === value ? "bg-[#15551F] text-white" : "bg-white text-black/60"
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
+
+                      <div className="sticky bottom-0 -mx-4 mt-6 grid grid-cols-[1fr_1.5fr] gap-3 bg-gray-50 px-4 pb-2 pt-3">
+                        <button
+                          type="button"
+                          onClick={resetPriceFilter}
+                          className="h-12 rounded-2xl bg-white text-base font-bold text-black/55 font-inter"
+                        >
+                          Сбросить
+                        </button>
+                        <button
+                          type="submit"
+                          className="h-12 rounded-2xl bg-[#15551F] text-base font-bold text-white font-inter"
+                        >
+                          Показать {visibleResultCount}
+                        </button>
                       </div>
-                    </div>
-                    {showProductFilters && (
-                      <button
-                        type="submit"
-                        disabled={!hasPendingPriceChanges}
-                        className="col-span-2 h-10 rounded-xl bg-[#15551F] text-sm font-bold text-white transition-opacity disabled:opacity-45 font-inter"
-                      >
-                        Применить
-                      </button>
-                    )}
-                  </form>
+                    </form>
+                  </div>
                 )}
-              </div>
+              </>
             )}
 
             {stores.length > 0 && query && (
