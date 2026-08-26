@@ -193,6 +193,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     long countByStoreIdIn(@Param("storeIds") List<Long> storeIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.id = :id")
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
 

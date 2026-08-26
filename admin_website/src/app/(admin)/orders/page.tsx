@@ -49,6 +49,7 @@ export default function OrderManagementPage() {
     const [orderToView, setOrderToView] = useState<OrderDTO | null>(null);
     const [orders, setOrders] = useState<OrderDTO[]>([]);
     const [loading, setLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('all');
     const [dateFilter, setDateFilter] = useState<string>('today');
@@ -67,6 +68,7 @@ export default function OrderManagementPage() {
     const fetchOrders = async () => {
         try {
             setLoading(true);
+            setLoadError(null);
             const response = await orderApi.getAll();
             const ordersData = Array.isArray(response) ? response : [];
             
@@ -108,8 +110,8 @@ export default function OrderManagementPage() {
             setStats(stats);
         } catch (error) {
             console.error('Failed to fetch orders:', error);
-            toast.error('Failed to load orders');
-            setOrders([]);
+            setLoadError('Не удалось загрузить заказы');
+            toast.error('Не удалось загрузить заказы');
         } finally {
             setLoading(false);
         }
@@ -490,11 +492,13 @@ export default function OrderManagementPage() {
                                     <TableCell colSpan={8} className="text-center py-8">
                                         <div className="flex flex-col items-center justify-center text-gray-500 dark:text-gray-400">
                                             <p className="text-lg font-medium mb-2">
-                                                {orders.length === 0 ? 'No orders available' : 'No orders found'}
+                                                {loadError || (orders.length === 0 ? 'Заказов пока нет' : 'Заказы не найдены')}
                                             </p>
                                             <p className="text-sm">
-                                                {orders.length === 0 
-                                                    ? 'No orders have been placed yet' 
+                                                {loadError
+                                                    ? 'Проверьте подключение и обновите страницу. Существующие заказы не удалены.'
+                                                    : orders.length === 0
+                                                    ? 'Заказы еще не оформляли'
                                                     : `Try adjusting your filters. Currently showing ${dateFilter === 'today' ? 'сегодняшние' : dateFilter === 'yesterday' ? 'вчерашние' : dateFilter === 'week' ? 'за 7 дней' : dateFilter === 'month' ? 'за 30 дней' : 'все'} orders${statusFilter !== 'all' ? ` with status: ${statusFilter}` : ''}`
                                                 }
                                             </p>
@@ -505,7 +509,7 @@ export default function OrderManagementPage() {
                                                     onClick={() => setDateFilter('all')}
                                                     className="mt-3"
                                                 >
-                                                    Show All Orders
+                                                    Показать все заказы
                                                 </Button>
                                             )}
                                         </div>
@@ -669,4 +673,4 @@ export default function OrderManagementPage() {
             </div>
         </ProtectedRoute>
     );
-} 
+}

@@ -75,7 +75,7 @@ public class OrderService {
             if (securityUtil.isCurrentUserAdmin()) {
                 // Super admins see all orders
                 log.info("DEBUG: User is admin, fetching all orders");
-                List<Order> orders = orderRepository.findAll();
+                List<Order> orders = orderRepository.findAllWithItemsOptimized();
                 log.info("DEBUG: Found {} orders in database", orders.size());
                 return orders.stream()
                         .map(OrderDTO::fromEntity)
@@ -94,7 +94,7 @@ public class OrderService {
                         log.info("DEBUG: User is store manager, fetching managed store orders");
                         Long managedStoreId = getCurrentManagedStoreId(userPrincipal.getId());
                         if (managedStoreId != null) {
-                            List<Order> orders = orderRepository.findByStoreId(managedStoreId, org.springframework.data.domain.Pageable.unpaged()).getContent();
+                            List<Order> orders = orderRepository.findByStoreIdInWithItemsOptimized(Set.of(managedStoreId));
                             log.info("DEBUG: Found {} orders for managed store {}", orders.size(), managedStoreId);
                             return orders.stream()
                                     .map(OrderDTO::fromEntity)
@@ -110,7 +110,7 @@ public class OrderService {
                 if (userStoreIds.isEmpty()) {
                     return List.of();
                 }
-                return orderRepository.findByStoreIdIn(userStoreIds).stream()
+                return orderRepository.findByStoreIdInWithItemsOptimized(userStoreIds).stream()
                         .map(OrderDTO::fromEntity)
                         .collect(Collectors.toList());
             }

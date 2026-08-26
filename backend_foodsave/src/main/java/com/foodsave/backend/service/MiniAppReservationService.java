@@ -178,6 +178,9 @@ public class MiniAppReservationService {
         log.info("Order saved: orderId={}, orderNumber={}", 
             savedOrder.getId(), savedOrder.getOrderNumber());
 
+        // Validate response mapping before sending notifications to customers or partners.
+        OrderDTO response = OrderDTO.fromEntity(savedOrder);
+
         productEventService.trackAsync(new ProductEventRequest(
                 ProductEventType.RESERVATION_CREATED,
                 null,
@@ -238,7 +241,7 @@ public class MiniAppReservationService {
         }
 
         log.info("=== RESERVATION COMPLETE === orderId={}", savedOrder.getId());
-        return OrderDTO.fromEntity(savedOrder);
+        return response;
     }
 
     private void sendSellerNotification(User customer, Order order, Product product) {

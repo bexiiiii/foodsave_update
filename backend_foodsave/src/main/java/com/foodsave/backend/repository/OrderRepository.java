@@ -27,17 +27,21 @@ import java.util.Set;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     
     // Оптимизированные запросы с EntityGraph для избежания N+1 проблем
-    @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.category", "store", "user"})
     @Query("SELECT o FROM Order o WHERE o.user = :user ORDER BY o.createdAt DESC")
     List<Order> findByUserWithItemsOptimized(@Param("user") User user);
     
-    @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.category", "store", "user"})
     @Query("SELECT o FROM Order o WHERE o.store = :store ORDER BY o.createdAt DESC") 
     List<Order> findByStoreWithItemsOptimized(@Param("store") Store store);
     
-    @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.category", "store", "user"})
     @Query("SELECT o FROM Order o WHERE o.store.id IN :storeIds ORDER BY o.createdAt DESC")
     List<Order> findByStoreIdInWithItemsOptimized(@Param("storeIds") Set<Long> storeIds);
+
+    @EntityGraph(attributePaths = {"items", "items.product", "items.product.category", "store", "user"})
+    @Query("SELECT DISTINCT o FROM Order o ORDER BY o.createdAt DESC")
+    List<Order> findAllWithItemsOptimized();
 
     @EntityGraph(attributePaths = {"items", "items.product", "store", "user"})
     @Query("SELECT o FROM Order o WHERE o.pickupReminderSentAt IS NULL " +

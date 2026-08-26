@@ -48,6 +48,15 @@ public class OrderItemDTO {
         } catch (Exception e) {
             // fallback: leave productImage null
         }
+        String categoryName = null;
+        try {
+            if (item.getProduct().getCategory() != null) {
+                categoryName = item.getProduct().getCategory().getName();
+            }
+        } catch (RuntimeException ignored) {
+            // Category is supplementary order data and must never break an order response.
+        }
+
         return OrderItemDTO.builder()
                 .id(item.getId())
                 .orderId(item.getOrder().getId())
@@ -57,7 +66,7 @@ public class OrderItemDTO {
                 .quantity(item.getQuantity())
                 .unitPrice(item.getUnitPrice())
                 .totalPrice(item.getTotalPrice())
-                .categoryName(item.getProduct().getCategory().getName())
+                .categoryName(categoryName)
                 .build();
     }
 }
