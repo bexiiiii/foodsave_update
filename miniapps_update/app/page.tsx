@@ -411,7 +411,7 @@ export default function HomePage() {
                         src={categoryVisual.image}
                         alt=""
                         aria-hidden="true"
-                        className="h-20 w-20 object-contain drop-shadow-[0_9px_7px_rgba(0,0,0,0.22)]"
+                        className="h-20 w-20 object-contain drop-shadow-[0_5px_11px_rgba(0,0,0,0.12)]"
                       />
                       <span className="w-full whitespace-nowrap text-center text-xs font-semibold leading-4 text-black/80 font-inter">
                         {categoryLabel}
