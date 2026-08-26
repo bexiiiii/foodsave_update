@@ -2,19 +2,11 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import {
-  CakeSlice,
-  Candy,
   ChevronRight,
-  Coffee,
-  Croissant,
-  IceCreamBowl,
   LocateFixed,
   MapPin,
-  Sandwich,
   Star,
-  UtensilsCrossed,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
@@ -70,17 +62,15 @@ const getLocationRecommendationBoost = (from: UserLocation | null, product: Prod
 
 const categoryVisuals: Array<{
   keywords: string[];
-  icon: LucideIcon;
-  background: string;
-  color: string;
+  spriteIndex: number;
 }> = [
-  { keywords: ["ресторан", "restaurant", "мейрамхана"], icon: UtensilsCrossed, background: "bg-rose-50", color: "text-rose-600" },
-  { keywords: ["коф", "coffee"], icon: Coffee, background: "bg-amber-50", color: "text-amber-700" },
-  { keywords: ["кондитер", "confection"], icon: CakeSlice, background: "bg-pink-50", color: "text-pink-600" },
-  { keywords: ["пекар", "bakery", "наубай"], icon: Croissant, background: "bg-orange-50", color: "text-orange-700" },
-  { keywords: ["клубник", "strawber", "құлпынай"], icon: IceCreamBowl, background: "bg-red-50", color: "text-red-600" },
-  { keywords: ["слад", "sweet", "тәтті"], icon: Candy, background: "bg-fuchsia-50", color: "text-fuchsia-600" },
-  { keywords: ["быстро", "fast", "жылдам"], icon: Sandwich, background: "bg-emerald-50", color: "text-emerald-700" },
+  { keywords: ["ресторан", "restaurant", "мейрамхана"], spriteIndex: 0 },
+  { keywords: ["коф", "coffee"], spriteIndex: 1 },
+  { keywords: ["кондитер", "confection"], spriteIndex: 2 },
+  { keywords: ["пекар", "bakery", "наубай"], spriteIndex: 3 },
+  { keywords: ["клубник", "strawber", "құлпынай"], spriteIndex: 4 },
+  { keywords: ["слад", "sweet", "тәтті"], spriteIndex: 5 },
+  { keywords: ["быстро", "fast", "жылдам"], spriteIndex: 6 },
 ];
 
 const getCategoryVisual = (name?: string) => {
@@ -88,7 +78,7 @@ const getCategoryVisual = (name?: string) => {
   return (
     categoryVisuals.find((category) =>
       category.keywords.some((keyword) => normalizedName.includes(keyword.normalize("NFC").toLowerCase())),
-    ) || { icon: UtensilsCrossed, background: "bg-gray-100", color: "text-gray-600" }
+    ) || { spriteIndex: 0 }
   );
 };
 
@@ -409,13 +399,18 @@ export default function HomePage() {
                   const translatedCategoryKey = getCategoryTranslationKey(category.name);
                   const categoryLabel = translatedCategoryKey ? t(translatedCategoryKey) : safeString(category.name);
                   const categoryVisual = getCategoryVisual(category.name);
-                  const CategoryIcon = categoryVisual.icon;
 
                   return (
                     <Link key={category.id} href={`/markets?view=products&categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
-                      <div className={`flex h-14 w-14 items-center justify-center rounded-2xl border border-black/5 shadow-sm ${categoryVisual.background}`}>
-                        <CategoryIcon className={`h-7 w-7 ${categoryVisual.color}`} strokeWidth={1.8} aria-hidden="true" />
-                      </div>
+                      <div
+                        aria-hidden="true"
+                        className="h-14 w-14 rounded-2xl border border-black/5 bg-white bg-no-repeat shadow-sm"
+                        style={{
+                          backgroundImage: "url('/categories-v2/category-sprite.png')",
+                          backgroundSize: "700% auto",
+                          backgroundPosition: `${(categoryVisual.spriteIndex / 6) * 100}% center`,
+                        }}
+                      />
                       <span className="w-full truncate text-center text-sm font-medium text-black/80 font-inter">
                         {categoryLabel}
                       </span>

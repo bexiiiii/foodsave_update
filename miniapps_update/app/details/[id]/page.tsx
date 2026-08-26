@@ -86,7 +86,10 @@ export default function ProductDetailsPage() {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
           recordProductView(productData);
-          setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
+          // This optional prompt never participates in loading the product.
+          window.setTimeout(() => {
+            if (isMounted) setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
+          }, 450);
           const attribution = readAttribution();
           apiClient.trackEvent({
             eventType: "BOX_VIEWED",

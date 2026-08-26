@@ -417,13 +417,24 @@ class ApiClient {
     };
 
     try {
-      const response = await fetch(url, config);
+      let response = await fetch(url, config);
+
+      // Public catalogue pages must remain available when a stored JWT expires.
+      // Retry anonymously; the next Telegram auth pass will issue a fresh token.
+      if ((response.status === 401 || response.status === 403) && headers.Authorization) {
+        this.clearToken();
+        const anonymousHeaders = { ...headers };
+        delete anonymousHeaders.Authorization;
+        response = await fetch(url, { ...config, headers: anonymousHeaders });
+      }
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      return await response.json();
+      if (response.status === 204) return undefined as T;
+      const text = await response.text();
+      return text ? JSON.parse(text) : (undefined as T);
     } catch (error) {
       console.error('Public API request failed:', {
         url,

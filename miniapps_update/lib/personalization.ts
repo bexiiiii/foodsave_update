@@ -17,9 +17,11 @@ type ProductInteraction = {
 const INTERACTIONS_KEY = "foodsave_product_interactions_v1";
 const RECENT_VIEWS_KEY = "foodsave_recent_product_views_v1";
 const HELP_DISMISSED_KEY = "foodsave_decision_help_dismissed_at_v1";
+const HELP_SHOWN_SESSION_KEY = "foodsave_decision_help_shown_v2";
 const MAX_INTERACTIONS = 60;
 const RECENT_VIEW_WINDOW_MS = 15 * 60 * 1000;
 const HELP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const SAME_PRODUCT_VIEW_COOLDOWN_MS = 45 * 1000;
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -68,6 +70,10 @@ const writeInteractions = (interactions: Record<string, ProductInteraction>) => 
 export const recordProductView = (product: Product) => {
   if (!product?.id) return;
   const now = Date.now();
+  const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+    .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
+  const lastSameProductView = [...recentViews].reverse().find((item) => item.productId === product.id);
+  if (lastSameProductView && now - lastSameProductView.viewedAt < SAME_PRODUCT_VIEW_COOLDOWN_MS) return;
   const interactions = readInteractions();
   const current = interactions[String(product.id)] || {
     id: product.id,
@@ -88,11 +94,10 @@ export const recordProductView = (product: Product) => {
   };
   writeInteractions(interactions);
 
-  const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
-    .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS)
+  const nextRecentViews = recentViews
     .concat({ productId: product.id, viewedAt: now })
     .slice(-20);
-  writeJson(RECENT_VIEWS_KEY, recentViews);
+  writeJson(RECENT_VIEWS_KEY, nextRecentViews);
 };
 
 export const recordProductReservation = (product: Product) => {
@@ -183,6 +188,7 @@ export const getProductRecommendationScore = (product: Product) => {
 
 export const shouldShowDecisionHelpPrompt = () => {
   if (!isBrowser()) return false;
+  if (sessionStorage.getItem(HELP_SHOWN_SESSION_KEY) === "1") return false;
   const now = Date.now();
   const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
   if (dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS) return false;
@@ -190,7 +196,9 @@ export const shouldShowDecisionHelpPrompt = () => {
   const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
     .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
   const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
-  return recentViews.length >= 5 && uniqueProductIds.size >= 3;
+  const shouldShow = recentViews.length >= 6 && uniqueProductIds.size >= 3;
+  if (shouldShow) sessionStorage.setItem(HELP_SHOWN_SESSION_KEY, "1");
+  return shouldShow;
 };
 
 export const dismissDecisionHelpPrompt = () => {
