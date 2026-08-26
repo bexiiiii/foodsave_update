@@ -385,14 +385,14 @@ export default function HomePage() {
         )}
       </header>
 
-      <section className="mt-6 border-y border-gray-100 bg-[#F7F8F7] py-5">
+      <section className="mt-6 bg-white py-4">
         <div className="overflow-x-auto px-4 pb-1">
           <div className="flex min-w-max gap-5">
             {categoriesLoading
               ? [1, 2, 3].map((item) => (
                   <div key={item} className="flex w-[68px] flex-col items-center gap-2">
-                    <div className="h-14 w-14 animate-pulse rounded-2xl bg-white" />
-                    <div className="h-4 w-14 animate-pulse rounded bg-white" />
+                    <div className="h-14 w-14 animate-pulse rounded-full bg-black/5" />
+                    <div className="h-4 w-14 animate-pulse rounded bg-black/5" />
                   </div>
                 ))
               : categories.map((category) => {
@@ -404,7 +404,7 @@ export default function HomePage() {
                     <Link key={category.id} href={`/markets?view=products&categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
                       <div
                         aria-hidden="true"
-                        className="h-14 w-14 bg-white bg-no-repeat"
+                        className="h-14 w-14 bg-transparent bg-no-repeat"
                         style={{
                           backgroundImage: "url('/categories-v2/category-sprite.png')",
                           backgroundSize: "700% auto",
