@@ -386,13 +386,13 @@ export default function HomePage() {
       </header>
 
       <section className="mt-6 bg-white py-4">
-        <div className="overflow-x-auto px-4 pb-1">
-          <div className="flex min-w-max gap-5">
+        <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-max snap-x snap-mandatory gap-4 pr-1">
             {categoriesLoading
               ? [1, 2, 3].map((item) => (
-                  <div key={item} className="flex w-[68px] flex-col items-center gap-2">
-                    <div className="h-14 w-14 animate-pulse rounded-full bg-black/5" />
-                    <div className="h-4 w-14 animate-pulse rounded bg-black/5" />
+                  <div key={item} className="flex w-[82px] flex-col items-center gap-2">
+                    <div className="h-[76px] w-[76px] animate-pulse rounded-2xl bg-black/5" />
+                    <div className="h-4 w-16 animate-pulse rounded bg-black/5" />
                   </div>
                 ))
               : categories.map((category) => {
@@ -401,15 +401,19 @@ export default function HomePage() {
                   const categoryVisual = getCategoryVisual(category.name);
 
                   return (
-                    <Link key={category.id} href={`/markets?view=products&categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
+                    <Link
+                      key={category.id}
+                      href={`/markets?view=products&categoryId=${category.id}`}
+                      className="flex w-[82px] shrink-0 snap-start flex-col items-center gap-1.5"
+                    >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={categoryVisual.image}
                         alt=""
                         aria-hidden="true"
-                        className="h-14 w-14 object-contain"
+                        className="h-[76px] w-[76px] object-contain drop-shadow-[0_8px_7px_rgba(0,0,0,0.2)]"
                       />
-                      <span className="w-full truncate text-center text-sm font-medium text-black/80 font-inter">
+                      <span className="flex min-h-9 w-full items-start justify-center whitespace-normal break-words text-center text-[13px] font-semibold leading-[17px] text-black/80 font-inter">
                         {categoryLabel}
                       </span>
                     </Link>
