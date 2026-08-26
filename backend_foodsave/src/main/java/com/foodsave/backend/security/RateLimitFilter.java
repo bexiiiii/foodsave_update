@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.annotation.Order;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -24,8 +25,10 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class RateLimitFilter extends OncePerRequestFilter {
 
     // Конфигурация - увеличенные лимиты для нормальной работы приложения
-    private static final int MAX_REQUESTS_PER_MINUTE = 300; // 300 запросов в минуту
-    private static final int MAX_AUTH_REQUESTS_PER_MINUTE = 60; // 60 auth запросов в минуту
+    private static final int MAX_PUBLIC_READS_PER_MINUTE = 1200;
+    private static final int MAX_MUTATIONS_PER_MINUTE = 120;
+    private static final int MAX_ANALYTICS_EVENTS_PER_MINUTE = 600;
+    private static final int MAX_AUTH_REQUESTS_PER_MINUTE = 30;
     private static final long WINDOW_MS = 60_000; // 1 минута
     private static final long BAN_DURATION_MS = 60_000; // 1 минута бан (вместо 5)
 
@@ -74,19 +77,27 @@ public class RateLimitFilter extends OncePerRequestFilter {
             }
         }
 
-        // Определяем лимит в зависимости от пути
-        int limit = path.contains("/auth/") ? MAX_AUTH_REQUESTS_PER_MINUTE : MAX_REQUESTS_PER_MINUTE;
+        RequestBucket bucket = resolveBucket(request, path);
+        int limit = switch (bucket) {
+            case AUTH -> MAX_AUTH_REQUESTS_PER_MINUTE;
+            case ANALYTICS -> MAX_ANALYTICS_EVENTS_PER_MINUTE;
+            case PUBLIC_READ -> MAX_PUBLIC_READS_PER_MINUTE;
+            case MUTATION -> MAX_MUTATIONS_PER_MINUTE;
+        };
 
         // Проверка rate limit
-        if (isRateLimited(clientIp, limit)) {
+        if (isRateLimited(clientIp + ":" + bucket.name(), limit)) {
             log.warn("⚠️ Rate limit exceeded for IP: {} on path: {}", clientIp, path);
             
-            // Добавляем временный бан после превышения лимита
-            bannedIps.put(clientIp, System.currentTimeMillis() + BAN_DURATION_MS);
+            // Only repeated authentication abuse blocks the whole client. Catalogue
+            // reads and telemetry may be bursty in a Telegram WebView.
+            if (bucket == RequestBucket.AUTH) {
+                bannedIps.put(clientIp, System.currentTimeMillis() + BAN_DURATION_MS);
+            }
             
             response.setStatus(429);
-            response.setHeader("Retry-After", "300");
-            response.getWriter().write("Rate limit exceeded. You are temporarily banned.");
+            response.setHeader("Retry-After", "60");
+            response.getWriter().write("Rate limit exceeded. Try again later.");
             return;
         }
 
@@ -110,15 +121,43 @@ public class RateLimitFilter extends OncePerRequestFilter {
     private String getClientIP(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
         if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
+            return normalizeClientAddress(xForwardedFor.split(",")[0].trim());
         }
         
         String xRealIP = request.getHeader("X-Real-IP");
         if (xRealIP != null && !xRealIP.isEmpty()) {
-            return xRealIP;
+            return normalizeClientAddress(xRealIP);
         }
         
-        return request.getRemoteAddr();
+        return normalizeClientAddress(request.getRemoteAddr());
+    }
+
+    private RequestBucket resolveBucket(HttpServletRequest request, String path) {
+        if (path.contains("/auth/")) return RequestBucket.AUTH;
+        if (path.equals("/api/analytics/events")) return RequestBucket.ANALYTICS;
+        if ("GET".equals(request.getMethod()) || "HEAD".equals(request.getMethod())) {
+            return RequestBucket.PUBLIC_READ;
+        }
+        return RequestBucket.MUTATION;
+    }
+
+    private String normalizeClientAddress(String address) {
+        if (address == null || address.isBlank()) return "unknown";
+        String normalized = address.trim();
+        if (normalized.startsWith("[") && normalized.contains("]")) {
+            return normalized.substring(1, normalized.indexOf(']'));
+        }
+        if (normalized.matches("^\\d{1,3}(?:\\.\\d{1,3}){3}:\\d+$")) {
+            return normalized.substring(0, normalized.lastIndexOf(':'));
+        }
+        return normalized;
+    }
+
+    private enum RequestBucket {
+        AUTH,
+        ANALYTICS,
+        PUBLIC_READ,
+        MUTATION
     }
 
     // Вспомогательный класс для хранения данных rate limit
@@ -133,6 +172,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
     }
 
     // Очистка старых записей (вызывается периодически)
+    @Scheduled(fixedRate = 120_000)
     public void cleanupOldRecords() {
         long now = System.currentTimeMillis();
         requestCounts.entrySet().removeIf(entry -> 

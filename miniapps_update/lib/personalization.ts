@@ -68,12 +68,12 @@ const writeInteractions = (interactions: Record<string, ProductInteraction>) => 
 };
 
 export const recordProductView = (product: Product) => {
-  if (!product?.id) return;
+  if (!product?.id) return false;
   const now = Date.now();
   const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
     .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
   const lastSameProductView = [...recentViews].reverse().find((item) => item.productId === product.id);
-  if (lastSameProductView && now - lastSameProductView.viewedAt < SAME_PRODUCT_VIEW_COOLDOWN_MS) return;
+  if (lastSameProductView && now - lastSameProductView.viewedAt < SAME_PRODUCT_VIEW_COOLDOWN_MS) return false;
   const interactions = readInteractions();
   const current = interactions[String(product.id)] || {
     id: product.id,
@@ -98,6 +98,7 @@ export const recordProductView = (product: Product) => {
     .concat({ productId: product.id, viewedAt: now })
     .slice(-20);
   writeJson(RECENT_VIEWS_KEY, nextRecentViews);
+  return true;
 };
 
 export const recordProductReservation = (product: Product) => {

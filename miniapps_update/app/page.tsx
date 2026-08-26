@@ -404,7 +404,7 @@ export default function HomePage() {
                     <Link key={category.id} href={`/markets?view=products&categoryId=${category.id}`} className="flex w-[74px] flex-col items-center gap-2">
                       <div
                         aria-hidden="true"
-                        className="h-14 w-14 rounded-2xl border border-black/5 bg-white bg-no-repeat shadow-sm"
+                        className="h-14 w-14 bg-white bg-no-repeat"
                         style={{
                           backgroundImage: "url('/categories-v2/category-sprite.png')",
                           backgroundSize: "700% auto",

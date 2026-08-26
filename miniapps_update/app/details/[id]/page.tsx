@@ -44,6 +44,8 @@ export default function ProductDetailsPage() {
   const [store, setStore] = useState<Store | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [isReserving, setIsReserving] = useState(false);
   const [orderModal, setOrderModal] = useState<OrderModalState>(null);
   const [isFavorite, setIsFavorite] = useState(false);
@@ -79,19 +81,21 @@ export default function ProductDetailsPage() {
     const loadProduct = async () => {
       if (!productId || loadingStarted) return;
       loadingStarted = true;
+      setIsLoading(true);
+      setLoadError(false);
 
       try {
         const productData = await apiClient.getProductById(Number(productId));
         if (isMounted) {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
-          recordProductView(productData);
+          const recordedView = recordProductView(productData);
           // This optional prompt never participates in loading the product.
           window.setTimeout(() => {
             if (isMounted) setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
           }, 450);
           const attribution = readAttribution();
-          apiClient.trackEvent({
+          if (recordedView) apiClient.trackEvent({
             eventType: "BOX_VIEWED",
             sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
             source: String(attribution.source || "direct"),
@@ -102,6 +106,7 @@ export default function ProductDetailsPage() {
             partnerId: productData.storeId,
             branchId: productData.storeId,
             boxId: productData.id,
+            idempotencyKey: `box-view-${sessionStorage.getItem("foodsaveSessionId") || "anonymous"}-${productData.id}-${Math.floor(Date.now() / 45000)}`,
             metadata: {
               availableQuantity: productData.stockQuantity,
               boxPrice: productData.price || productData.discountedPrice || productData.originalPrice,
@@ -122,6 +127,7 @@ export default function ProductDetailsPage() {
         }
       } catch (error) {
         console.error('Failed to load product:', error);
+        if (isMounted) setLoadError(true);
       } finally {
         if (isMounted) {
           setIsLoading(false);
@@ -134,7 +140,7 @@ export default function ProductDetailsPage() {
     return () => {
       isMounted = false;
     };
-  }, [productId]);
+  }, [productId, loadAttempt]);
 
   useEffect(() => {
     setActiveImageIndex(0);
@@ -306,6 +312,23 @@ export default function ProductDetailsPage() {
             <div className="h-4 bg-gray-200 rounded w-2/3"></div>
           </div>
         </div>
+      </div>
+    );
+  }
+
+  if (loadError && !product) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-white px-6 text-center">
+        <XCircle className="h-12 w-12 text-[#E5484D]" />
+        <h1 className="mt-4 text-xl font-bold text-black">Не удалось загрузить бокс</h1>
+        <p className="mt-2 text-sm text-black/50">Проверьте соединение и попробуйте ещё раз.</p>
+        <button
+          type="button"
+          onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+          className="mt-6 h-12 w-full max-w-xs rounded-xl bg-[#15551F] font-bold text-white"
+        >
+          Повторить
+        </button>
       </div>
     );
   }

@@ -668,7 +668,26 @@ class ApiClient {
   }
 
   async getProductById(id: number): Promise<Product> {
-    return this.makePublicRequest<Product>(`/products/${id}`);
+    const cacheKey = `foodsave-product-${id}`;
+    try {
+      const product = await this.makePublicRequest<Product>(`/products/${id}`);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(cacheKey, JSON.stringify(product));
+      }
+      return product;
+    } catch (error) {
+      if (typeof window !== 'undefined') {
+        const cached = sessionStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            return JSON.parse(cached) as Product;
+          } catch {
+            sessionStorage.removeItem(cacheKey);
+          }
+        }
+      }
+      throw error;
+    }
   }
 
   // Favorites methods
