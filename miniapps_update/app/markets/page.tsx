@@ -12,7 +12,7 @@ import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
 
-type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "rating_desc" | "name_asc";
+type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "name_asc";
 
 const getProductPrice = (product: Product) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
@@ -47,16 +47,10 @@ const sortStores = (items: Store[], sortMode: CatalogSortMode = "recommended") =
     const favoriteDiff = Number(!!b.isFavorite) - Number(!!a.isFavorite);
     if (favoriteDiff !== 0) return favoriteDiff;
 
-    if (sortMode === "rating_desc") {
-      return (b.rating || 0) - (a.rating || 0);
-    }
     if (sortMode === "name_asc") {
       return a.name.localeCompare(b.name, "ru");
     }
-
-    const closingSoonDiff = Number(!!b.closingSoon) - Number(!!a.closingSoon);
-    if (closingSoonDiff !== 0) return closingSoonDiff;
-    return (b.rating || 0) - (a.rating || 0);
+    return 0;
   });
 
 function MarketsContent() {
@@ -82,7 +76,6 @@ function MarketsContent() {
   const [isPriceFilterOpen, setIsPriceFilterOpen] = useState(false);
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [discountOnly, setDiscountOnly] = useState(false);
-  const [storesWithBoxesOnly, setStoresWithBoxesOnly] = useState(false);
   const [selectedProductStoreId, setSelectedProductStoreId] = useState("");
   const [selectedProductCategoryId, setSelectedProductCategoryId] = useState("");
   const [sortMode, setSortMode] = useState<CatalogSortMode>("recommended");
@@ -110,7 +103,6 @@ function MarketsContent() {
     showProductFilters && selectedProductCategoryId !== "",
     favoritesOnly,
     showProductFilters && discountOnly,
-    showStoreFilters && storesWithBoxesOnly,
     sortMode !== "recommended",
   ].filter(Boolean).length;
   const priceFilterLabel = minFilterValue !== undefined && maxFilterValue !== undefined
@@ -137,7 +129,6 @@ function MarketsContent() {
     setAppliedMaxPrice("");
     setFavoritesOnly(false);
     setDiscountOnly(false);
-    setStoresWithBoxesOnly(false);
     setSelectedProductStoreId("");
     setSelectedProductCategoryId("");
     setSortMode("recommended");
@@ -303,7 +294,6 @@ function MarketsContent() {
 
   const filteredStores = sortStores(stores.filter((store) => {
     if (favoritesOnly && !store.isFavorite) return false;
-    if (storesWithBoxesOnly && store.productCount === 0) return false;
     return true;
   }), sortMode);
   const favoriteStores = filteredStores.filter((store) => store.isFavorite);
@@ -347,7 +337,6 @@ function MarketsContent() {
     ]
     : [
       ["recommended", "Рекомендуем"],
-      ["rating_desc", "С высоким рейтингом"],
       ["name_asc", "По названию"],
     ]) as [CatalogSortMode, string][];
   const sortLabel = sortOptions.find(([value]) => value === sortMode)?.[1];
@@ -357,11 +346,9 @@ function MarketsContent() {
     selectedProductCategoryName ? selectedProductCategoryName : null,
     favoritesOnly ? "Избранные" : null,
     discountOnly && showProductFilters ? "Со скидкой" : null,
-    storesWithBoxesOnly && showStoreFilters ? "Есть боксы" : null,
     sortMode !== "recommended" && sortLabel ? `Сначала: ${sortLabel}` : null,
   ].filter(Boolean) as string[];
   const hasDiscountedProducts = products.some((product) => getProductDiscount(product) > 0);
-  const hasStoresWithBoxes = stores.some((store) => (store.productCount ?? 0) > 0);
   const canChooseProductStore = productStoreOptions.length > 1;
   const visibleResultCount = showProductFilters && showStoreFilters
     ? filteredProducts.length + filteredStores.length
@@ -590,11 +577,6 @@ function MarketsContent() {
                         Со скидкой
                       </FilterToggle>
                     )}
-                    {showStoreFilters && hasStoresWithBoxes && (
-                      <FilterToggle active={storesWithBoxesOnly} onClick={() => setStoresWithBoxesOnly((value) => !value)}>
-                        Есть боксы
-                      </FilterToggle>
-                    )}
                   </div>
                   {activeFilterChips.length > 0 && (
                     <div className="flex flex-wrap gap-2">
@@ -717,11 +699,6 @@ function MarketsContent() {
                             {showProductFilters && hasDiscountedProducts && (
                               <FilterToggle active={discountOnly} onClick={() => setDiscountOnly((value) => !value)}>
                                 Со скидкой
-                              </FilterToggle>
-                            )}
-                            {showStoreFilters && hasStoresWithBoxes && (
-                              <FilterToggle active={storesWithBoxesOnly} onClick={() => setStoresWithBoxesOnly((value) => !value)}>
-                                Есть боксы
                               </FilterToggle>
                             )}
                           </div>
