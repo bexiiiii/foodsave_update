@@ -61,7 +61,7 @@ function MarketsContent() {
   const categoryId = searchParams.get("categoryId")?.trim() || "";
   const notificationGroupId = searchParams.get("notificationGroupId")?.trim() || "";
   const view = searchParams.get("view")?.trim() || "";
-  const showAllProducts = view === "products";
+  const showAllProducts = view === "products" || categoryId !== "";
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
@@ -77,8 +77,12 @@ function MarketsContent() {
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [discountOnly, setDiscountOnly] = useState(false);
   const [selectedProductStoreId, setSelectedProductStoreId] = useState("");
-  const [selectedProductCategoryId, setSelectedProductCategoryId] = useState("");
+  const [selectedProductCategoryId, setSelectedProductCategoryId] = useState(categoryId);
   const [sortMode, setSortMode] = useState<CatalogSortMode>("recommended");
+
+  useEffect(() => {
+    setSelectedProductCategoryId(categoryId);
+  }, [categoryId]);
 
   const appliedMinPriceValue = Number(appliedMinPrice);
   const appliedMaxPriceValue = Number(appliedMaxPrice);

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
-import { ArrowLeft, Crosshair, LoaderCircle, Navigation } from "lucide-react";
+import { ArrowLeft, Crosshair, LoaderCircle } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../../components/BottomNav";
@@ -254,25 +254,10 @@ export default function MapPage() {
             onClick={handleLocationAction}
             disabled={locationStatus === "loading"}
             aria-label="Показать мое местоположение"
-            className="absolute bottom-5 right-5 z-[500] flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-[#15551f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:scale-95 disabled:opacity-70"
+            className="absolute bottom-24 right-5 z-[500] flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#15551f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:scale-95 disabled:opacity-70"
           >
             {locationStatus === "loading" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <Crosshair className="h-6 w-6" />}
           </button>
-
-          {locationStatus !== "idle" && locationStatus !== "loading" && (
-            <div
-              role="status"
-              aria-live="polite"
-              className="absolute bottom-5 left-5 z-[500] flex max-w-[calc(100%-100px)] items-center gap-2 rounded-2xl bg-white px-4 py-3 text-left text-xs font-bold text-black shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
-            >
-              <Navigation className={`h-4 w-4 shrink-0 ${locationStatus === "ready" ? "text-blue-600" : "text-red-500"}`} />
-              <span>
-                {locationStatus === "ready" && "Вы на карте"}
-                {locationStatus === "denied" && "Нет доступа к геолокации"}
-                {locationStatus === "unavailable" && "Не удалось определить точку"}
-              </span>
-            </div>
-          )}
         </div>
       </main>
 
