@@ -260,18 +260,18 @@ export default function MapPage() {
           </button>
 
           {locationStatus !== "idle" && locationStatus !== "loading" && (
-            <button
-              type="button"
-              onClick={handleLocationAction}
+            <div
+              role="status"
+              aria-live="polite"
               className="absolute bottom-5 left-5 z-[500] flex max-w-[calc(100%-100px)] items-center gap-2 rounded-2xl bg-white px-4 py-3 text-left text-xs font-bold text-black shadow-[0_10px_30px_rgba(0,0,0,0.16)]"
             >
               <Navigation className={`h-4 w-4 shrink-0 ${locationStatus === "ready" ? "text-blue-600" : "text-red-500"}`} />
               <span>
                 {locationStatus === "ready" && "Вы на карте"}
-                {locationStatus === "denied" && "Разрешить геолокацию в Telegram"}
-                {locationStatus === "unavailable" && "Не удалось определить точку. Повторить"}
+                {locationStatus === "denied" && "Нет доступа к геолокации"}
+                {locationStatus === "unavailable" && "Не удалось определить точку"}
               </span>
-            </button>
+            </div>
           )}
         </div>
       </main>
