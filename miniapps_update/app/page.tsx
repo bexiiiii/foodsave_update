@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import {
   ChevronRight,
+  LocateFixed,
   MapPin,
   Star,
 } from "lucide-react";
@@ -23,6 +24,45 @@ import { formatPrice, normalizePrice } from "../lib/pricing";
 
 const getCurrentPrice = (product: Partial<Product>) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
+
+type UserLocation = {
+  latitude: number;
+  longitude: number;
+};
+
+const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
+
+const getDistanceKm = (from: UserLocation | null, product: Product) => {
+  if (!from || typeof product.storeLatitude !== "number" || typeof product.storeLongitude !== "number") {
+    return null;
+  }
+
+  const earthRadiusKm = 6371;
+  const deltaLatitude = toRadians(product.storeLatitude - from.latitude);
+  const deltaLongitude = toRadians(product.storeLongitude - from.longitude);
+  const startLatitude = toRadians(from.latitude);
+  const endLatitude = toRadians(product.storeLatitude);
+  const haversine =
+    Math.sin(deltaLatitude / 2) ** 2
+    + Math.cos(startLatitude) * Math.cos(endLatitude) * Math.sin(deltaLongitude / 2) ** 2;
+
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+};
+
+const formatDistance = (distanceKm: number | null) => {
+  if (distanceKm === null) return null;
+  if (distanceKm < 1) return `${Math.max(1, Math.round(distanceKm * 1000))} м`;
+  return `${distanceKm.toFixed(distanceKm < 10 ? 1 : 0)} км`;
+};
+
+const getLocationRecommendationBoost = (from: UserLocation | null, product: Product) => {
+  const distanceKm = getDistanceKm(from, product);
+  if (distanceKm === null) return 0;
+  if (distanceKm <= 1) return 28;
+  if (distanceKm <= 3) return 18;
+  if (distanceKm <= 5) return 10;
+  return 0;
+};
 
 const categoryImages = [
   { keywords: ["ресторан", "restaurant", "мейрамхана"], image: "/categories/рестораны.png" },
@@ -70,6 +110,9 @@ export default function HomePage() {
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
   const [recommendationVersion, setRecommendationVersion] = useState(0);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "ready" | "denied" | "unsupported">("idle");
+  const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
   const featuredProducts = safeArray(featuredProductsResponse?.content)
@@ -80,7 +123,17 @@ export default function HomePage() {
     }))
     .sort((a, b) => {
       void recommendationVersion;
-      return getProductRecommendationScore(b) - getProductRecommendationScore(a);
+      const aScore = getProductRecommendationScore(a) + getLocationRecommendationBoost(userLocation, a);
+      const bScore = getProductRecommendationScore(b) + getLocationRecommendationBoost(userLocation, b);
+      const scoreDiff = bScore - aScore;
+      if (scoreDiff !== 0) return scoreDiff;
+
+      const aDistance = getDistanceKm(userLocation, a);
+      const bDistance = getDistanceKm(userLocation, b);
+      if (aDistance !== null && bDistance !== null) return aDistance - bDistance;
+      if (aDistance !== null) return -1;
+      if (bDistance !== null) return 1;
+      return 0;
     });
 
   const toggleProductFavorite = async (product: Product) => {
@@ -135,6 +188,34 @@ export default function HomePage() {
   }, [authLoading, user]);
 
   useEffect(() => {
+    if (
+      user?.lastLatitude === undefined
+      || user.lastLongitude === undefined
+      || userLocation
+    ) {
+      return;
+    }
+
+    const savedLocation = {
+      latitude: user.lastLatitude,
+      longitude: user.lastLongitude,
+    };
+    setUserLocation(savedLocation);
+    setLocationStatus("ready");
+    localStorage.setItem("foodsaveLastLocation", JSON.stringify(savedLocation));
+  }, [user, userLocation]);
+
+  useEffect(() => {
+    if (!user?.id || !userLocation || locationSavedForUserId === user.id) return;
+
+    apiClient.updateMyLocation(userLocation.latitude, userLocation.longitude)
+      .then(() => setLocationSavedForUserId(user.id))
+      .catch((error) => {
+        console.error("Failed to sync saved user location:", error);
+      });
+  }, [user, userLocation, locationSavedForUserId]);
+
+  useEffect(() => {
     const sessionId = sessionStorage.getItem("foodsaveSessionId") || crypto.randomUUID();
     sessionStorage.setItem("foodsaveSessionId", sessionId);
     apiClient.trackEvent({
@@ -151,6 +232,64 @@ export default function HomePage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const storedLocation = localStorage.getItem("foodsaveLastLocation");
+    if (!storedLocation) return;
+
+    try {
+      const parsed = JSON.parse(storedLocation) as UserLocation;
+      if (typeof parsed.latitude === "number" && typeof parsed.longitude === "number") {
+        setUserLocation(parsed);
+        setLocationStatus("ready");
+      }
+    } catch {
+      localStorage.removeItem("foodsaveLastLocation");
+    }
+  }, []);
+
+  const requestUserLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationStatus("unsupported");
+      return;
+    }
+
+    setLocationStatus("loading");
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const nextLocation = {
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+        };
+
+        setUserLocation(nextLocation);
+        setLocationStatus("ready");
+        localStorage.setItem("foodsaveLastLocation", JSON.stringify(nextLocation));
+
+        if (user) {
+          apiClient.updateMyLocation(
+            position.coords.latitude,
+            position.coords.longitude,
+            position.coords.accuracy,
+          )
+            .then(() => setLocationSavedForUserId(user.id))
+            .catch((error) => {
+              console.error("Failed to save user location:", error);
+            });
+        }
+      },
+      () => {
+        setLocationStatus("denied");
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 8000,
+        maximumAge: 10 * 60 * 1000,
+      },
+    );
+  };
+
   const handleSearch = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -165,12 +304,13 @@ export default function HomePage() {
     router.push(query ? `/markets?query=${encodeURIComponent(query)}` : "/markets");
   };
 
-  const FeaturedProductCard = ({ product, index }: { product: Product; index: number }) => {
+  const FeaturedProductCard = ({ product }: { product: Product }) => {
     const isFavorite = !!product.isFavorite;
     const isTogglingFavorite = togglingProductId === product.id;
     const price = getCurrentPrice(product);
     const originalPrice = normalizePrice(product.originalPrice || price);
     const discount = originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : product.discountPercentage || 0;
+    const distanceLabel = formatDistance(getDistanceKm(userLocation, product));
 
     return (
       <Link href={`/details/${product.id}`} className="min-w-0">
@@ -212,7 +352,7 @@ export default function HomePage() {
           </div>
           <h3 className="mt-3 truncate text-base font-bold text-black font-inter">{safeString(product.name)}</h3>
           <p className="mt-1 truncate text-sm text-black/50 font-inter">
-            {safeString(product.storeName) || "FoodSave"} • {["0.8", "1.2", "0.5", "1.8"][index % 4]} km
+            {safeString(product.storeName) || "FoodSave"}{distanceLabel ? ` • ${distanceLabel}` : ""}
           </p>
           {product.closingSoon && (
             <div className="mt-1">
@@ -323,6 +463,31 @@ export default function HomePage() {
           </div>
         </Link>
 
+        <button
+          type="button"
+          onClick={requestUserLocation}
+          disabled={locationStatus === "loading"}
+          className="mt-3 flex h-12 w-full items-center justify-between rounded-2xl bg-gray-100 px-4 text-left transition-colors active:bg-gray-200 disabled:opacity-70"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white">
+              <LocateFixed className="h-4 w-4 text-[#15551F]" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-black font-inter">
+                {locationStatus === "ready" ? "Показываем ближе к вам" : "Найти боксы рядом"}
+              </span>
+              <span className="block truncate text-xs font-medium text-black/45 font-inter">
+                {locationStatus === "loading" && "Определяем местоположение..."}
+                {locationStatus === "denied" && "Доступ не дали, можно попробовать еще раз"}
+                {locationStatus === "unsupported" && "Телефон не отдал геолокацию"}
+                {(locationStatus === "idle" || locationStatus === "ready") && "Без истории перемещений, только последняя точка"}
+              </span>
+            </span>
+          </span>
+          <ChevronRight className="h-5 w-5 shrink-0 text-black/35" />
+        </button>
+
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-black font-inter">{t("recommendedForYou")}</h2>
@@ -351,8 +516,8 @@ export default function HomePage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
-              {featuredProducts.map((product, index) => (
-                <FeaturedProductCard key={product.id} product={product} index={index} />
+              {featuredProducts.map((product) => (
+                <FeaturedProductCard key={product.id} product={product} />
               ))}
             </div>
           )}

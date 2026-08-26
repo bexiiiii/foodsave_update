@@ -103,6 +103,18 @@ public class User extends BaseEntity implements UserDetails {
     @Column(name = "blacklisted_at")
     private LocalDateTime blacklistedAt;
 
+    @Column(name = "last_latitude")
+    private Double lastLatitude;
+
+    @Column(name = "last_longitude")
+    private Double lastLongitude;
+
+    @Column(name = "last_location_accuracy_meters")
+    private Double lastLocationAccuracyMeters;
+
+    @Column(name = "last_location_updated_at")
+    private LocalDateTime lastLocationUpdatedAt;
+
     @OneToMany(mappedBy = "owner", cascade = CascadeType.ALL)
     private Set<Store> stores = new HashSet<>();
 

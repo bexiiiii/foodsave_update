@@ -59,6 +59,10 @@ export interface User {
   telegramLanguageCode?: string;
   telegramRegisteredAt?: string;
   telegramUser?: boolean;
+  lastLatitude?: number;
+  lastLongitude?: number;
+  lastLocationAccuracyMeters?: number;
+  lastLocationUpdatedAt?: string;
   role: string;
   phoneNumber?: string;
   phone?: string;
@@ -139,6 +143,8 @@ export interface Product {
   storeName?: string;
   categoryId?: number;
   categoryName?: string;
+  storeLatitude?: number;
+  storeLongitude?: number;
   status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'EXPIRED' | 'INACTIVE' | 'DISCONTINUED' | 'HIDDEN' | string;
   isAvailable?: boolean;
   active?: boolean;
@@ -496,6 +502,21 @@ class ApiClient {
       throw new Error('No authentication token available');
     }
     return this.makeRequest<User>('/auth/me');
+  }
+
+  async updateMyLocation(latitude: number, longitude: number, accuracyMeters?: number): Promise<User> {
+    if (!this.token) {
+      throw new Error('Authentication required');
+    }
+
+    return this.makeRequest<User>('/users/profile/location', {
+      method: 'PUT',
+      body: JSON.stringify({
+        latitude,
+        longitude,
+        accuracyMeters,
+      }),
+    });
   }
 
   // Store methods

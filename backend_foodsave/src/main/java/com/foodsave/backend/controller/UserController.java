@@ -3,6 +3,7 @@ package com.foodsave.backend.controller;
 import com.foodsave.backend.entity.User;
 import com.foodsave.backend.dto.UserBlacklistRequest;
 import com.foodsave.backend.dto.UserDTO;
+import com.foodsave.backend.dto.UserLocationRequest;
 import com.foodsave.backend.service.UserService;
 import com.foodsave.backend.domain.enums.UserRole;
 import com.foodsave.backend.domain.enums.Permission;
@@ -81,6 +82,12 @@ public class UserController {
     @PutMapping("/profile/update")
     public ResponseEntity<UserDTO> updateUserProfile(@RequestBody UserDTO userDTO) {
         return ResponseEntity.ok(userService.updateUserProfile(userDTO));
+    }
+
+    @PutMapping("/profile/location")
+    @Operation(summary = "Update current user's last known location")
+    public ResponseEntity<UserDTO> updateCurrentUserLocation(@Valid @RequestBody UserLocationRequest request) {
+        return ResponseEntity.ok(userService.updateCurrentUserLocation(request));
     }
     
     @PostMapping

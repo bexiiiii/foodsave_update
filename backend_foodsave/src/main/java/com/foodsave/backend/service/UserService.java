@@ -3,6 +3,7 @@ package com.foodsave.backend.service;
 import com.foodsave.backend.entity.User;
 import com.foodsave.backend.dto.UserBlacklistRequest;
 import com.foodsave.backend.dto.UserDTO;
+import com.foodsave.backend.dto.UserLocationRequest;
 import com.foodsave.backend.repository.UserRepository;
 import com.foodsave.backend.domain.enums.UserRole;
 import com.foodsave.backend.security.UserPrincipal;
@@ -74,6 +75,28 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         updateProfileFromDTO(user, userDTO);
+        return UserDTO.fromEntity(userRepository.save(user));
+    }
+
+    public UserDTO updateCurrentUserLocation(UserLocationRequest request) {
+        if (request == null || request.latitude() == null || request.longitude() == null) {
+            throw new IllegalArgumentException("Location is required");
+        }
+
+        if (request.latitude() < -90 || request.latitude() > 90
+                || request.longitude() < -180 || request.longitude() > 180) {
+            throw new IllegalArgumentException("Invalid coordinates");
+        }
+
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        user.setLastLatitude(request.latitude());
+        user.setLastLongitude(request.longitude());
+        user.setLastLocationAccuracyMeters(request.accuracyMeters());
+        user.setLastLocationUpdatedAt(LocalDateTime.now());
+
         return UserDTO.fromEntity(userRepository.save(user));
     }
 

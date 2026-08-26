@@ -70,6 +70,18 @@ public class UserDTO {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private LocalDateTime blacklistedAt;
 
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Double lastLatitude;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Double lastLongitude;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Double lastLocationAccuracyMeters;
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private LocalDateTime lastLocationUpdatedAt;
+
     public static UserDTO fromEntity(User user) {
         return fromEntity(user, false);
     }
@@ -97,6 +109,10 @@ public class UserDTO {
                 .telegramPhotoUrl(user.getTelegramPhotoUrl())
                 .telegramLanguageCode(user.getTelegramLanguageCode())
                 .telegramRegisteredAt(user.getTelegramRegisteredAt())
+                .lastLatitude(user.getLastLatitude())
+                .lastLongitude(user.getLastLongitude())
+                .lastLocationAccuracyMeters(user.getLastLocationAccuracyMeters())
+                .lastLocationUpdatedAt(user.getLastLocationUpdatedAt())
                 .password(null); // Никогда не возвращаем пароль!
 
         if (includeInternalFlags) {

@@ -52,6 +52,8 @@ public class ProductDTO {
     private String storeName;
     private String storeLogo;
     private String storeAddress;
+    private Double storeLatitude;
+    private Double storeLongitude;
     
     @NotNull(message = "Category ID is required")
     private Long categoryId;
@@ -110,6 +112,8 @@ public class ProductDTO {
                 .storeName(product.getStore().getName())
                 .storeLogo(product.getStore().getLogo())
                 .storeAddress(product.getStore().getAddress())
+                .storeLatitude(product.getStore().getLatitude())
+                .storeLongitude(product.getStore().getLongitude())
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .images(imagesCopy)
