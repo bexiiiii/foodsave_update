@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
-import { apiClient, canReserveProduct, getProductAvailability, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
+import { apiClient, canReserveProduct, getProductAvailabilityPresentation, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
 import ProductAvailabilityBadge from "../../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
@@ -356,9 +356,9 @@ export default function ProductDetailsPage() {
   }
 
   const productImages = resolveProductImages(product);
-  const availabilityState = getProductAvailability(product);
+  const availability = getProductAvailabilityPresentation(product);
   const canReserve = canReserveProduct(product);
-  const availabilityLabel = availabilityState === 'RESERVED' ? 'Забронировано' : availabilityState === 'SOLD_OUT' ? 'Закончилось' : 'Недоступно';
+  const availabilityLabel = availability.label;
   const activeImage = productImages[activeImageIndex] || null;
   const hasMultipleImages = productImages.length > 1;
   const showPreviousImage = () => {
@@ -573,9 +573,7 @@ export default function ProductDetailsPage() {
         <div className="px-4 mt-4">
           <div className="bg-red-100 border border-red-200 rounded-xl p-3">
             <p className="text-red-800 text-sm font-inter">
-              {availabilityState === 'RESERVED'
-                ? 'Этот бокс уже забронирован. Если бронь отменят, он снова появится в наличии.'
-                : 'Этот бокс закончился. Посмотрите другие доступные варианты.'}
+              {availability.message}
             </p>
           </div>
         </div>

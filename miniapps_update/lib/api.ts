@@ -126,6 +126,8 @@ export interface Category {
   active: boolean;
 }
 
+export type ProductAvailability = 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE';
+
 export interface Product {
   id: number;
   name: string;
@@ -148,7 +150,7 @@ export interface Product {
   status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'EXPIRED' | 'INACTIVE' | 'DISCONTINUED' | 'HIDDEN' | string;
   isAvailable?: boolean;
   canReserve?: boolean;
-  availabilityState?: 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE';
+  availabilityState?: ProductAvailability;
   active?: boolean;
   featured: boolean;
   isFavorite?: boolean;
@@ -1077,7 +1079,7 @@ export const isProductVisibleInMiniApp = (product: Product | null | undefined): 
   return !blockedStatuses.has(status) && (product.stockQuantity ?? 0) > 0;
 };
 
-export const getProductAvailability = (product: Product | null | undefined): 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE' => {
+export const getProductAvailability = (product: Product | null | undefined): ProductAvailability => {
   if (!product) return 'UNAVAILABLE';
   if (product.availabilityState) return product.availabilityState;
   return isProductVisibleInMiniApp(product) ? 'AVAILABLE' : ((product.stockQuantity ?? 0) <= 0 ? 'SOLD_OUT' : 'UNAVAILABLE');
@@ -1093,6 +1095,20 @@ export const canReserveProduct = (product: Product | null | undefined): boolean 
   !!product && (typeof product.canReserve === 'boolean'
     ? product.canReserve
     : getProductAvailability(product) === 'AVAILABLE');
+
+export const getProductAvailabilityPresentation = (product: Product | null | undefined) => {
+  const state = getProductAvailability(product);
+  switch (state) {
+    case 'RESERVED':
+      return { state, label: 'Забронировано', message: 'Этот бокс уже забронирован. Если бронь отменят, он снова появится в наличии.', tone: 'reserved' as const };
+    case 'SOLD_OUT':
+      return { state, label: 'Закончилось', message: 'Этот бокс закончился. Посмотрите другие доступные варианты.', tone: 'sold-out' as const };
+    case 'UNAVAILABLE':
+      return { state, label: 'Недоступно', message: 'Этот бокс сейчас недоступен для бронирования.', tone: 'unavailable' as const };
+    default:
+      return { state, label: 'В наличии', message: '', tone: 'available' as const };
+  }
+};
 
 // Rate limiting helper
 let lastRequestTime = 0;

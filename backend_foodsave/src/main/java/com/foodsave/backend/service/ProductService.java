@@ -9,8 +9,6 @@ import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
 import com.foodsave.backend.repository.NotificationSettingsRepository;
-import com.foodsave.backend.repository.OrderItemRepository;
-import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.ProductAvailabilityState;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.util.SecurityUtil;
@@ -37,7 +35,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
-import java.util.EnumSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -56,12 +53,7 @@ public class ProductService {
     private final RealtimeEventService realtimeEventService;
     private final NotificationGroupService notificationGroupService;
     private final AuthorizationService authorizationService;
-    private final OrderItemRepository orderItemRepository;
-
-    private static final Set<OrderStatus> ACTIVE_RESERVATION_STATUSES = Collections.unmodifiableSet(
-            EnumSet.of(OrderStatus.CREATED, OrderStatus.PENDING, OrderStatus.CONFIRMED,
-                    OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP,
-                    OrderStatus.OUT_FOR_DELIVERY));
+    private final ProductAvailabilityService productAvailabilityService;
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -74,7 +66,7 @@ public class ProductService {
                           RealtimeEventService realtimeEventService,
                           NotificationGroupService notificationGroupService,
                           AuthorizationService authorizationService,
-                          OrderItemRepository orderItemRepository) {
+                          ProductAvailabilityService productAvailabilityService) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -86,7 +78,7 @@ public class ProductService {
         this.realtimeEventService = realtimeEventService;
         this.notificationGroupService = notificationGroupService;
         this.authorizationService = authorizationService;
-        this.orderItemRepository = orderItemRepository;
+        this.productAvailabilityService = productAvailabilityService;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -174,8 +166,7 @@ public class ProductService {
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        Set<Long> reservedIds = orderItemRepository.findProductIdsWithActiveReservations(
-                List.of(id), ACTIVE_RESERVATION_STATUSES);
+        Set<Long> reservedIds = productAvailabilityService.findReservedProductIds(List.of(id));
         return convertToDTO(product, reservedIds);
     }
 
@@ -593,7 +584,7 @@ public class ProductService {
         List<Long> ids = products.getContent().stream().map(Product::getId).toList();
         Set<Long> reservedIds = ids.isEmpty()
                 ? Collections.emptySet()
-                : orderItemRepository.findProductIdsWithActiveReservations(ids, ACTIVE_RESERVATION_STATUSES);
+                : productAvailabilityService.findReservedProductIds(ids);
         List<ProductDTO> content = products.getContent().stream()
                 .map(product -> convertToDTO(product, reservedIds))
                 .toList();
@@ -607,13 +598,7 @@ public class ProductService {
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
         boolean isAvailable = ProductAvailability.isAvailable(product);
-        ProductAvailabilityState availabilityState = isAvailable
-                ? ProductAvailabilityState.AVAILABLE
-                : ((product.getStockQuantity() == null || product.getStockQuantity() <= 0)
-                    ? (reservedIds.contains(product.getId())
-                        ? ProductAvailabilityState.RESERVED
-                        : ProductAvailabilityState.SOLD_OUT)
-                    : ProductAvailabilityState.UNAVAILABLE);
+        ProductAvailabilityState availabilityState = productAvailabilityService.resolve(product, reservedIds);
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -636,7 +621,7 @@ public class ProductService {
                 .active(product.getActive())
                 // Computed properties for frontend compatibility
                 .isAvailable(isAvailable)
-                .canReserve(isAvailable)
+                .canReserve(productAvailabilityService.canReserve(availabilityState))
                 .availabilityState(availabilityState)
                 .availableQuantity(stockQuantity)
                 .imageUrl(!images.isEmpty() ? images.get(0) : null)
