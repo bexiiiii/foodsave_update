@@ -113,6 +113,7 @@ export default function HomePage() {
   const [recommendationVersion, setRecommendationVersion] = useState(0);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "ready" | "denied" | "unsupported">("idle");
+  const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
@@ -254,22 +255,34 @@ export default function HomePage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!locationFeedback) return;
+    const timeoutId = window.setTimeout(() => setLocationFeedback(null), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [locationFeedback]);
+
   const requestUserLocation = async () => {
+    setLocationFeedback(null);
     setLocationStatus("loading");
     try {
       const nextLocation = await requestCurrentLocation();
       setUserLocation(nextLocation);
       setLocationStatus("ready");
+      setLocationFeedback(
+        featuredProducts.some((product) => canReserveProduct(product))
+          ? "Показываем ближайшие боксы"
+          : "Рядом пока нет доступных боксов",
+      );
 
       if (user) {
-        await apiClient.updateMyLocation(
+        apiClient.updateMyLocation(
           nextLocation.latitude,
           nextLocation.longitude,
           nextLocation.accuracyMeters,
-        );
-        setLocationSavedForUserId(user.id);
+        )
+          .then(() => setLocationSavedForUserId(user.id))
+          .catch((error) => console.error("Failed to sync current user location:", error));
       }
-
     } catch (error) {
       setLocationStatus(error instanceof Error && error.message === "LOCATION_DENIED" ? "denied" : "unsupported");
     }
@@ -439,6 +452,15 @@ export default function HomePage() {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/10" />
+
+          {locationFeedback && (
+            <div
+              role="status"
+              className="absolute left-1/2 top-3 max-w-[calc(100%-24px)] -translate-x-1/2 rounded-full bg-[#15551F] px-4 py-2 text-center text-xs font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.16)] font-inter"
+            >
+              {locationFeedback}
+            </div>
+          )}
 
           <button
             type="button"
