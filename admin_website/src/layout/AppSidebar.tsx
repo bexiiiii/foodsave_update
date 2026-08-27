@@ -136,6 +136,12 @@ const navItems: NavItem[] = [
   },
   {
     icon: <PlugInIcon />,
+    name: "WhatsApp-парсер",
+    path: "/whatsapp-parser",
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+  {
+    icon: <PlugInIcon />,
     name: "Состояние системы",
     path: "/health",
     allowedRoles: ["SUPER_ADMIN"],

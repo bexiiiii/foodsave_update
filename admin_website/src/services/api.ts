@@ -400,6 +400,49 @@ export const userApi = {
     register: (data: UserCreateRequest) => api.post<AuthResponse>(API_ENDPOINTS.AUTH.REGISTER, data).then(response => response.data),
 };
 
+export interface WhatsAppParserItem {
+    name?: string;
+    rawLine?: string;
+    storeName?: string;
+    price?: number;
+    originalPrice?: number;
+    stockQuantity?: number;
+    error?: string;
+    needsReview?: boolean;
+    reviewReasons?: string[];
+    [key: string]: unknown;
+}
+
+export interface WhatsAppParserEvent {
+    idMessage?: string;
+    receivedAt?: number;
+    chatName?: string;
+    text?: string;
+    parse?: { total?: number };
+    upload?: { ok?: number; total?: number };
+    error?: unknown;
+    ignored?: boolean;
+}
+
+export interface WhatsAppParserEventsResponse {
+    events: WhatsAppParserEvent[];
+}
+
+export const whatsappParserApi = {
+    getEvents: () =>
+        api.get<WhatsAppParserEventsResponse>('/admin/whatsapp-parser/events').then(response => response.data),
+    parse: (message: string, source?: string) =>
+        api.post<{ items: WhatsAppParserItem[]; summary: { total: number } }>('/admin/whatsapp-parser/parse', {
+            message,
+            ...(source ? { source } : {}),
+        }).then(response => response.data),
+    publish: (items: WhatsAppParserItem[], confirm: boolean) =>
+        api.post<{ summary: { ok: number; skipped: number } }>('/admin/whatsapp-parser/publish', {
+            items,
+            confirm,
+        }).then(response => response.data),
+};
+
 // Order API
 export const orderApi = {
     getAll: () => api.get<OrderDTO[]>(API_ENDPOINTS.ORDERS.BASE).then(response => response.data),
