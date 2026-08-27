@@ -270,7 +270,6 @@ export default function HomePage() {
         setLocationSavedForUserId(user.id);
       }
 
-      router.push("/map?focus=user");
     } catch (error) {
       setLocationStatus(error instanceof Error && error.message === "LOCATION_DENIED" ? "denied" : "unsupported");
     }
