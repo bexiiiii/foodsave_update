@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import {
   ChevronRight,
   LocateFixed,
+  LoaderCircle,
   MapPin,
   Star,
 } from "lucide-react";
@@ -22,7 +23,7 @@ import { apiClient, canReserveProduct, Category, Product, isProductDisplayableIn
 import ProductAvailabilityBadge from "../components/ProductAvailabilityBadge";
 import { getProductRecommendationScore, seedRecommendationsFromOrders } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
-import { readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
+import { isLocationFresh, readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
 
 const getCurrentPrice = (product: Partial<Product>) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
@@ -193,6 +194,7 @@ export default function HomePage() {
     if (
       user?.lastLatitude === undefined
       || user.lastLongitude === undefined
+      || !user.lastLocationUpdatedAt
       || userLocation
     ) {
       return;
@@ -202,8 +204,10 @@ export default function HomePage() {
       latitude: user.lastLatitude,
       longitude: user.lastLongitude,
       accuracyMeters: user.lastLocationAccuracyMeters,
-      updatedAt: user.lastLocationUpdatedAt || new Date().toISOString(),
+      updatedAt: user.lastLocationUpdatedAt,
     };
+    if (!isLocationFresh(savedLocation)) return;
+
     setUserLocation(savedLocation);
     setLocationStatus("ready");
     localStorage.setItem("foodsaveLastLocation", JSON.stringify(savedLocation));
@@ -212,7 +216,11 @@ export default function HomePage() {
   useEffect(() => {
     if (!user?.id || !userLocation || locationSavedForUserId === user.id) return;
 
-    apiClient.updateMyLocation(userLocation.latitude, userLocation.longitude)
+    apiClient.updateMyLocation(
+      userLocation.latitude,
+      userLocation.longitude,
+      userLocation.accuracyMeters,
+    )
       .then(() => setLocationSavedForUserId(user.id))
       .catch((error) => {
         console.error("Failed to sync saved user location:", error);
@@ -428,47 +436,40 @@ export default function HomePage() {
       </section>
 
       <main className="px-4 pt-5">
-        <Link
-          href="/map"
-          className="block overflow-hidden rounded-3xl bg-[#FFF1F1] p-3 shadow-sm"
-        >
-          <div className="relative h-32 overflow-hidden rounded-2xl">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-r from-white/35 via-white/5 to-transparent" />
-            <div className="relative flex h-full items-end justify-end p-3">
-              <div className="inline-flex h-10 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#E5484D] shadow-lg shadow-black/10 font-inter">
-                <MapPin className="h-4 w-4" />
-                {t("map")}
-              </div>
-            </div>
-          </div>
-        </Link>
+        <div className="relative h-36 overflow-hidden rounded-3xl bg-[#f5f7f4] shadow-[0_8px_24px_rgba(20,45,24,0.08)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/10" />
 
-        <button
-          type="button"
-          onClick={requestUserLocation}
-          disabled={locationStatus === "loading"}
-          className="mt-3 flex h-12 w-full items-center justify-between rounded-2xl bg-gray-100 px-4 text-left transition-colors active:bg-gray-200 disabled:opacity-70"
-        >
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white">
-              <LocateFixed className="h-4 w-4 text-[#15551F]" />
+          <button
+            type="button"
+            onClick={requestUserLocation}
+            disabled={locationStatus === "loading"}
+            className="absolute bottom-3 left-3 inline-flex h-11 max-w-[62%] items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#15551F] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] disabled:opacity-80 font-inter"
+          >
+            {locationStatus === "loading" ? (
+              <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" />
+            ) : (
+              <LocateFixed className="h-4 w-4 shrink-0" />
+            )}
+            <span className="truncate">
+              {locationStatus === "loading" && "Определяем..."}
+              {locationStatus === "ready" && "Рядом с вами"}
+              {locationStatus === "denied" && "Разрешить доступ"}
+              {locationStatus === "unsupported" && "Попробовать снова"}
+              {locationStatus === "idle" && "Найти рядом"}
             </span>
-            <span className="min-w-0">
-              <span className="block text-sm font-bold text-black font-inter">
-                {locationStatus === "ready" ? "Показываем ближе к вам" : "Найти боксы рядом"}
-              </span>
-              <span className="block truncate text-xs font-medium text-black/45 font-inter">
-                {locationStatus === "loading" && "Определяем местоположение..."}
-                {locationStatus === "denied" && "Доступ не дали, можно попробовать еще раз"}
-                {locationStatus === "unsupported" && "Телефон не отдал геолокацию"}
-                {(locationStatus === "idle" || locationStatus === "ready") && "Без истории перемещений, только последняя точка"}
-              </span>
-            </span>
-          </span>
-          <ChevronRight className="h-5 w-5 shrink-0 text-black/35" />
-        </button>
+          </button>
+
+          <Link
+            href="/map"
+            aria-label="Открыть карту"
+            className="absolute bottom-3 right-3 inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#E5484D] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] font-inter"
+          >
+            <MapPin className="h-4 w-4" />
+            {t("map")}
+          </Link>
+        </div>
 
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">

@@ -6,6 +6,7 @@ export type UserLocation = {
 };
 
 const STORAGE_KEY = "foodsaveLastLocation";
+const LOCATION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 const isValidCoordinate = (latitude: unknown, longitude: unknown) =>
   typeof latitude === "number"
@@ -17,6 +18,13 @@ const isValidCoordinate = (latitude: unknown, longitude: unknown) =>
   && longitude >= -180
   && longitude <= 180;
 
+export const isLocationFresh = (location: Pick<UserLocation, "updatedAt">) => {
+  const updatedAt = Date.parse(location.updatedAt);
+  return Number.isFinite(updatedAt)
+    && updatedAt <= Date.now() + 60 * 1000
+    && Date.now() - updatedAt <= LOCATION_MAX_AGE_MS;
+};
+
 export const readSavedLocation = (): UserLocation | null => {
   if (typeof window === "undefined") return null;
 
@@ -25,17 +33,24 @@ export const readSavedLocation = (): UserLocation | null => {
 
   try {
     const parsed = JSON.parse(stored) as Partial<UserLocation>;
-    if (!isValidCoordinate(parsed.latitude, parsed.longitude)) {
+    if (!isValidCoordinate(parsed.latitude, parsed.longitude) || !parsed.updatedAt) {
       window.localStorage.removeItem(STORAGE_KEY);
       return null;
     }
 
-    return {
+    const location = {
       latitude: parsed.latitude as number,
       longitude: parsed.longitude as number,
       accuracyMeters: typeof parsed.accuracyMeters === "number" ? parsed.accuracyMeters : undefined,
-      updatedAt: parsed.updatedAt || new Date().toISOString(),
+      updatedAt: parsed.updatedAt,
     };
+
+    if (!isLocationFresh(location)) {
+      window.localStorage.removeItem(STORAGE_KEY);
+      return null;
+    }
+
+    return location;
   } catch {
     window.localStorage.removeItem(STORAGE_KEY);
     return null;
