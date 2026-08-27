@@ -7,7 +7,6 @@ import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.time.Duration;
@@ -18,7 +17,6 @@ import java.util.concurrent.ConcurrentHashMap;
  * Rate Limiting Filter - защита от DDoS атак
  * Ограничивает количество запросов с одного IP адреса
  */
-@Component
 @Slf4j
 public class RateLimitConfig implements Filter {
 

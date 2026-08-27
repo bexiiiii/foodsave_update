@@ -19,7 +19,7 @@ const RECENT_VIEWS_KEY = "foodsave_recent_product_views_v1";
 const HELP_DISMISSED_KEY = "foodsave_decision_help_dismissed_at_v1";
 const HELP_SHOWN_SESSION_KEY = "foodsave_decision_help_shown_v2";
 const MAX_INTERACTIONS = 60;
-const RECENT_VIEW_WINDOW_MS = 15 * 60 * 1000;
+const RECENT_VIEW_WINDOW_MS = 20 * 60 * 1000;
 const HELP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SAME_PRODUCT_VIEW_COOLDOWN_MS = 45 * 1000;
 
@@ -129,6 +129,13 @@ export const seedRecommendationsFromOrders = (orders: Order[]) => {
   if (!Array.isArray(orders) || orders.length === 0) return false;
 
   const interactions = readInteractions();
+  const totals = new Map<number, {
+    quantity: number;
+    lastReservedAt: number;
+    name?: string;
+    storeId?: number;
+    storeName?: string;
+  }>();
   let changed = false;
 
   orders.forEach((order) => {
@@ -141,24 +148,38 @@ export const seedRecommendationsFromOrders = (orders: Order[]) => {
 
     orderItems.forEach((item) => {
       if (!item.productId) return;
-      const key = String(item.productId);
+      const quantity = Math.max(Number(item.quantity || 1), 1);
+      const previous = totals.get(item.productId);
+      totals.set(item.productId, {
+        quantity: (previous?.quantity || 0) + quantity,
+        lastReservedAt: Math.max(previous?.lastReservedAt || 0, Number.isFinite(reservedAt) ? reservedAt : Date.now()),
+        name: item.productName || previous?.name,
+        storeId: order.storeId || previous?.storeId,
+        storeName: order.storeName || previous?.storeName,
+      });
+    });
+  });
+
+  totals.forEach((signal, productId) => {
+      const key = String(productId);
       const current = interactions[key] || {
-        id: item.productId,
+        id: productId,
         views: 0,
         reservations: 0,
         favorites: 0,
       };
-      const quantity = Math.max(Number(item.quantity || 1), 1);
-      interactions[key] = {
+      const next = {
         ...current,
-        name: item.productName || current.name,
-        storeId: order.storeId || current.storeId,
-        storeName: order.storeName || current.storeName,
-        reservations: Math.max(current.reservations, quantity),
-        lastReservedAt: Math.max(current.lastReservedAt || 0, Number.isFinite(reservedAt) ? reservedAt : Date.now()),
+        name: signal.name || current.name,
+        storeId: signal.storeId || current.storeId,
+        storeName: signal.storeName || current.storeName,
+        reservations: Math.max(current.reservations, signal.quantity),
+        lastReservedAt: Math.max(current.lastReservedAt || 0, signal.lastReservedAt),
       };
-      changed = true;
-    });
+      if (JSON.stringify(next) !== JSON.stringify(current)) {
+        interactions[key] = next;
+        changed = true;
+      }
   });
 
   if (changed) writeInteractions(interactions);
@@ -189,20 +210,43 @@ export const getProductRecommendationScore = (product: Product) => {
 
 export const shouldShowDecisionHelpPrompt = () => {
   if (!isBrowser()) return false;
-  if (sessionStorage.getItem(HELP_SHOWN_SESSION_KEY) === "1") return false;
-  const now = Date.now();
-  const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
-  if (dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS) return false;
+  try {
+    if (sessionStorage.getItem(HELP_SHOWN_SESSION_KEY) === "1") return false;
+    const now = Date.now();
+    const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
+    if (dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS) return false;
 
-  const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
-    .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
-  const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
-  const shouldShow = recentViews.length >= 6 && uniqueProductIds.size >= 3;
-  if (shouldShow) sessionStorage.setItem(HELP_SHOWN_SESSION_KEY, "1");
-  return shouldShow;
+    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+      .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
+    const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
+    const shouldShow = recentViews.length >= 4 && uniqueProductIds.size >= 3;
+    if (shouldShow) sessionStorage.setItem(HELP_SHOWN_SESSION_KEY, "1");
+    return shouldShow;
+  } catch {
+    return false;
+  }
 };
 
 export const dismissDecisionHelpPrompt = () => {
   if (!isBrowser()) return;
-  localStorage.setItem(HELP_DISMISSED_KEY, String(Date.now()));
+  try {
+    localStorage.setItem(HELP_DISMISSED_KEY, String(Date.now()));
+  } catch {
+    // The support link still works when Telegram storage is unavailable.
+  }
+};
+
+export const getPersonalizationSessionId = () => {
+  if (!isBrowser()) return "anonymous";
+  try {
+    const existing = sessionStorage.getItem("foodsaveSessionId");
+    if (existing) return existing;
+    const generated = typeof crypto?.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `session-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem("foodsaveSessionId", generated);
+    return generated;
+  } catch {
+    return "anonymous";
+  }
 };

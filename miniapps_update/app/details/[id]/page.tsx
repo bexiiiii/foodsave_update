@@ -12,6 +12,7 @@ import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 import {
   dismissDecisionHelpPrompt,
+  getPersonalizationSessionId,
   recordProductReservation,
   recordProductView,
   shouldShowDecisionHelpPrompt,
@@ -89,31 +90,37 @@ export default function ProductDetailsPage() {
         if (isMounted) {
           setProduct(productData);
           setIsFavorite(!!productData.isFavorite);
-          const recordedView = recordProductView(productData);
-          // This optional prompt never participates in loading the product.
-          window.setTimeout(() => {
-            if (isMounted) setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
-          }, 450);
-          const attribution = readAttribution();
-          if (recordedView) apiClient.trackEvent({
-            eventType: "BOX_VIEWED",
-            sessionId: String(attribution.sessionId || sessionStorage.getItem("foodsaveSessionId") || ""),
-            source: String(attribution.source || "direct"),
-            notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
-            campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
-            telegramPostId: typeof attribution.telegramPostId === "string" ? attribution.telegramPostId : undefined,
-            startParam: typeof attribution.startParam === "string" ? attribution.startParam : undefined,
-            partnerId: productData.storeId,
-            branchId: productData.storeId,
-            boxId: productData.id,
-            idempotencyKey: `box-view-${sessionStorage.getItem("foodsaveSessionId") || "anonymous"}-${productData.id}-${Math.floor(Date.now() / 45000)}`,
-            metadata: {
-              availableQuantity: productData.stockQuantity,
-              boxPrice: productData.price || productData.discountedPrice || productData.originalPrice,
-              originalPrice: productData.originalPrice,
-              discountPercent: productData.discountPercentage,
-            },
-          });
+          try {
+            const recordedView = recordProductView(productData);
+            window.setTimeout(() => {
+              if (isMounted) setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
+            }, 300);
+            if (recordedView) {
+              const attribution = readAttribution();
+              const sessionId = getPersonalizationSessionId();
+              void apiClient.trackEvent({
+                eventType: "BOX_VIEWED",
+                sessionId: String(attribution.sessionId || sessionId),
+                source: String(attribution.source || "direct"),
+                notificationGroupId: typeof attribution.notificationGroupId === "number" ? attribution.notificationGroupId : undefined,
+                campaignId: typeof attribution.campaignId === "string" ? attribution.campaignId : undefined,
+                telegramPostId: typeof attribution.telegramPostId === "string" ? attribution.telegramPostId : undefined,
+                startParam: typeof attribution.startParam === "string" ? attribution.startParam : undefined,
+                partnerId: productData.storeId,
+                branchId: productData.storeId,
+                boxId: productData.id,
+                idempotencyKey: `box-view-${sessionId}-${productData.id}-${Math.floor(Date.now() / 45000)}`,
+                metadata: {
+                  availableQuantity: productData.stockQuantity,
+                  boxPrice: productData.price || productData.discountedPrice || productData.originalPrice,
+                  originalPrice: productData.originalPrice,
+                  discountPercent: productData.discountPercentage,
+                },
+              });
+            }
+          } catch (personalizationError) {
+            console.warn("Optional personalization skipped:", personalizationError);
+          }
         }
         if (productData?.storeId) {
           try {
