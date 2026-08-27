@@ -18,7 +18,8 @@ import { useTelegram } from "../hooks/useTelegram";
 import { useCategories, useFeaturedProducts } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
-import { apiClient, Category, Product, isProductVisibleInMiniApp } from "../lib/api";
+import { apiClient, canReserveProduct, Category, Product, isProductDisplayableInMiniApp } from "../lib/api";
+import ProductAvailabilityBadge from "../components/ProductAvailabilityBadge";
 import { getProductRecommendationScore, seedRecommendationsFromOrders } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
 import { readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
@@ -115,13 +116,15 @@ export default function HomePage() {
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
   const featuredProducts = safeArray(featuredProductsResponse?.content)
-    .filter((product: Product) => isProductVisibleInMiniApp(product))
+    .filter((product: Product) => isProductDisplayableInMiniApp(product))
     .map((product) => ({
       ...product,
       isFavorite: favoriteOverrides[product.id] ?? product.isFavorite,
     }))
     .sort((a, b) => {
       void recommendationVersion;
+      const availabilityDiff = Number(canReserveProduct(b)) - Number(canReserveProduct(a));
+      if (availabilityDiff !== 0) return availabilityDiff;
       const aScore = getProductRecommendationScore(a) + getLocationRecommendationBoost(userLocation, a);
       const bScore = getProductRecommendationScore(b) + getLocationRecommendationBoost(userLocation, b);
       const scoreDiff = bScore - aScore;
@@ -317,13 +320,14 @@ export default function HomePage() {
                 toggleProductFavorite(product);
               }}
               type="button"
-              className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center transition-transform active:scale-90"
+              className="absolute right-2 top-2 z-10 flex h-8 w-8 items-center justify-center transition-transform active:scale-90"
             >
               <Star
                 className={`h-5 w-5 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)] ${isFavorite ? "text-amber-400" : "text-white"}`}
                 fill={isFavorite ? "currentColor" : "none"}
               />
             </button>
+            <ProductAvailabilityBadge product={product} />
           </div>
           <h3 className="mt-3 truncate text-base font-bold text-black font-inter">{safeString(product.name)}</h3>
           <p className="mt-1 truncate text-sm text-black/50 font-inter">

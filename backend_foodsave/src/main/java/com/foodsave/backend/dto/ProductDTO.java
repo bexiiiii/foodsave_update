@@ -2,6 +2,7 @@ package com.foodsave.backend.dto;
 
 import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.domain.enums.ProductStatus;
+import com.foodsave.backend.domain.enums.ProductAvailabilityState;
 import com.foodsave.backend.util.ProductAvailability;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -74,6 +75,8 @@ public class ProductDTO {
     
     // Computed properties for frontend compatibility
     private Boolean isAvailable;
+    private Boolean canReserve;
+    private ProductAvailabilityState availabilityState;
     private Integer availableQuantity;
     private String imageUrl;
     private String expirationDate;

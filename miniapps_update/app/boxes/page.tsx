@@ -6,7 +6,8 @@ import ClosingSoonBadge, { formatMinutesUntilClose } from "../../components/Clos
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
-import { apiClient, Product, Store, isProductVisibleInMiniApp } from "../../lib/api";
+import { apiClient, Product, Store, isProductDisplayableInMiniApp } from "../../lib/api";
+import ProductAvailabilityBadge from "../../components/ProductAvailabilityBadge";
 import { formatPrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
 import FavoriteToast from "../../components/FavoriteToast";
@@ -24,8 +25,8 @@ function BoxesContent() {
   const [showClosingSoonBanner, setShowClosingSoonBanner] = useState(false);
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
 
-  const filterAvailableProducts = (items: Product[] = []) =>
-    items.filter((product) => isProductVisibleInMiniApp(product));
+  const filterCatalogProducts = (items: Product[] = []) =>
+    items.filter(isProductDisplayableInMiniApp);
 
   useEffect(() => {
     let isMounted = true;
@@ -54,7 +55,7 @@ function BoxesContent() {
         // Load products for this store
         const productsResponse = await apiClient.getProductsByStore(Number(storeId), 0, 100);
         if (isMounted) {
-          const filteredProducts = filterAvailableProducts(productsResponse.content);
+          const filteredProducts = filterCatalogProducts(productsResponse.content);
           setProducts(filteredProducts);
         }
       } catch (error) {
@@ -163,12 +164,7 @@ function BoxesContent() {
             />
           </button>
 
-          {/* Stock Indicator */}
-          {product.stockQuantity <= 0 && (
-            <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold font-inter">Нет в наличии</span>
-            </div>
-          )}
+          <ProductAvailabilityBadge product={product} />
         </div>
 
         <div className="mt-2">
@@ -190,7 +186,7 @@ function BoxesContent() {
             )}
           </div>
           <p className="text-xs text-black/50 font-inter mt-1">
-            Осталось: {product.stockQuantity}
+            {product.stockQuantity > 0 ? `Осталось: ${product.stockQuantity}` : "Сейчас недоступен"}
           </p>
           {product.closingSoon && (
             <div className="mt-1">

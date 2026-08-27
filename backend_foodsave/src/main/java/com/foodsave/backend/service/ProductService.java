@@ -9,6 +9,9 @@ import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
 import com.foodsave.backend.repository.NotificationSettingsRepository;
+import com.foodsave.backend.repository.OrderItemRepository;
+import com.foodsave.backend.domain.enums.OrderStatus;
+import com.foodsave.backend.domain.enums.ProductAvailabilityState;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.util.SecurityUtil;
 import com.foodsave.backend.security.AuthorizationService;
@@ -21,6 +24,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -33,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.EnumSet;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +56,12 @@ public class ProductService {
     private final RealtimeEventService realtimeEventService;
     private final NotificationGroupService notificationGroupService;
     private final AuthorizationService authorizationService;
+    private final OrderItemRepository orderItemRepository;
+
+    private static final Set<OrderStatus> ACTIVE_RESERVATION_STATUSES = Collections.unmodifiableSet(
+            EnumSet.of(OrderStatus.CREATED, OrderStatus.PENDING, OrderStatus.CONFIRMED,
+                    OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP,
+                    OrderStatus.OUT_FOR_DELIVERY));
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -62,7 +73,8 @@ public class ProductService {
                           NotificationSettingsRepository notificationSettingsRepository,
                           RealtimeEventService realtimeEventService,
                           NotificationGroupService notificationGroupService,
-                          AuthorizationService authorizationService) {
+                          AuthorizationService authorizationService,
+                          OrderItemRepository orderItemRepository) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -74,6 +86,7 @@ public class ProductService {
         this.realtimeEventService = realtimeEventService;
         this.notificationGroupService = notificationGroupService;
         this.authorizationService = authorizationService;
+        this.orderItemRepository = orderItemRepository;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -161,11 +174,13 @@ public class ProductService {
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        return convertToDTO(product);
+        Set<Long> reservedIds = orderItemRepository.findProductIdsWithActiveReservations(
+                List.of(id), ACTIVE_RESERVATION_STATUSES);
+        return convertToDTO(product, reservedIds);
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
-    public Page<ProductDTO> getProductsByStore(Long storeId, Pageable pageable) {
+    public Page<ProductDTO> getProductsByStore(Long storeId, boolean includeUnavailable, Pageable pageable) {
         Store store = storeRepository.findById(storeId)
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
         
@@ -189,6 +204,10 @@ public class ProductService {
         }
         
         // For regular users, only show AVAILABLE products (exclude OUT_OF_STOCK)
+        if (includeUnavailable) {
+            return toCustomerCatalogPage(productRepository.findCustomerCatalogByStoreId(
+                    storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+        }
         return productRepository.findActiveAvailableByStoreId(
                         storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
@@ -202,7 +221,11 @@ public class ProductService {
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
-    public Page<ProductDTO> getFeaturedProducts(Pageable pageable) {
+    public Page<ProductDTO> getFeaturedProducts(boolean includeUnavailable, Pageable pageable) {
+        if (includeUnavailable) {
+            return toCustomerCatalogPage(productRepository.findCustomerCatalog(
+                    ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+        }
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
         return productRepository.findAllActiveAvailableProducts(
                         ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
@@ -397,7 +420,11 @@ public class ProductService {
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
-    public Page<ProductDTO> searchProducts(String query, Pageable pageable) {
+    public Page<ProductDTO> searchProducts(String query, boolean includeUnavailable, Pageable pageable) {
+        if (includeUnavailable) {
+            return toCustomerCatalogPage(productRepository.searchCustomerCatalog(
+                    query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+        }
         return productRepository.searchProducts(
                         query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
@@ -559,12 +586,34 @@ public class ProductService {
     }
 
     private ProductDTO convertToDTO(Product product) {
+        return convertToDTO(product, Collections.emptySet());
+    }
+
+    private Page<ProductDTO> toCustomerCatalogPage(Page<Product> products) {
+        List<Long> ids = products.getContent().stream().map(Product::getId).toList();
+        Set<Long> reservedIds = ids.isEmpty()
+                ? Collections.emptySet()
+                : orderItemRepository.findProductIdsWithActiveReservations(ids, ACTIVE_RESERVATION_STATUSES);
+        List<ProductDTO> content = products.getContent().stream()
+                .map(product -> convertToDTO(product, reservedIds))
+                .toList();
+        return new PageImpl<>(content, products.getPageable(), products.getTotalElements());
+    }
+
+    private ProductDTO convertToDTO(Product product, Set<Long> reservedIds) {
         BigDecimal discountedPrice = product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO;
         BigDecimal originalPrice = product.getOriginalPrice();
         Double discountPercentage = product.getDiscountPercentage();
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
         List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
         boolean isAvailable = ProductAvailability.isAvailable(product);
+        ProductAvailabilityState availabilityState = isAvailable
+                ? ProductAvailabilityState.AVAILABLE
+                : ((product.getStockQuantity() == null || product.getStockQuantity() <= 0)
+                    ? (reservedIds.contains(product.getId())
+                        ? ProductAvailabilityState.RESERVED
+                        : ProductAvailabilityState.SOLD_OUT)
+                    : ProductAvailabilityState.UNAVAILABLE);
 
         return ProductDTO.builder()
                 .id(product.getId())
@@ -587,6 +636,8 @@ public class ProductService {
                 .active(product.getActive())
                 // Computed properties for frontend compatibility
                 .isAvailable(isAvailable)
+                .canReserve(isAvailable)
+                .availabilityState(availabilityState)
                 .availableQuantity(stockQuantity)
                 .imageUrl(!images.isEmpty() ? images.get(0) : null)
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)

@@ -9,6 +9,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Set;
+import com.foodsave.backend.domain.enums.OrderStatus;
 
 @Repository
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
@@ -25,4 +27,10 @@ public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     
     @Query("SELECT SUM(oi.totalPrice) FROM OrderItem oi WHERE oi.product = :product")
     Double getTotalRevenue(@Param("product") Product product);
+
+    @Query("SELECT DISTINCT oi.product.id FROM OrderItem oi " +
+           "WHERE oi.product.id IN :productIds AND oi.order.status IN :statuses")
+    Set<Long> findProductIdsWithActiveReservations(
+            @Param("productIds") List<Long> productIds,
+            @Param("statuses") Set<OrderStatus> statuses);
 }

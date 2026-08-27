@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
-import { apiClient, Order, Product, Store, isProductVisibleInMiniApp } from "../../../lib/api";
+import { apiClient, canReserveProduct, getProductAvailability, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
+import ProductAvailabilityBadge from "../../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
 import { formatMinutesUntilClose } from "../../../components/ClosingSoonBadge";
@@ -156,7 +157,7 @@ export default function ProductDetailsPage() {
   const handleReserve = async (deliveryType: 'PICKUP' | 'COURIER' = 'PICKUP', contactPhone?: string) => {
     if (!product) return;
 
-    if (!isProductVisibleInMiniApp(product)) {
+    if (!canReserveProduct(product)) {
       console.error('Product unavailable');
       return;
     }
@@ -206,6 +207,8 @@ export default function ProductDetailsPage() {
           ...prev,
           stockQuantity: remaining,
           status: remaining > 0 ? prev.status : 'OUT_OF_STOCK',
+          canReserve: remaining > 0,
+          availabilityState: remaining > 0 ? 'AVAILABLE' : 'RESERVED',
         };
       });
 
@@ -219,6 +222,10 @@ export default function ProductDetailsPage() {
           ? error.message
           : 'Не удалось оформить заказ. Попробуйте ещё раз.';
       setOrderModal({ type: "error", message: errMsg });
+      try {
+        const refreshed = await apiClient.getProductById(product.id);
+        setProduct(refreshed);
+      } catch {}
     } finally {
       setIsReserving(false);
     }
@@ -340,7 +347,7 @@ export default function ProductDetailsPage() {
     );
   }
 
-  if (!product || !isProductVisibleInMiniApp(product)) {
+  if (!product || !isProductDisplayableInMiniApp(product)) {
     return (
       <div className="min-h-screen bg-white pb-24 flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <p className="px-6 text-center text-black/50 font-inter">Бокс больше недоступен</p>
@@ -349,6 +356,9 @@ export default function ProductDetailsPage() {
   }
 
   const productImages = resolveProductImages(product);
+  const availabilityState = getProductAvailability(product);
+  const canReserve = canReserveProduct(product);
+  const availabilityLabel = availabilityState === 'RESERVED' ? 'Забронировано' : availabilityState === 'SOLD_OUT' ? 'Закончилось' : 'Недоступно';
   const activeImage = productImages[activeImageIndex] || null;
   const hasMultipleImages = productImages.length > 1;
   const showPreviousImage = () => {
@@ -416,9 +426,9 @@ export default function ProductDetailsPage() {
       <div className="px-4 mt-6">
         <h2 className="text-xl font-semibold text-black font-inter">{product.storeName}</h2>
         <div className="flex items-center gap-3 mt-2 text-sm font-medium text-black/60 font-inter">
-          <span>{product.stockQuantity} шт.</span>
+          <span>{Math.max(product.stockQuantity, 0)} шт.</span>
           <span>•</span>
-          <span>В наличии</span>
+          <span>{canReserve ? "В наличии" : availabilityLabel}</span>
         </div>
         {store?.address && (
           <div className="flex items-center gap-2 mt-2 text-sm text-black/60 font-inter">
@@ -447,6 +457,7 @@ export default function ProductDetailsPage() {
               -{product.discountPercentage}%
             </div>
           )}
+          <ProductAvailabilityBadge product={product} />
           {hasMultipleImages && (
             <>
               <button
@@ -558,11 +569,13 @@ export default function ProductDetailsPage() {
       )}
 
       {/* Out of Stock */}
-      {product.stockQuantity <= 0 && (
+      {!canReserve && (
         <div className="px-4 mt-4">
           <div className="bg-red-100 border border-red-200 rounded-xl p-3">
             <p className="text-red-800 text-sm font-inter">
-              Товара нет в наличии
+              {availabilityState === 'RESERVED'
+                ? 'Этот бокс уже забронирован. Если бронь отменят, он снова появится в наличии.'
+                : 'Этот бокс закончился. Посмотрите другие доступные варианты.'}
             </p>
           </div>
         </div>
@@ -587,7 +600,7 @@ export default function ProductDetailsPage() {
       {/* Bottom Actions */}
       <div className="fixed bottom-0 left-0 right-0 px-4 pb-6 bg-white border-t border-gray-100 safe-area-inset-bottom">
         {/* Row 1: quantity + reserve */}
-        <div className="flex gap-3 pt-4">
+        {canReserve ? <div className="flex gap-3 pt-4">
           {/* Quantity Selector */}
           <div className="bg-gray-100 rounded-xl flex items-center justify-between px-1 h-12 min-w-32">
             <button
@@ -612,20 +625,26 @@ export default function ProductDetailsPage() {
           {/* Reserve Button */}
           <button
             onClick={handlePickupClick}
-            disabled={product.stockQuantity <= 0 || isReserving}
+            disabled={!canReserve || isReserving}
             className="flex-1 bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#429565] transition-colors"
           >
             <span className="text-lg font-medium text-white font-inter">
               {isReserving ? 'Бронирование...' : 'Забронировать'}
             </span>
           </button>
-        </div>
+        </div> : (
+          <div className="pt-4">
+            <button disabled className="h-12 w-full rounded-xl bg-gray-200 font-bold text-black/45">
+              {availabilityLabel}
+            </button>
+          </div>
+        )}
 
         {/* Row 2: Courier button */}
-        <div className="mt-3">
+        {canReserve && <div className="mt-3">
           <button
             onClick={handleCourierClick}
-            disabled={product.stockQuantity <= 0 || isReserving}
+            disabled={!canReserve || isReserving}
             className="w-full bg-white border-2 border-[#4CAD73] rounded-xl h-12 flex items-center justify-center gap-2 disabled:border-gray-300 disabled:cursor-not-allowed hover:bg-[#4CAD73]/5 active:scale-95 transition-all"
           >
             <Truck className="w-5 h-5 text-[#4CAD73]" />
@@ -633,7 +652,7 @@ export default function ProductDetailsPage() {
               Хочу через курьера
             </span>
           </button>
-        </div>
+        </div>}
       </div>
 
       {/* Closing Soon Confirmation — required acknowledgement before the reserve goes through */}

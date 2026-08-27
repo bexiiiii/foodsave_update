@@ -147,6 +147,8 @@ export interface Product {
   storeLongitude?: number;
   status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'EXPIRED' | 'INACTIVE' | 'DISCONTINUED' | 'HIDDEN' | string;
   isAvailable?: boolean;
+  canReserve?: boolean;
+  availabilityState?: 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE';
   active?: boolean;
   featured: boolean;
   isFavorite?: boolean;
@@ -625,7 +627,7 @@ class ApiClient {
         Number.isFinite(maxPrice) ? `maxPrice=${encodeURIComponent(String(maxPrice))}` : null,
       ].filter(Boolean).join('&');
       const response = await this.makePublicRequest<PaginationResponse<Product>>(
-        `/products/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}${priceParams ? `&${priceParams}` : ''}`
+        `/products/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}&includeUnavailable=true${priceParams ? `&${priceParams}` : ''}`
       );
       if (!response || !Array.isArray(response.content)) {
         return { content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true };
@@ -639,7 +641,7 @@ class ApiClient {
 
   async getProductsByStore(storeId: number, page = 0, size = 20): Promise<PaginationResponse<Product>> {
     try {
-      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/store/${storeId}?page=${page}&size=${size}`);
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/store/${storeId}?page=${page}&size=${size}&includeUnavailable=true`);
       // Ensure content is an array
       if (!response || !Array.isArray(response.content)) {
         return {
@@ -742,7 +744,7 @@ class ApiClient {
         Number.isFinite(minPrice) ? `minPrice=${encodeURIComponent(String(minPrice))}` : null,
         Number.isFinite(maxPrice) ? `maxPrice=${encodeURIComponent(String(maxPrice))}` : null,
       ].filter(Boolean).join('&');
-      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}${priceParams ? `&${priceParams}` : ''}`);
+      const response = await this.makePublicRequest<PaginationResponse<Product>>(`/products/featured?page=${page}&size=${size}&includeUnavailable=true${priceParams ? `&${priceParams}` : ''}`);
       // Ensure content is an array
       if (!response || !Array.isArray(response.content)) {
         return {
@@ -1074,6 +1076,23 @@ export const isProductVisibleInMiniApp = (product: Product | null | undefined): 
   const blockedStatuses = new Set(['OUT_OF_STOCK', 'EXPIRED', 'DISCONTINUED', 'HIDDEN', 'INACTIVE']);
   return !blockedStatuses.has(status) && (product.stockQuantity ?? 0) > 0;
 };
+
+export const getProductAvailability = (product: Product | null | undefined): 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE' => {
+  if (!product) return 'UNAVAILABLE';
+  if (product.availabilityState) return product.availabilityState;
+  return isProductVisibleInMiniApp(product) ? 'AVAILABLE' : ((product.stockQuantity ?? 0) <= 0 ? 'SOLD_OUT' : 'UNAVAILABLE');
+};
+
+export const isProductDisplayableInMiniApp = (product: Product | null | undefined): boolean => {
+  if (!product || product.active === false) return false;
+  const status = String(product.status || '').toUpperCase();
+  return !new Set(['EXPIRED', 'DISCONTINUED', 'HIDDEN', 'INACTIVE']).has(status);
+};
+
+export const canReserveProduct = (product: Product | null | undefined): boolean =>
+  !!product && (typeof product.canReserve === 'boolean'
+    ? product.canReserve
+    : getProductAvailability(product) === 'AVAILABLE');
 
 // Rate limiting helper
 let lastRequestTime = 0;

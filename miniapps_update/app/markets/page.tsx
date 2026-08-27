@@ -6,7 +6,8 @@ import { ArrowLeft, ChevronDown, Clock, SlidersHorizontal, Star, X } from "lucid
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
-import { apiClient, isProductVisibleInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
+import { apiClient, canReserveProduct, isProductDisplayableInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
+import ProductAvailabilityBadge from "../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
@@ -27,6 +28,8 @@ const getProductDiscount = (product: Product) => {
 
 const sortProducts = (items: Product[], sortMode: CatalogSortMode = "recommended") =>
   [...items].sort((a, b) => {
+    const availabilityDiff = Number(canReserveProduct(b)) - Number(canReserveProduct(a));
+    if (availabilityDiff !== 0) return availabilityDiff;
     const favoriteDiff = Number(!!b.isFavorite) - Number(!!a.isFavorite);
     if (favoriteDiff !== 0) return favoriteDiff;
 
@@ -226,7 +229,7 @@ function MarketsContent() {
             featured: true,
             createdAt: "",
             updatedAt: "",
-          })).filter(isProductVisibleInMiniApp));
+          })).filter(isProductDisplayableInMiniApp));
           apiClient.trackEvent({
             eventType: "NOTIFICATION_DEEPLINK_OPENED",
             sessionId: sessionStorage.getItem("foodsaveSessionId") || undefined,
@@ -250,7 +253,7 @@ function MarketsContent() {
             ),
           ]);
           setStores(storesResult.content);
-          setProducts(sortProducts(productsResult.content.filter(isProductVisibleInMiniApp)));
+          setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
           return;
         }
 
@@ -265,7 +268,7 @@ function MarketsContent() {
             ),
           ]);
           setStores(storesData);
-          setProducts(sortProducts(productsResult.content.filter(isProductVisibleInMiniApp)));
+          setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
           return;
         }
 
@@ -504,6 +507,7 @@ function MarketsContent() {
                 fill={isFavorite ? "currentColor" : "none"}
               />
             </button>
+            <ProductAvailabilityBadge product={product} />
           </div>
           <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
           <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>

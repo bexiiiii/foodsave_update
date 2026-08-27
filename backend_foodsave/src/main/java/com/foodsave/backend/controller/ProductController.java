@@ -42,8 +42,9 @@ public class ProductController {
     @Operation(summary = "Get products by store ID with pagination")
     public ResponseEntity<Page<ProductDTO>> getProductsByStore(
             @PathVariable Long storeId,
+            @RequestParam(defaultValue = "false") boolean includeUnavailable,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.getProductsByStore(storeId, pageable));
+        return ResponseEntity.ok(productService.getProductsByStore(storeId, includeUnavailable, pageable));
     }
     
     @GetMapping("/categories")
@@ -54,8 +55,10 @@ public class ProductController {
     
     @GetMapping("/featured")
     @Operation(summary = "Get featured products with pagination")
-    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(Pageable pageable) {
-        return ResponseEntity.ok(productService.getFeaturedProducts(pageable));
+    public ResponseEntity<Page<ProductDTO>> getFeaturedProducts(
+            @RequestParam(defaultValue = "false") boolean includeUnavailable,
+            Pageable pageable) {
+        return ResponseEntity.ok(productService.getFeaturedProducts(includeUnavailable, pageable));
     }
     
     @PostMapping
@@ -86,8 +89,9 @@ public class ProductController {
     @Operation(summary = "Search products with pagination")
     public ResponseEntity<Page<ProductDTO>> searchProducts(
             @RequestParam String query,
+            @RequestParam(defaultValue = "false") boolean includeUnavailable,
             Pageable pageable) {
-        return ResponseEntity.ok(productService.searchProducts(query, pageable));
+        return ResponseEntity.ok(productService.searchProducts(query, includeUnavailable, pageable));
     }
     
     @GetMapping("/category/{categoryId}")
