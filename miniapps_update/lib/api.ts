@@ -1102,7 +1102,7 @@ export const getProductAvailabilityPresentation = (product: Product | null | und
     case 'RESERVED':
       return {
         state,
-        label: 'Все в брони',
+        label: 'Забронировано',
         message: 'Все доступные боксы сейчас в активных бронях. Если одну из броней отменят, бокс снова можно будет забронировать.',
         tone: 'reserved' as const,
       };

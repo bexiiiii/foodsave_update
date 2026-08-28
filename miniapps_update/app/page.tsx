@@ -6,6 +6,7 @@ import {
   LocateFixed,
   LoaderCircle,
   MapPin,
+  PackageOpen,
   Star,
 } from "lucide-react";
 import Link from "next/link";
@@ -374,14 +375,14 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      <header className="px-4 pt-4">
+      <header className="px-4 pt-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/foodsave-logo.png"
               alt="FoodSave"
-              className="h-9 w-auto max-w-[190px] object-contain"
+              className="h-7 w-auto max-w-[155px] object-contain"
             />
           </Link>
 
@@ -389,9 +390,9 @@ export default function HomePage() {
             <Link
               href="/notifications"
               aria-label="Уведомления"
-              className="relative flex h-11 w-11 items-center justify-center rounded-full border border-black/[0.06] bg-white shadow-[0_5px_18px_rgba(20,45,24,0.09)] transition-all active:scale-95 active:shadow-sm"
+              className="relative flex h-10 w-10 items-center justify-center rounded-full border border-black/[0.06] bg-white shadow-[0_4px_14px_rgba(20,45,24,0.08)] transition-all active:scale-95 active:shadow-sm"
             >
-              <svg className="h-6 w-6 text-black/70" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <svg className="h-5 w-5 text-black/65" viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 17a3 3 0 006 0" />
               </svg>
@@ -401,17 +402,17 @@ export default function HomePage() {
 
         <form
           onSubmit={handleSearch}
-          className="mt-5 flex h-14 items-center gap-3 rounded-2xl border border-black/[0.07] bg-white px-4 shadow-[0_6px_22px_rgba(20,45,24,0.07)] transition-all focus-within:border-[#15551F]/35 focus-within:shadow-[0_7px_24px_rgba(21,85,31,0.11)]"
+          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#15551F]/35 focus-within:shadow-[0_5px_18px_rgba(21,85,31,0.10)]"
         >
-          <button type="submit" className="flex h-8 w-8 items-center justify-center" aria-label={t("search")}>
-            <svg className="h-6 w-6 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+          <button type="submit" className="flex h-7 w-7 items-center justify-center" aria-label={t("search")}>
+            <svg className="h-5 w-5 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
           </button>
           <input
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
-            className="min-w-0 flex-1 bg-transparent text-base font-medium text-black outline-none placeholder:text-black/45 font-inter"
+            className="min-w-0 flex-1 bg-transparent text-sm font-medium text-black outline-none placeholder:text-black/40 font-inter"
             placeholder={t("searchPlaceholder")}
             type="search"
           />
@@ -424,7 +425,7 @@ export default function HomePage() {
         )}
       </header>
 
-      <section className="mt-6 bg-white py-4">
+      <section className="mt-5 bg-white py-3">
         <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-1">
             {categoriesLoading
@@ -527,12 +528,16 @@ export default function HomePage() {
               ))}
             </div>
           ) : featuredProducts.length === 0 ? (
-            <div className="relative overflow-hidden rounded-2xl border border-[#15551F]/10 bg-white px-5 py-5 shadow-[0_8px_28px_rgba(20,45,24,0.07)]">
-              <div className="absolute inset-y-4 left-0 w-1 rounded-r-full bg-[#49B77A]" />
-              <p className="text-base font-semibold text-black font-inter">{t("nearbyBoxes")}</p>
-              <p className="mt-1 text-sm leading-5 text-black/50 font-inter">
-                {t("noBoxesAvailable")}
-              </p>
+            <div className="flex items-center gap-3 border-y border-black/[0.06] py-4">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EDF7F0] text-[#15551F]">
+                <PackageOpen className="h-5 w-5" strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-black font-inter">{t("nearbyBoxes")}</p>
+                <p className="mt-0.5 text-xs leading-4 text-black/50 font-inter">
+                  {t("noBoxesAvailable")}
+                </p>
+              </div>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4">
