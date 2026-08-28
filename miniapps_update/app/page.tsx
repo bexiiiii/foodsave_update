@@ -377,7 +377,12 @@ export default function HomePage() {
       <header className="px-4 pt-4">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
-            <span className="text-2xl font-bold text-[#15551F] font-inter">FoodSave</span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand/foodsave-logo.png"
+              alt="FoodSave"
+              className="h-9 w-auto max-w-[190px] object-contain"
+            />
           </Link>
 
           <div className="flex items-center gap-3">
