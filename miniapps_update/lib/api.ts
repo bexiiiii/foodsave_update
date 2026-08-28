@@ -1100,9 +1100,19 @@ export const getProductAvailabilityPresentation = (product: Product | null | und
   const state = getProductAvailability(product);
   switch (state) {
     case 'RESERVED':
-      return { state, label: 'Забронировано', message: 'Этот бокс уже забронирован. Если бронь отменят, он снова появится в наличии.', tone: 'reserved' as const };
+      return {
+        state,
+        label: 'Все в брони',
+        message: 'Все доступные боксы сейчас в активных бронях. Если одну из броней отменят, бокс снова можно будет забронировать.',
+        tone: 'reserved' as const,
+      };
     case 'SOLD_OUT':
-      return { state, label: 'Закончилось', message: 'Этот бокс закончился. Посмотрите другие доступные варианты.', tone: 'sold-out' as const };
+      return {
+        state,
+        label: 'Нет в наличии',
+        message: 'Свободных боксов больше нет. Посмотрите другие доступные варианты.',
+        tone: 'sold-out' as const,
+      };
     case 'UNAVAILABLE':
       return { state, label: 'Недоступно', message: 'Этот бокс сейчас недоступен для бронирования.', tone: 'unavailable' as const };
     default:
