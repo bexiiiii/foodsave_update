@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Check, ChevronRight, Loader2, User } from "lucide-react";
+import { Check, ChevronRight, Loader2, User } from "lucide-react";
 import Link from "next/link";
+import BackButton from "../../components/BackButton";
+import BottomNav from "../../components/BottomNav";
 import { useAuth } from "../../hooks/useAuth";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, NotificationSettings } from "../../lib/api";
@@ -74,9 +76,7 @@ export default function ProfilePage() {
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300">
-           <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton />
           <h1 className="text-xl font-bold text-black font-inter">Профиль</h1>
         </div>
       </div>
@@ -106,13 +106,13 @@ export default function ProfilePage() {
 
       {/* Menu Items */}
       <div className="px-4 mt-12">
-        <div className="mb-4 rounded-2xl bg-gray-100 p-4">
+        <div className="fs-surface mb-4 rounded-2xl p-4">
           <label className="mb-2 block text-sm font-semibold text-black font-inter" htmlFor="profile-name">Имя</label>
           <input
             id="profile-name"
             value={name}
             onChange={(event) => setName(event.target.value)}
-            className="w-full rounded-xl bg-white px-4 py-3 text-base text-black outline-none ring-1 ring-transparent transition focus:ring-[#4CAD73]"
+            className="fs-field w-full rounded-xl px-4 py-3 text-base text-black outline-none transition"
             autoComplete="given-name"
           />
           <button
@@ -124,7 +124,7 @@ export default function ProfilePage() {
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <><Check className="mr-2 h-4 w-4" />Сохранено</> : "Сохранить"}
           </button>
         </div>
-        <div className="bg-gray-100 rounded-2xl overflow-hidden">
+        <div className="fs-surface rounded-2xl overflow-hidden">
           <Link
             href="/language"
             onClick={() => {
@@ -132,7 +132,7 @@ export default function ProfilePage() {
                 sessionStorage.setItem("languageReturnTo", `${window.location.pathname}${window.location.search}`);
               }
             }}
-            className="flex items-center justify-between px-6 py-4 border-b border-gray-300 hover:bg-gray-200 transition-colors"
+            className="flex items-center justify-between border-b border-black/[0.06] px-5 py-4 transition-colors active:bg-[#F7FAF8]"
           >
             <span className="text-base font-medium text-black font-inter">Язык</span>
             <ChevronRight className="w-5 h-5 text-black" />
@@ -143,12 +143,12 @@ export default function ProfilePage() {
               // Открываем Telegram аккаунт поддержки
               window.open('https://t.me/FoodSave_kz', '_blank');
             }}
-            className="flex items-center justify-between px-6 py-4 hover:bg-gray-200 transition-colors w-full text-left"
+            className="flex w-full items-center justify-between px-5 py-4 text-left transition-colors active:bg-[#F7FAF8]"
           >
             <span className="text-base font-medium text-black font-inter">Поддержка</span>
             <ChevronRight className="w-5 h-5 text-black" />
           </button>
-          <button type="button" onClick={togglePromotions} className="flex w-full items-center justify-between border-t border-gray-300 px-6 py-4 text-left hover:bg-gray-200">
+          <button type="button" onClick={togglePromotions} className="flex w-full items-center justify-between border-t border-black/[0.06] px-5 py-4 text-left active:bg-[#F7FAF8]">
             <span className="text-base font-medium text-black font-inter">Уведомления о новых боксах</span>
             <span className={`h-6 w-11 rounded-full p-1 transition-colors ${settings?.promotions ? "bg-[#4CAD73]" : "bg-gray-300"}`}>
               <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${settings?.promotions ? "translate-x-5" : "translate-x-0"}`} />
@@ -157,42 +157,7 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
-        <div className="flex items-center justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/markets" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/orders" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/profile" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-[#4CAD73] rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </nav>
+      <BottomNav active="profile" />
     </div>
   );
 }

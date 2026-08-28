@@ -41,7 +41,7 @@ export default function PickedUpOrderSheet({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-black/70 disabled:opacity-50"
+            className="fs-icon-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black/70 transition active:scale-95 disabled:opacity-50"
             aria-label="Закрыть"
           >
             <X className="h-5 w-5" />
@@ -65,7 +65,7 @@ export default function PickedUpOrderSheet({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex h-12 items-center justify-center rounded-2xl bg-gray-100 text-sm font-extrabold text-black transition-colors active:scale-[0.99] disabled:opacity-60"
+            className="fs-surface flex h-12 items-center justify-center rounded-2xl text-sm font-extrabold text-black transition active:scale-[0.99] disabled:opacity-60"
           >
             Нет
           </button>

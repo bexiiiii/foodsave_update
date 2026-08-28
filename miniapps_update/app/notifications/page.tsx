@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { BellOff, ChevronLeft } from "lucide-react";
-import Link from "next/link";
+import { BellOff } from "lucide-react";
 import BottomNav from "../../components/BottomNav";
+import BackButton from "../../components/BackButton";
 
 export default function NotificationsPage() {
   useEffect(() => {
@@ -17,15 +17,13 @@ export default function NotificationsPage() {
   return (
     <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="flex items-center justify-between border-b border-gray-100 px-4 pb-4 pt-4">
-        <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-          <ChevronLeft className="w-5 h-5" />
-        </Link>
+        <BackButton fallback="/" />
         <h1 className="text-xl font-bold text-black">Уведомления</h1>
         <div className="w-10" />
       </header>
 
       <main className="flex min-h-[65vh] flex-col items-center justify-center px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-black/45">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EDF7F0] text-[#15551F] shadow-[0_8px_24px_rgba(21,85,31,0.08)]">
           <BellOff className="h-7 w-7" strokeWidth={1.8} />
         </div>
         <h2 className="mt-5 text-lg font-bold text-black">Уведомлений пока нет</h2>

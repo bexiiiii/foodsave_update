@@ -7,7 +7,7 @@ import { getPreviousPath } from "./NavigationTracker";
 export default function BackButton({
   fallback = "/",
   label = "Назад",
-  className = "w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center hover:scale-110 active:scale-95 transition-all duration-300",
+  className = "fs-icon-button w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-all duration-200",
 }: {
   fallback?: string;
   label?: string;

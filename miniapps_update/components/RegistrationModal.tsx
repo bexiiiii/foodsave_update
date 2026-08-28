@@ -172,7 +172,7 @@ export function RegistrationModal() {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleStep1Next()}
-              className="w-full h-14 px-5 bg-gray-100 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none focus:bg-gray-200 transition-colors"
+              className="fs-field w-full h-14 px-5 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none transition"
               autoComplete="given-name"
             />
             <input
@@ -181,7 +181,7 @@ export function RegistrationModal() {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleStep1Next()}
-              className="w-full h-14 px-5 bg-gray-100 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none focus:bg-gray-200 transition-colors"
+              className="fs-field w-full h-14 px-5 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none transition"
               autoComplete="family-name"
             />
           </div>
@@ -232,7 +232,7 @@ export function RegistrationModal() {
 
               <button
                 onClick={() => setShowManualPhone(true)}
-                className="w-full h-12 bg-gray-100 text-black/60 text-sm font-inter rounded-2xl active:scale-95 transition-all"
+                className="fs-surface w-full h-12 text-black/60 text-sm font-inter rounded-2xl active:scale-95 transition-all"
               >
                 Ввести вручную
               </button>
@@ -245,7 +245,7 @@ export function RegistrationModal() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && phone.trim() && saveProfile(phone.trim())}
-                className="w-full h-14 px-5 bg-gray-100 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none focus:bg-gray-200 transition-colors"
+                className="fs-field w-full h-14 px-5 rounded-2xl text-base font-inter text-black placeholder-black/30 outline-none transition"
                 autoFocus
                 autoComplete="tel"
               />

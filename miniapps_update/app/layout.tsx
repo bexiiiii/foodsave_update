@@ -46,7 +46,7 @@ export default function RootLayout({
         </Script>
       </head>
       <body
-        className="font-sans antialiased bg-[#F5F5F5]"
+        className="font-sans antialiased bg-white"
         style={{ fontFamily: 'Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}
       >
         <ErrorBoundary>

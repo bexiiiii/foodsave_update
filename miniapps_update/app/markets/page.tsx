@@ -12,6 +12,7 @@ import { formatPrice, normalizePrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
+import BottomNav from "../../components/BottomNav";
 
 type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "name_asc";
 
@@ -401,7 +402,7 @@ function MarketsContent() {
 
     return (
       <article
-        className="block cursor-pointer rounded-2xl bg-gray-100 p-4 transition-colors hover:bg-gray-200"
+        className="fs-surface block cursor-pointer rounded-2xl p-4 transition active:scale-[0.99]"
         onClick={() => router.push(`/boxes?storeId=${store.id}`)}
       >
         <div className="flex items-center gap-4">
@@ -566,7 +567,7 @@ function MarketsContent() {
                   <button
                     type="button"
                     onClick={() => setIsPriceFilterOpen((open) => !open)}
-                    className="flex h-12 w-full items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 px-4 text-left font-inter"
+                    className="fs-surface flex h-12 w-full items-center justify-between rounded-2xl px-4 text-left font-inter transition active:scale-[0.99]"
                   >
                     <span className="flex items-center gap-3 text-base font-bold text-black">
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white">
@@ -613,7 +614,7 @@ function MarketsContent() {
                     onClick={() => setIsPriceFilterOpen(false)}
                   >
                     <form
-                      className="max-h-[86vh] w-full overflow-y-auto rounded-t-[28px] bg-gray-50 px-4 pb-6 pt-3 shadow-2xl"
+                    className="max-h-[86vh] w-full overflow-y-auto rounded-t-[28px] bg-white px-4 pb-6 pt-3 shadow-2xl"
                       onClick={(event) => event.stopPropagation()}
                       onSubmit={(event) => {
                         event.preventDefault();
@@ -725,7 +726,7 @@ function MarketsContent() {
                         </div>
                       </div>
 
-                      <div className="sticky bottom-0 -mx-4 mt-6 grid grid-cols-[1fr_1.5fr] gap-3 bg-gray-50 px-4 pb-2 pt-3">
+                      <div className="sticky bottom-0 -mx-4 mt-6 grid grid-cols-[1fr_1.5fr] gap-3 border-t border-black/[0.06] bg-white/95 px-4 pb-2 pt-3 backdrop-blur-xl">
                         <button
                           type="button"
                           onClick={resetPriceFilter}
@@ -777,7 +778,7 @@ function MarketsContent() {
               <StoreCard key={store.id} store={store} />
             ))}
             {!showAllProducts && stores.length > 0 && filteredStores.length === 0 && (
-              <div className="rounded-2xl bg-gray-100 p-5 text-center">
+              <div className="border-y border-black/[0.06] py-5 text-center">
                 <p className="text-sm font-medium text-black/50 font-inter">По этим фильтрам заведений не найдено</p>
               </div>
             )}
@@ -796,7 +797,7 @@ function MarketsContent() {
                   ))}
                 </div>
                 {filteredProducts.length === 0 && (
-                  <div className="rounded-2xl bg-gray-100 p-5 text-center">
+                  <div className="border-y border-black/[0.06] py-5 text-center">
                     <p className="text-sm font-medium text-black/50 font-inter">В этом диапазоне цены боксов не найдены</p>
                   </div>
                 )}
@@ -814,42 +815,7 @@ function MarketsContent() {
         )}
       </div>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
-        <div className="flex items-center justify-around">
-          <Link href="/" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/markets" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-[#4CAD73] rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/orders" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-              </svg>
-            </div>
-          </Link>
-          
-          <Link href="/profile" className="flex flex-col items-center gap-1">
-            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
-              <svg className="w-6 h-6 text-black" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-          </Link>
-        </div>
-      </nav>
+      <BottomNav active="markets" />
 
       <FavoriteToast title={toast?.title ?? null} itemName={toast?.itemName} onClose={() => setToast(null)} />
     </div>

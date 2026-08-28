@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
-import { ArrowLeft, Clock, Star, Timer } from "lucide-react";
+import { Clock, Star, Timer } from "lucide-react";
 import ClosingSoonBadge, { formatMinutesUntilClose } from "../../components/ClosingSoonBadge";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -265,7 +265,7 @@ function BoxesContent() {
       </div>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
+      <nav className="fs-bottom-nav fixed bottom-0 left-0 right-0 px-4 py-3 safe-area-inset-bottom">
         <div className="flex items-center justify-around">
           <Link href="/" className="flex flex-col items-center gap-1">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center">
@@ -354,9 +354,7 @@ function LoadingFallback() {
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/markets" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">
-          <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton fallback="/markets" />
           <h1 className="text-xl font-bold text-black font-inter">Продукты</h1>
         </div>
       </div>

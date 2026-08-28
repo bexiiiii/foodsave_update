@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
+import { CheckCircle, Clock, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
+import BackButton from "../../components/BackButton";
 import BottomNav from "../../components/BottomNav";
 import CancelOrderSheet from "../../components/CancelOrderSheet";
 import PickedUpOrderSheet from "../../components/PickedUpOrderSheet";
@@ -188,15 +189,13 @@ export default function OrdersPage() {
     <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center active:scale-95 transition-all duration-300">
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton />
           <h1 className="text-xl font-bold text-black font-inter">{t("orders")}</h1>
         </div>
       </header>
 
       <main className="px-4 mt-6">
-        <div className="mb-4 grid grid-cols-2 rounded-2xl bg-gray-100 p-1">
+        <div className="fs-muted-surface mb-4 grid grid-cols-2 rounded-2xl p-1">
           <button
             type="button"
             onClick={() => setActiveTab("active")}
@@ -240,7 +239,7 @@ export default function OrdersPage() {
         ) : (
           <div className="space-y-3">
             {visibleOrders.map((order) => (
-              <div key={order.id} className="rounded-xl bg-gray-100 p-3">
+              <div key={order.id} className="fs-surface rounded-2xl p-3.5">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 bg-[#4CAD73] rounded-full flex items-center justify-center flex-shrink-0">
                     <span className="text-white font-bold text-sm font-inter">

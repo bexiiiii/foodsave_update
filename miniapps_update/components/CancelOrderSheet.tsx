@@ -103,7 +103,7 @@ export default function CancelOrderSheet({
             type="button"
             onClick={handleClose}
             disabled={isSubmitting}
-            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-100 text-black/70 disabled:opacity-50"
+            className="fs-icon-button flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-black/70 transition active:scale-95 disabled:opacity-50"
             aria-label="Закрыть"
           >
             <X className="h-5 w-5" />
@@ -123,7 +123,7 @@ export default function CancelOrderSheet({
                 }}
                 disabled={isSubmitting}
                 className={`w-full rounded-2xl border p-3 text-left transition-colors disabled:opacity-60 ${
-                  isSelected ? "border-red-500 bg-red-50" : "border-gray-100 bg-gray-50"
+                  isSelected ? "border-red-500 bg-red-50" : "border-black/[0.07] bg-white shadow-[0_3px_12px_rgba(20,45,24,0.04)]"
                 }`}
               >
                 <span className="block text-sm font-bold text-black">{reason.label}</span>

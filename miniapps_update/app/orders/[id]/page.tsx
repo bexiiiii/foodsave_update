@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, CreditCard, Loader2, MapPin, Store as StoreIcon, XCircle } from "lucide-react";
-import Link from "next/link";
+import { CheckCircle, CreditCard, Loader2, MapPin, Store as StoreIcon, XCircle } from "lucide-react";
 import { useParams } from "next/navigation";
 import BottomNav from "../../../components/BottomNav";
 import CancelOrderSheet from "../../../components/CancelOrderSheet";
@@ -11,6 +10,7 @@ import { useTranslation } from "../../../hooks/useTranslation";
 import { apiClient, Order, ReservationCancellationReason } from "../../../lib/api";
 import { formatOrderTotal } from "../../../lib/orders";
 import { formatPrice } from "../../../lib/pricing";
+import BackButton from "../../../components/BackButton";
 
 const getStatusText = (status?: string) => {
   switch (status) {
@@ -146,9 +146,7 @@ export default function OrderDetailsPage() {
     <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/orders" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center active:scale-95 transition-all duration-300">
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton fallback="/orders" />
           <h1 className="text-xl font-bold text-black font-inter">{t("orderDetails")}</h1>
         </div>
       </header>
@@ -161,7 +159,7 @@ export default function OrderDetailsPage() {
             ))}
           </div>
         ) : !order ? (
-          <div className="rounded-2xl bg-gray-100 p-5 text-center text-sm font-semibold text-black/55">
+          <div className="fs-surface rounded-2xl p-5 text-center text-sm font-semibold text-black/55">
             Заказ не найден
           </div>
         ) : (
@@ -186,7 +184,7 @@ export default function OrderDetailsPage() {
               </div>
             )}
 
-            <section className="rounded-2xl bg-gray-100 p-4">
+            <section className="fs-surface rounded-2xl p-4">
               <div className="flex items-start gap-3">
                 <StoreIcon className="mt-0.5 h-5 w-5 text-[#4CAD73]" />
                 <div>
@@ -197,14 +195,14 @@ export default function OrderDetailsPage() {
             </section>
 
             <section>
-              <div className="rounded-2xl bg-gray-100 p-4">
+              <div className="fs-surface rounded-2xl p-4">
                 <CreditCard className="h-5 w-5 text-[#4CAD73]" />
                 <p className="mt-2 text-xs font-semibold uppercase tracking-[0.08em] text-black/45 font-inter">{t("paymentMethod")}</p>
                 <p className="mt-1 text-sm font-bold text-black font-inter">{order.paymentMethod || "Не указан"}</p>
               </div>
             </section>
 
-            <section className="rounded-2xl bg-gray-100 p-4">
+            <section className="fs-surface rounded-2xl p-4">
               <h3 className="text-base font-bold text-black font-inter">{t("orderItems")}</h3>
               <div className="mt-3 space-y-3">
                 {(order.orderItems || []).map((item, index) => (
@@ -221,7 +219,7 @@ export default function OrderDetailsPage() {
               </div>
             </section>
 
-            <section className="rounded-2xl bg-gray-100 p-4">
+            <section className="fs-surface rounded-2xl p-4">
               <div className="flex items-start gap-3">
                 <MapPin className="mt-0.5 h-5 w-5 text-[#4CAD73]" />
                 <div>

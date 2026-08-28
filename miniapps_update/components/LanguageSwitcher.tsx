@@ -17,7 +17,7 @@ const LanguageSwitcher = () => {
     <div className="relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+        className="fs-icon-button flex items-center gap-2 rounded-xl px-3 py-2 transition active:scale-[0.98]"
       >
         <span className="text-lg">{currentLanguage?.flag}</span>
         <span className="text-sm font-medium">{currentLanguage?.code.toUpperCase()}</span>
@@ -40,8 +40,8 @@ const LanguageSwitcher = () => {
                 changeLanguage(lang.code);
                 setIsOpen(false);
               }}
-              className={`w-full flex items-center gap-3 px-4 py-2 hover:bg-gray-50 transition-colors ${
-                language === lang.code ? 'bg-gray-100' : ''
+              className={`w-full flex items-center gap-3 px-4 py-2 transition-colors ${
+                language === lang.code ? 'bg-[#EDF7F0] text-[#15551F]' : 'bg-white'
               }`}
             >
               <span className="text-lg">{lang.flag}</span>

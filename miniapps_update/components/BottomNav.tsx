@@ -15,14 +15,14 @@ export default function BottomNav({ active = "home" }: BottomNavProps) {
 
   const itemClass = (item: BottomNavProps["active"]) =>
     `w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${
-      active === item ? "bg-[#4CAD73]" : "bg-white group-hover:bg-gray-50"
+      active === item ? "bg-[#4CAD73] shadow-[0_6px_18px_rgba(76,173,115,0.24)]" : "bg-white"
     }`;
 
   const iconClass = (item: BottomNavProps["active"]) =>
     `w-6 h-6 transition-transform duration-300 ${active === item ? "text-white" : "text-black"}`;
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-gray-100 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
+    <nav className="fs-bottom-nav fixed bottom-0 left-0 right-0 z-40 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
       <div className="flex items-center justify-around">
         <Link href="/" className="flex flex-col items-center gap-1 group">
           <div className={itemClass("home")}>
@@ -46,7 +46,7 @@ export default function BottomNav({ active = "home" }: BottomNavProps) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
             </svg>
             {activeOrdersCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#de8a08] px-1.5 text-[10px] font-bold text-white ring-2 ring-gray-100">
+              <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-[#de8a08] px-1.5 text-[10px] font-bold text-white ring-2 ring-white">
                 {activeOrdersCount > 9 ? "9+" : activeOrdersCount}
               </span>
             )}

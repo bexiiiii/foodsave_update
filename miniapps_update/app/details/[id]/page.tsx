@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
+import { CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { apiClient, canReserveProduct, getProductAvailabilityPresentation, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
@@ -516,7 +516,7 @@ export default function ProductDetailsPage() {
         {/* Category */}
         {product.categoryName && (
           <div className="mt-4">
-            <span className="bg-gray-100 text-black/60 px-3 py-1 rounded-lg text-sm font-inter">
+            <span className="inline-flex rounded-full border border-[#15551F]/10 bg-[#EDF7F0] px-3 py-1 text-sm text-[#15551F] font-inter">
               {product.categoryName}
             </span>
           </div>
@@ -600,10 +600,10 @@ export default function ProductDetailsPage() {
         {/* Row 1: quantity + reserve */}
         {canReserve ? <div className="flex gap-3 pt-4">
           {/* Quantity Selector */}
-          <div className="bg-gray-100 rounded-xl flex items-center justify-between px-1 h-12 min-w-32">
+          <div className="fs-surface rounded-xl flex items-center justify-between px-1 h-12 min-w-32">
             <button
               onClick={() => setQuantity(Math.max(1, quantity - 1))}
-              className="w-10 h-10 flex items-center justify-center text-black hover:bg-gray-200 rounded-lg transition-colors"
+              className="w-10 h-10 flex items-center justify-center text-black rounded-lg transition active:bg-[#EDF7F0]"
               disabled={quantity <= 1}
             >
               <Minus className="w-4 h-4" />
@@ -613,7 +613,7 @@ export default function ProductDetailsPage() {
             </span>
             <button
               onClick={() => setQuantity(Math.min(product.stockQuantity, quantity + 1))}
-              className="w-10 h-10 flex items-center justify-center text-black hover:bg-gray-200 rounded-lg transition-colors"
+              className="w-10 h-10 flex items-center justify-center text-black rounded-lg transition active:bg-[#EDF7F0]"
               disabled={quantity >= product.stockQuantity}
             >
               <Plus className="w-4 h-4" />
@@ -684,7 +684,7 @@ export default function ProductDetailsPage() {
                   setShowClosingSoonConfirm(false);
                   setPendingReserveType(null);
                 }}
-                className="w-full bg-gray-100 rounded-2xl h-[50px] flex items-center justify-center active:scale-[0.97] transition-transform"
+                className="fs-surface w-full rounded-2xl h-[50px] flex items-center justify-center active:scale-[0.97] transition-transform"
               >
                 <span className="text-[17px] font-medium text-black font-inter">Отмена</span>
               </button>
@@ -726,7 +726,7 @@ export default function ProductDetailsPage() {
                   setPhoneNumber(e.target.value);
                   setPhoneError("");
                 }}
-                className="w-full h-12 px-4 rounded-xl border-2 border-gray-200 focus:border-[#4CAD73] outline-none text-base font-inter text-black transition-colors"
+                className="fs-field w-full h-12 px-4 rounded-xl outline-none text-base font-inter text-black transition"
                 autoFocus
               />
               {phoneError && (
@@ -748,7 +748,7 @@ export default function ProductDetailsPage() {
               </button>
               <button
                 onClick={() => setShowPhoneModal(false)}
-                className="w-full bg-gray-100 rounded-xl h-12 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
+                className="fs-surface w-full rounded-xl h-12 flex items-center justify-center active:scale-95 transition-all"
               >
                 <span className="text-base font-medium text-black font-inter">Отмена</span>
               </button>
@@ -806,7 +806,7 @@ export default function ProductDetailsPage() {
                       setOrderModal(null);
                       router.push('/');
                     }}
-                    className="w-full bg-gray-100 rounded-xl h-12 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
+                    className="fs-surface w-full rounded-xl h-12 flex items-center justify-center active:scale-95 transition-all"
                   >
                     <span className="text-base font-medium text-black font-inter">На главную</span>
                   </button>
@@ -839,7 +839,7 @@ export default function ProductDetailsPage() {
                   </button>
                   <button
                     onClick={() => router.push('/')}
-                    className="w-full bg-gray-100 rounded-xl h-12 flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all"
+                    className="fs-surface w-full rounded-xl h-12 flex items-center justify-center active:scale-95 transition-all"
                   >
                     <span className="text-base font-medium text-black font-inter">На главную</span>
                   </button>

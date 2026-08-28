@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import type * as Leaflet from "leaflet";
-import { ArrowLeft, Crosshair, LoaderCircle } from "lucide-react";
-import Link from "next/link";
+import { Crosshair, LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import BottomNav from "../../components/BottomNav";
 import { apiClient, Store } from "../../lib/api";
 import { openTelegramLocationSettings, readSavedLocation, requestCurrentLocation, UserLocation } from "../../lib/location";
+import BackButton from "../../components/BackButton";
 
 const astanaCenter: Leaflet.LatLngTuple = [51.1694, 71.4491];
 
@@ -232,9 +232,7 @@ export default function MapPage() {
     <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
-          <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center active:scale-95 transition-all duration-300">
-            <ArrowLeft className="w-5 h-5 text-gray-800" />
-          </Link>
+          <BackButton fallback="/" />
           <h1 className="text-xl font-bold text-black font-inter">Карта</h1>
         </div>
       </header>

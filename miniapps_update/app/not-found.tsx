@@ -9,11 +9,11 @@ export default function NotFound() {
     <div className="min-h-screen bg-white flex flex-col items-center justify-center px-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Empty Food Box Illustration */}
       <div className="mb-8">
-        <div className="w-32 h-32 bg-gray-100 rounded-3xl flex items-center justify-center relative">
+        <div className="w-32 h-32 bg-[#EDF7F0] rounded-3xl flex items-center justify-center relative shadow-[0_10px_30px_rgba(21,85,31,0.08)]">
           {/* Empty box icon */}
-          <div className="w-20 h-20 border-2 border-dashed border-gray-300 rounded-2xl flex items-center justify-center">
-            <div className="w-12 h-12 bg-gray-200 rounded-xl flex items-center justify-center">
-              <Search className="w-6 h-6 text-gray-400" />
+          <div className="w-20 h-20 border-2 border-dashed border-[#4CAD73]/35 rounded-2xl flex items-center justify-center">
+            <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
+              <Search className="w-6 h-6 text-[#15551F]" />
             </div>
           </div>
           
@@ -48,7 +48,7 @@ export default function NotFound() {
         
         <Link 
           href="/markets"
-          className="w-full bg-gray-100 text-black py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 hover:bg-gray-200 active:scale-95 font-inter"
+          className="fs-surface w-full text-black py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 active:scale-95 font-inter"
         >
           <div className="flex items-center justify-center gap-2">
             <Search className="w-5 h-5" />
