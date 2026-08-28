@@ -475,6 +475,7 @@ function MarketsContent() {
     const price = getProductPrice(product);
     const originalPrice = normalizePrice(product.originalPrice || price);
     const discount = getProductDiscount(product);
+    const isReservable = canReserveProduct(product);
 
     return (
       <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
@@ -517,7 +518,9 @@ function MarketsContent() {
             </div>
           )}
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-sm font-bold text-[#15551F] font-inter">{formatPrice(price)}</span>
+            <span className={`text-sm font-bold font-inter ${isReservable ? "text-[#15551F]" : "text-black/55"}`}>
+              {formatPrice(price)}
+            </span>
             {originalPrice > price && (
               <span className="text-xs text-black/35 line-through font-inter">{formatPrice(originalPrice)}</span>
             )}

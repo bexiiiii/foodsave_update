@@ -309,6 +309,7 @@ export default function HomePage() {
     const originalPrice = normalizePrice(product.originalPrice || price);
     const discount = originalPrice > price ? Math.round((1 - price / originalPrice) * 100) : product.discountPercentage || 0;
     const distanceLabel = formatDistance(getDistanceKm(userLocation, product));
+    const isReservable = canReserveProduct(product);
 
     return (
       <Link href={`/details/${product.id}`} className="min-w-0">
@@ -359,7 +360,9 @@ export default function HomePage() {
             </div>
           )}
           <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-base font-bold text-[#15551F] font-inter">{formatPrice(price)}</span>
+            <span className={`text-base font-bold font-inter ${isReservable ? "text-[#15551F]" : "text-black/55"}`}>
+              {formatPrice(price)}
+            </span>
             {originalPrice > price && (
               <span className="text-sm text-black/35 line-through font-inter">{formatPrice(originalPrice)}</span>
             )}
