@@ -22,7 +22,7 @@ declare global {
         setBackgroundColor: (color: string) => void;
         safeAreaInset?: TelegramSafeAreaInset;
         contentSafeAreaInset?: TelegramSafeAreaInset;
-        onEvent?: (eventType: string, eventHandler: () => void) => void;
+        onEvent?: (eventType: string, eventHandler: (eventData?: unknown) => void) => void;
         initData: string;
         initDataUnsafe: {
           start_param?: string;
@@ -99,24 +99,42 @@ export const useTelegram = () => {
         tg.setBottomBarColor?.("#FFFFFF");
         tg.expand();
 
+        const syncSafeArea = () => setSafeAreaVariables(tg.safeAreaInset, tg.contentSafeAreaInset);
+        const syncFullscreen = (eventData?: unknown) => {
+          const isFullscreen = Boolean(
+            eventData
+            && typeof eventData === 'object'
+            && 'is_fullscreen' in eventData
+            && eventData.is_fullscreen,
+          );
+          document.documentElement.dataset.tgFullscreen = isFullscreen ? 'true' : 'false';
+        };
+        const clearFullscreen = () => {
+          document.documentElement.dataset.tgFullscreen = 'false';
+        };
+
+        syncSafeArea();
+        tg.onEvent?.('safeAreaChanged', syncSafeArea);
+        tg.onEvent?.('contentSafeAreaChanged', syncSafeArea);
+        tg.onEvent?.('fullscreenChanged', syncFullscreen);
+        tg.onEvent?.('fullscreenFailed', clearFullscreen);
+
         if (supportsTelegramVersion(tg, '7.7')) {
           tg.disableVerticalSwipes?.();
         }
 
         if (supportsTelegramVersion(tg, '8.0')) {
           try {
+            // Reserve room for Telegram controls while the client calculates safe-area values.
+            document.documentElement.dataset.tgFullscreen = 'true';
             tg.requestFullscreen?.();
           } catch (error) {
+            clearFullscreen();
             if (process.env.NODE_ENV === 'development') {
               console.debug('Telegram fullscreen is unavailable:', error);
             }
           }
         }
-
-        const syncSafeArea = () => setSafeAreaVariables(tg.safeAreaInset, tg.contentSafeAreaInset);
-        syncSafeArea();
-        tg.onEvent?.('safeAreaChanged', syncSafeArea);
-        tg.onEvent?.('contentSafeAreaChanged', syncSafeArea);
 
         isInitialized = true;
         

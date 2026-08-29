@@ -83,9 +83,22 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
-  padding-top: var(--tg-safe-area-top);
+  padding-top: max(
+    env(safe-area-inset-top),
+    var(--tg-content-safe-area-inset-top, 0px),
+    var(--tg-safe-area-top)
+  );
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+html[data-tg-fullscreen="true"] body {
+  padding-top: max(
+    env(safe-area-inset-top),
+    var(--tg-content-safe-area-inset-top, 0px),
+    var(--tg-safe-area-top),
+    76px
+  );
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -101,7 +114,12 @@ body {
 
 /* Safe area for iOS */
 .safe-area-inset-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), var(--tg-safe-area-bottom), 12px);
+  padding-bottom: max(
+    env(safe-area-inset-bottom),
+    var(--tg-content-safe-area-inset-bottom, 0px),
+    var(--tg-safe-area-bottom),
+    12px
+  );
 }
 
 /* Prevent text selection */
