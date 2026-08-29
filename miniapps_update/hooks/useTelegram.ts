@@ -1,13 +1,28 @@
 import { useEffect, useCallback } from 'react';
 
+type TelegramSafeAreaInset = {
+  top: number;
+  bottom: number;
+  left: number;
+  right: number;
+};
+
 declare global {
   interface Window {
     Telegram?: {
       WebApp: {
         ready: () => void;
         expand: () => void;
+        version?: string;
+        isVersionAtLeast?: (version: string) => boolean;
+        requestFullscreen?: () => void;
+        disableVerticalSwipes?: () => void;
+        setBottomBarColor?: (color: string) => void;
         setHeaderColor: (color: string) => void;
         setBackgroundColor: (color: string) => void;
+        safeAreaInset?: TelegramSafeAreaInset;
+        contentSafeAreaInset?: TelegramSafeAreaInset;
+        onEvent?: (eventType: string, eventHandler: () => void) => void;
         initData: string;
         initDataUnsafe: {
           start_param?: string;
@@ -53,6 +68,25 @@ declare global {
 // Global singleton to track initialization
 let isInitialized = false;
 
+const setSafeAreaVariables = (
+  safeArea?: TelegramSafeAreaInset,
+  contentSafeArea?: TelegramSafeAreaInset,
+) => {
+  const effective = contentSafeArea ?? safeArea;
+  if (!effective) return;
+
+  const root = document.documentElement;
+  root.style.setProperty('--tg-safe-area-top', `${effective.top}px`);
+  root.style.setProperty('--tg-safe-area-bottom', `${effective.bottom}px`);
+  root.style.setProperty('--tg-safe-area-left', `${effective.left}px`);
+  root.style.setProperty('--tg-safe-area-right', `${effective.right}px`);
+};
+
+const supportsTelegramVersion = (
+  webApp: NonNullable<Window['Telegram']>['WebApp'],
+  minimumVersion: string,
+) => webApp.isVersionAtLeast?.(minimumVersion) ?? false;
+
 export const useTelegram = () => {
   useEffect(() => {
     if (typeof window !== "undefined" && window.Telegram?.WebApp && !isInitialized) {
@@ -60,9 +94,30 @@ export const useTelegram = () => {
       
       try {
         tg.ready();
-        tg.expand();
         tg.setHeaderColor("#FFFFFF");
         tg.setBackgroundColor("#FFFFFF");
+        tg.setBottomBarColor?.("#FFFFFF");
+        tg.expand();
+
+        if (supportsTelegramVersion(tg, '7.7')) {
+          tg.disableVerticalSwipes?.();
+        }
+
+        if (supportsTelegramVersion(tg, '8.0')) {
+          try {
+            tg.requestFullscreen?.();
+          } catch (error) {
+            if (process.env.NODE_ENV === 'development') {
+              console.debug('Telegram fullscreen is unavailable:', error);
+            }
+          }
+        }
+
+        const syncSafeArea = () => setSafeAreaVariables(tg.safeAreaInset, tg.contentSafeAreaInset);
+        syncSafeArea();
+        tg.onEvent?.('safeAreaChanged', syncSafeArea);
+        tg.onEvent?.('contentSafeAreaChanged', syncSafeArea);
+
         isInitialized = true;
         
         if (process.env.NODE_ENV === 'development') {

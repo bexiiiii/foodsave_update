@@ -10,6 +10,10 @@
   --fs-surface-muted: #f7faf8;
   --fs-shadow: 0 8px 28px rgba(20, 45, 24, 0.07);
   --fs-shadow-control: 0 4px 16px rgba(20, 45, 24, 0.07);
+  --tg-safe-area-top: 0px;
+  --tg-safe-area-bottom: 0px;
+  --tg-safe-area-left: 0px;
+  --tg-safe-area-right: 0px;
 }
 
 @theme inline {
@@ -79,6 +83,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  padding-top: var(--tg-safe-area-top);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -96,7 +101,7 @@ body {
 
 /* Safe area for iOS */
 .safe-area-inset-bottom {
-  padding-bottom: max(env(safe-area-inset-bottom), 12px);
+  padding-bottom: max(env(safe-area-inset-bottom), var(--tg-safe-area-bottom), 12px);
 }
 
 /* Prevent text selection */
