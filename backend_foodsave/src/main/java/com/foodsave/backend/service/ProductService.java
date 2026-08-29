@@ -197,7 +197,8 @@ public class ProductService {
         // For regular users, only show AVAILABLE products (exclude OUT_OF_STOCK)
         if (includeUnavailable) {
             return toCustomerCatalogPage(productRepository.findCustomerCatalogByStoreId(
-                    storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+                    storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.catalogDayStart(),
+                    ProductAvailability.currentTimeText(), pageable));
         }
         return productRepository.findActiveAvailableByStoreId(
                         storeId, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
@@ -215,7 +216,8 @@ public class ProductService {
     public Page<ProductDTO> getFeaturedProducts(boolean includeUnavailable, Pageable pageable) {
         if (includeUnavailable) {
             return toCustomerCatalogPage(productRepository.findCustomerCatalog(
-                    ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+                    ProductAvailability.visibilityCutoff(), ProductAvailability.catalogDayStart(),
+                    ProductAvailability.currentTimeText(), pageable));
         }
         // Return all active products with status AVAILABLE (exclude OUT_OF_STOCK)
         return productRepository.findAllActiveAvailableProducts(
@@ -414,7 +416,8 @@ public class ProductService {
     public Page<ProductDTO> searchProducts(String query, boolean includeUnavailable, Pageable pageable) {
         if (includeUnavailable) {
             return toCustomerCatalogPage(productRepository.searchCustomerCatalog(
-                    query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable));
+                    query, ProductAvailability.visibilityCutoff(), ProductAvailability.catalogDayStart(),
+                    ProductAvailability.currentTimeText(), pageable));
         }
         return productRepository.searchProducts(
                         query, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
@@ -628,6 +631,8 @@ public class ProductService {
                 .expirationDate(product.getExpiryDate() != null ? product.getExpiryDate().toString() : null)
                 .isFeatured(discountPercentage != null && discountPercentage > 0)
                 .rating(0.0) // Default rating for now
+                .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
+                .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .build();
     }
 

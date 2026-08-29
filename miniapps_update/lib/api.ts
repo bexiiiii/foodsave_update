@@ -1088,7 +1088,24 @@ export const getProductAvailability = (product: Product | null | undefined): Pro
 export const isProductDisplayableInMiniApp = (product: Product | null | undefined): boolean => {
   if (!product || product.active === false) return false;
   const status = String(product.status || '').toUpperCase();
-  return !new Set(['EXPIRED', 'DISCONTINUED', 'HIDDEN', 'INACTIVE']).has(status);
+  if (new Set(['EXPIRED', 'DISCONTINUED', 'HIDDEN', 'INACTIVE']).has(status)) return false;
+  if (canReserveProduct(product)) return true;
+  if (!product.createdAt) return false;
+
+  const dateInAlmaty = (value: Date) => new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Almaty',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(value);
+
+  const createdAtText = String(product.createdAt);
+  const parsedCreatedAt = new Date(createdAtText);
+  if (!/^\d{4}-\d{2}-\d{2}T/.test(createdAtText) && Number.isNaN(parsedCreatedAt.getTime())) return false;
+  const createdBusinessDate = /^\d{4}-\d{2}-\d{2}T/.test(createdAtText)
+    ? createdAtText.slice(0, 10)
+    : dateInAlmaty(parsedCreatedAt);
+  return createdBusinessDate === dateInAlmaty(new Date());
 };
 
 export const canReserveProduct = (product: Product | null | undefined): boolean =>

@@ -36,6 +36,10 @@ public final class ProductAvailability {
         return now().toLocalDate().plusDays(1).atStartOfDay();
     }
 
+    public static LocalDateTime catalogDayStart() {
+        return now().toLocalDate().atStartOfDay();
+    }
+
     public static String currentTimeText() {
         return LocalTime.now(BUSINESS_ZONE).format(TIME_FORMAT);
     }

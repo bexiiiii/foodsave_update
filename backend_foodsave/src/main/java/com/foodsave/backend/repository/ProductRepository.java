@@ -164,6 +164,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
+           "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
            "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
@@ -174,12 +175,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "ORDER BY CASE WHEN COALESCE(p.stockQuantity, 0) > 0 THEN 0 ELSE 1 END, p.sortOrder ASC, p.createdAt DESC")
     Page<Product> findCustomerCatalogByStoreId(@Param("storeId") Long storeId,
                                                @Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                               @Param("catalogDayStart") LocalDateTime catalogDayStart,
                                                @Param("currentTime") String currentTime,
                                                Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
+           "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
            "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
@@ -189,12 +192,14 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "OR (p.store.openingHours > p.store.closingHours AND (p.store.openingHours <= :currentTime OR :currentTime < p.store.closingHours))) " +
            "ORDER BY CASE WHEN COALESCE(p.stockQuantity, 0) > 0 THEN 0 ELSE 1 END, p.sortOrder ASC, p.createdAt DESC")
     Page<Product> findCustomerCatalog(@Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                      @Param("catalogDayStart") LocalDateTime catalogDayStart,
                                       @Param("currentTime") String currentTime,
                                       Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
     @Query("SELECT p FROM Product p WHERE p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
+           "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
            "AND (p.store.openingHours IS NULL OR TRIM(p.store.openingHours) = '' " +
@@ -209,6 +214,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "ORDER BY CASE WHEN COALESCE(p.stockQuantity, 0) > 0 THEN 0 ELSE 1 END, p.sortOrder ASC, p.createdAt DESC")
     Page<Product> searchCustomerCatalog(@Param("query") String query,
                                         @Param("expiryCutoff") LocalDateTime expiryCutoff,
+                                        @Param("catalogDayStart") LocalDateTime catalogDayStart,
                                         @Param("currentTime") String currentTime,
                                         Pageable pageable);
     

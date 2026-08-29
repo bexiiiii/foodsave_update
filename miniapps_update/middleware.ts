@@ -23,62 +23,21 @@ const BLOCKED_IPS = [
   '205.185.127.97',
 ];
 
-// Rate limiting map (in-memory, resets on restart)
-const requestCounts = new Map<string, { count: number; timestamp: number }>();
-const RATE_LIMIT = 100; // requests per window
-const RATE_WINDOW = 60000; // 1 minute
-
-function getClientIP(request: NextRequest): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  const realIP = request.headers.get('x-real-ip');
-  
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
-  }
-  if (realIP) {
-    return realIP;
-  }
-  return 'unknown';
-}
-
-function isRateLimited(ip: string): boolean {
-  const now = Date.now();
-  const record = requestCounts.get(ip);
-  
-  if (!record || now - record.timestamp > RATE_WINDOW) {
-    requestCounts.set(ip, { count: 1, timestamp: now });
-    return false;
-  }
-  
-  record.count++;
-  
-  if (record.count > RATE_LIMIT) {
-    return true;
-  }
-  
-  return false;
-}
-
 function containsBlockedPattern(value: string): boolean {
   return BLOCKED_PATTERNS.some(pattern => pattern.test(value));
 }
 
 export function middleware(request: NextRequest) {
-  const ip = getClientIP(request);
   const url = request.nextUrl;
   const pathname = url.pathname;
   const searchParams = url.search;
   
-  // Block known bad IPs
+  const forwarded = request.headers.get('x-forwarded-for');
+  const ip = forwarded?.split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown';
+
   if (BLOCKED_IPS.includes(ip)) {
     console.log(`[SECURITY] Blocked IP: ${ip}`);
     return new NextResponse('Forbidden', { status: 403 });
-  }
-  
-  // Rate limiting
-  if (isRateLimited(ip)) {
-    console.log(`[SECURITY] Rate limited: ${ip}`);
-    return new NextResponse('Too Many Requests', { status: 429 });
   }
   
   // Check URL path for malicious patterns

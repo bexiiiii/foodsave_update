@@ -13,6 +13,7 @@ import BackButton from "../../components/BackButton";
 import ClosingSoonBadge from "../../components/ClosingSoonBadge";
 import FavoriteToast from "../../components/FavoriteToast";
 import BottomNav from "../../components/BottomNav";
+import { useTranslation } from "../../hooks/useTranslation";
 
 type CatalogSortMode = "recommended" | "price_asc" | "discount_desc" | "name_asc";
 
@@ -59,6 +60,7 @@ const sortStores = (items: Store[], sortMode: CatalogSortMode = "recommended") =
 
 function MarketsContent() {
   const { } = useTelegram(); // Initialize Telegram singleton
+  const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
   const query = searchParams.get("query")?.trim() || "";
@@ -116,13 +118,13 @@ function MarketsContent() {
   const priceFilterLabel = minFilterValue !== undefined && maxFilterValue !== undefined
     ? `${formatPrice(minFilterValue)} - ${formatPrice(maxFilterValue)}`
     : minFilterValue !== undefined
-      ? `от ${formatPrice(minFilterValue)}`
+      ? `${t("filterFrom")} ${formatPrice(minFilterValue)}`
       : maxFilterValue !== undefined
-        ? `до ${formatPrice(maxFilterValue)}`
-        : "Любая цена";
+        ? `${t("filterTo")} ${formatPrice(maxFilterValue)}`
+        : t("filterAnyPrice");
   const filterSummary = activeFilterCount > 0
-    ? `${activeFilterCount} фильтр${activeFilterCount === 1 ? "" : activeFilterCount < 5 ? "а" : "ов"}`
-    : "Без фильтров";
+    ? `${activeFilterCount} ${t("filtersApplied")}`
+    : t("filtersNone");
 
   const applyPriceFilter = () => {
     setAppliedMinPrice(minPrice.trim());
@@ -339,22 +341,22 @@ function MarketsContent() {
   const selectedProductCategoryName = productCategoryOptions.find(([id]) => id === selectedProductCategoryId)?.[1];
   const sortOptions = (showProductFilters
     ? [
-      ["recommended", "Рекомендуем"],
-      ["price_asc", "Сначала дешевле"],
-      ["discount_desc", "Больше скидка"],
+      ["recommended", t("filterRecommended")],
+      ["price_asc", t("filterCheapest")],
+      ["discount_desc", t("filterBiggestDiscount")],
     ]
     : [
-      ["recommended", "Рекомендуем"],
-      ["name_asc", "По названию"],
+      ["recommended", t("filterRecommended")],
+      ["name_asc", t("filterByName")],
     ]) as [CatalogSortMode, string][];
   const sortLabel = sortOptions.find(([value]) => value === sortMode)?.[1];
   const activeFilterChips = [
     isPriceFilterActive ? priceFilterLabel : null,
     selectedProductStoreName ? selectedProductStoreName : null,
     selectedProductCategoryName ? selectedProductCategoryName : null,
-    favoritesOnly ? "Избранные" : null,
-    discountOnly && showProductFilters ? "Со скидкой" : null,
-    sortMode !== "recommended" && sortLabel ? `Сначала: ${sortLabel}` : null,
+    favoritesOnly ? t("filterFavorites") : null,
+    discountOnly && showProductFilters ? t("filterDiscounted") : null,
+    sortMode !== "recommended" && sortLabel ? `${t("filterSortPrefix")}: ${sortLabel}` : null,
   ].filter(Boolean) as string[];
   const hasDiscountedProducts = products.some((product) => getProductDiscount(product) > 0);
   const canChooseProductStore = productStoreOptions.length > 1;
@@ -377,7 +379,9 @@ function MarketsContent() {
       type="button"
       onClick={onClick}
       className={`rounded-full px-4 py-2.5 text-sm font-bold transition-colors font-inter ${
-        active ? "bg-[#15551F] text-white" : "bg-white text-black/55"
+        active
+          ? "bg-[#15551F] text-white shadow-[0_7px_18px_rgba(21,85,31,0.16)]"
+          : "border border-[#15551F]/10 bg-white text-[#15551F] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
       }`}
     >
       {children}
@@ -389,7 +393,9 @@ function MarketsContent() {
       type="button"
       onClick={() => setSortMode(value)}
       className={`min-h-11 rounded-2xl px-3 py-2 text-sm font-bold leading-tight transition-colors font-inter ${
-        sortMode === value ? "bg-[#15551F] text-white" : "bg-white text-black/55"
+        sortMode === value
+          ? "bg-[#15551F] text-white shadow-[0_7px_18px_rgba(21,85,31,0.16)]"
+          : "border border-[#15551F]/10 bg-white text-[#15551F] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
       }`}
     >
       {label}
@@ -573,20 +579,20 @@ function MarketsContent() {
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white">
                         <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
                       </span>
-                      Фильтр
+                      {t("filter")}
                     </span>
                     <span className="flex items-center gap-2 text-sm font-bold text-black/45">
-                      {activeFilterCount > 0 ? activeFilterCount : "Без фильтров"}
+                      {activeFilterCount > 0 ? activeFilterCount : t("filtersNone")}
                       <ChevronDown className="h-4 w-4" />
                     </span>
                   </button>
                   <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
                     <FilterToggle active={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>
-                      Избранные
+                      {t("filterFavorites")}
                     </FilterToggle>
                     {showProductFilters && hasDiscountedProducts && (
                       <FilterToggle active={discountOnly} onClick={() => setDiscountOnly((value) => !value)}>
-                        Со скидкой
+                        {t("filterDiscounted")}
                       </FilterToggle>
                     )}
                   </div>
@@ -595,7 +601,7 @@ function MarketsContent() {
                       {activeFilterChips.slice(0, 4).map((chip) => (
                         <span
                           key={chip}
-                          className="rounded-full bg-[#15551F]/10 px-3 py-1.5 text-xs font-bold text-[#15551F] font-inter"
+                          className="rounded-full border border-[#15551F]/10 bg-[#EDF7F0] px-3 py-1.5 text-xs font-bold text-[#15551F] font-inter"
                         >
                           {chip}
                         </span>
@@ -624,13 +630,13 @@ function MarketsContent() {
                       <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-black/15" />
                       <div className="mb-5 flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-black text-black font-inter">Фильтры</h2>
+                          <h2 className="text-2xl font-black text-black font-inter">{t("filters")}</h2>
                           <p className="mt-1 text-sm font-medium text-black/45 font-inter">{filterSummary}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => setIsPriceFilterOpen(false)}
-                          aria-label="Закрыть фильтры"
+                          aria-label={t("filterClose")}
                           className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-black"
                         >
                           <X className="h-5 w-5" />
@@ -642,14 +648,14 @@ function MarketsContent() {
                           <>
                             {canChooseProductStore && (
                             <label className="block">
-                              <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Где искать</span>
+                              <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterWhere")}</span>
                               <div className="relative">
                                 <select
                                   value={selectedProductStoreId}
                                   onChange={(event) => setSelectedProductStoreId(event.target.value)}
                                   className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-11 text-base font-bold text-black outline-none transition-colors focus:border-[#4CAD73] font-inter"
                                 >
-                                  <option value="">Все заведения</option>
+                                  <option value="">{t("filterAllStores")}</option>
                                   {productStoreOptions.map(([storeId, storeName]) => (
                                     <option key={storeId} value={storeId}>
                                       {storeName}
@@ -662,14 +668,14 @@ function MarketsContent() {
                             )}
                             {productCategoryOptions.length > 1 && (
                               <label className="block">
-                                <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Что показать</span>
+                                <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterWhat")}</span>
                                 <div className="relative">
                                   <select
                                     value={selectedProductCategoryId}
                                     onChange={(event) => setSelectedProductCategoryId(event.target.value)}
                                     className="h-12 w-full appearance-none rounded-2xl border border-gray-200 bg-white px-4 py-3 pr-11 text-base font-bold text-black outline-none transition-colors focus:border-[#4CAD73] font-inter"
                                   >
-                                    <option value="">Все категории</option>
+                                    <option value="">{t("filterAllCategories")}</option>
                                     {productCategoryOptions.map(([categoryIdValue, categoryName]) => (
                                       <option key={categoryIdValue} value={categoryIdValue}>
                                         {categoryName}
@@ -681,20 +687,20 @@ function MarketsContent() {
                               </label>
                             )}
                             <div>
-                              <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Цена</span>
+                              <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterPrice")}</span>
                               <div className="grid grid-cols-2 gap-3">
                                 <input
                                   value={minPrice}
                                   onChange={(event) => setMinPrice(event.target.value.replace(/[^\d]/g, ""))}
                                   inputMode="numeric"
-                                  placeholder="От 0 ₸"
+                                  placeholder={`${t("filterFrom")} 0 ₸`}
                                   className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base font-bold text-black outline-none focus:border-[#4CAD73] font-inter"
                                 />
                                 <input
                                   value={maxPrice}
                                   onChange={(event) => setMaxPrice(event.target.value.replace(/[^\d]/g, ""))}
                                   inputMode="numeric"
-                                  placeholder="До 2 000 ₸"
+                                  placeholder={`${t("filterTo")} 2 000 ₸`}
                                   className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-base font-bold text-black outline-none focus:border-[#4CAD73] font-inter"
                                 />
                               </div>
@@ -703,21 +709,21 @@ function MarketsContent() {
                         )}
 
                         <div>
-                          <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Быстрый выбор</span>
+                          <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterQuickChoice")}</span>
                           <div className="flex flex-wrap gap-2">
                             <FilterToggle active={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>
-                              Избранные
+                              {t("filterFavorites")}
                             </FilterToggle>
                             {showProductFilters && hasDiscountedProducts && (
                               <FilterToggle active={discountOnly} onClick={() => setDiscountOnly((value) => !value)}>
-                                Со скидкой
+                                {t("filterDiscounted")}
                               </FilterToggle>
                             )}
                           </div>
                         </div>
 
                         <div>
-                          <span className="mb-2 block text-sm font-bold text-black/45 font-inter">Сначала показывать</span>
+                          <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterShowFirst")}</span>
                           <div className="grid grid-cols-2 gap-2">
                             {sortOptions.map(([value, label]) => (
                               <SortButton key={value} value={value} label={label} />
@@ -732,13 +738,13 @@ function MarketsContent() {
                           onClick={resetPriceFilter}
                           className="h-12 rounded-2xl bg-white text-base font-bold text-black/55 font-inter"
                         >
-                          Сбросить
+                          {t("filterReset")}
                         </button>
                         <button
                           type="submit"
                           className="h-12 rounded-2xl bg-[#15551F] text-base font-bold text-white font-inter"
                         >
-                          Показать {visibleResultCount}
+                          {t("filterShow")} {visibleResultCount}
                         </button>
                       </div>
                     </form>
