@@ -315,7 +315,7 @@ export default function HomePage() {
     return (
       <Link href={`/details/${product.id}`} className="min-w-0">
         <article>
-          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
+          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100 md:h-48 xl:h-52">
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -374,15 +374,15 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      <header className="px-4 pt-3">
+    <div className="min-h-screen bg-white pb-24 md:pb-32" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <header className="mx-auto w-full max-w-7xl px-4 pt-3 md:px-8 md:pt-6 xl:px-10">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src="/brand/foodsave-logo.png"
               alt="FoodSave"
-              className="h-7 w-auto max-w-[155px] object-contain"
+              className="h-7 w-auto max-w-[155px] object-contain md:h-8 md:max-w-[180px]"
             />
           </Link>
 
@@ -402,7 +402,7 @@ export default function HomePage() {
 
         <form
           onSubmit={handleSearch}
-          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)]"
+          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)] md:mt-6 md:h-14 md:max-w-3xl"
         >
           <button type="submit" className="flex h-7 w-7 items-center justify-center" aria-label={t("search")}>
             <svg className="h-5 w-5 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -425,13 +425,13 @@ export default function HomePage() {
         )}
       </header>
 
-      <section className="mt-5 bg-white py-3">
-        <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-1">
+      <section className="mx-auto mt-5 w-full max-w-7xl bg-white py-3 md:mt-7 md:px-8 xl:px-10">
+        <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] md:px-0 [&::-webkit-scrollbar]:hidden">
+          <div className="flex min-w-max snap-x snap-mandatory gap-2 pr-1 md:gap-4">
             {categoriesLoading
               ? [1, 2, 3].map((item) => (
-                  <div key={item} className="flex w-[80px] flex-col items-center gap-2">
-                    <div className="h-20 w-20 animate-pulse rounded-2xl bg-black/5" />
+                  <div key={item} className="flex w-[80px] flex-col items-center gap-2 md:w-[96px]">
+                    <div className="h-20 w-20 animate-pulse rounded-2xl bg-black/5 md:h-24 md:w-24" />
                     <div className="h-4 w-16 animate-pulse rounded bg-black/5" />
                   </div>
                 ))
@@ -444,16 +444,16 @@ export default function HomePage() {
                     <Link
                       key={category.id}
                       href={`/markets?view=products&categoryId=${category.id}`}
-                      className="flex w-[80px] shrink-0 snap-start flex-col items-center gap-1"
+                      className="flex w-[80px] shrink-0 snap-start flex-col items-center gap-1 md:w-[96px]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={categoryVisual.image}
                         alt=""
                         aria-hidden="true"
-                        className="h-20 w-20 object-contain drop-shadow-[0_5px_11px_rgba(0,0,0,0.12)]"
+                        className="h-20 w-20 object-contain drop-shadow-[0_5px_11px_rgba(0,0,0,0.12)] md:h-24 md:w-24"
                       />
-                      <span className="w-full whitespace-nowrap text-center text-xs font-semibold leading-4 text-black/80 font-inter">
+                      <span className="w-full whitespace-nowrap text-center text-xs font-semibold leading-4 text-black/80 font-inter md:text-sm">
                         {categoryLabel}
                       </span>
                     </Link>
@@ -463,8 +463,8 @@ export default function HomePage() {
         </div>
       </section>
 
-      <main className="px-4 pt-5">
-        <div className="relative h-36 overflow-hidden rounded-3xl bg-[#f5f7f4] shadow-[0_8px_24px_rgba(20,45,24,0.08)]">
+      <main className="mx-auto w-full max-w-7xl px-4 pt-5 md:px-8 md:pt-8 xl:px-10">
+        <div className="relative h-36 overflow-hidden rounded-3xl bg-[#f5f7f4] shadow-[0_8px_24px_rgba(20,45,24,0.08)] md:h-64 lg:h-72">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/10" />
@@ -482,7 +482,7 @@ export default function HomePage() {
             type="button"
             onClick={requestUserLocation}
             disabled={locationStatus === "loading"}
-            className="absolute bottom-3 left-3 inline-flex h-11 max-w-[62%] items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#4CAD73] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] disabled:opacity-80 font-inter"
+            className="absolute bottom-3 left-3 inline-flex h-11 max-w-[62%] items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#4CAD73] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] disabled:opacity-80 font-inter md:bottom-5 md:left-5 md:h-12 md:px-5 md:text-base"
           >
             {locationStatus === "loading" ? (
               <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" />
@@ -501,14 +501,14 @@ export default function HomePage() {
           <Link
             href="/map"
             aria-label="Открыть карту"
-            className="absolute bottom-3 right-3 inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#E5484D] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] font-inter"
+            className="absolute bottom-3 right-3 inline-flex h-11 items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#E5484D] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] font-inter md:bottom-5 md:right-5 md:h-12 md:px-5 md:text-base"
           >
             <MapPin className="h-4 w-4" />
             {t("map")}
           </Link>
         </div>
 
-        <section className="mt-8">
+        <section className="mt-8 md:mt-10">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-black font-inter">{t("recommendedForYou")}</h2>
             <Link href="/markets?view=products" className="flex items-center gap-1 text-base font-semibold text-[#4CAD73] font-inter">
@@ -518,10 +518,10 @@ export default function HomePage() {
           </div>
 
           {productsLoading ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
               {[1, 2, 3, 4].map((item) => (
                 <div key={item} className="animate-pulse">
-                  <div className="h-36 rounded-2xl bg-gray-100" />
+                  <div className="h-36 rounded-2xl bg-gray-100 md:h-48 xl:h-52" />
                   <div className="mt-3 h-5 rounded bg-gray-100" />
                   <div className="mt-2 h-4 w-2/3 rounded bg-gray-100" />
                 </div>
@@ -540,7 +540,7 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-x-6 md:gap-y-8 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <FeaturedProductCard key={product.id} product={product} />
               ))}
@@ -552,7 +552,7 @@ export default function HomePage() {
           href="https://t.me/FoodSave_kz"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#4CAD73] px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(76,173,115,0.20)] active:scale-[0.99] transition-transform"
+          className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#4CAD73] px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(76,173,115,0.20)] active:scale-[0.99] transition-transform md:mt-10 md:px-6 md:py-5"
         >
           <div className="min-w-0">
             <p className="text-base font-bold font-inter">{t("becomePartner")}</p>

@@ -22,8 +22,8 @@ export default function BottomNav({ active = "home" }: BottomNavProps) {
     `w-6 h-6 transition-transform duration-300 ${active === item ? "text-white" : "text-black"}`;
 
   return (
-    <nav className="fs-bottom-nav fixed bottom-0 left-0 right-0 z-40 rounded-t-3xl px-4 py-3 safe-area-inset-bottom">
-      <div className="flex items-center justify-around">
+    <nav className="fs-bottom-nav fixed bottom-0 left-0 right-0 z-40 rounded-t-3xl px-4 py-3 safe-area-inset-bottom md:bottom-5 md:left-1/2 md:right-auto md:w-[min(620px,calc(100%-48px))] md:-translate-x-1/2 md:rounded-2xl md:border md:border-black/[0.06] md:px-6 md:shadow-[0_14px_42px_rgba(20,45,24,0.14)]">
+      <div className="flex items-center justify-around md:justify-between">
         <Link href="/" className="flex flex-col items-center gap-1 group">
           <div className={itemClass("home")}>
             <svg className={iconClass("home")} viewBox="0 0 24 24" fill="none" stroke="currentColor">
