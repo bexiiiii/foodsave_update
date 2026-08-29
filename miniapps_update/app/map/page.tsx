@@ -252,7 +252,7 @@ export default function MapPage() {
             onClick={handleLocationAction}
             disabled={locationStatus === "loading"}
             aria-label="Показать мое местоположение"
-            className="absolute bottom-24 right-5 z-[500] flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#15551f] shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:scale-95 disabled:opacity-70"
+            className="absolute bottom-24 right-5 z-[500] flex h-12 w-12 items-center justify-center rounded-2xl bg-white text-[#4CAD73] shadow-[0_10px_30px_rgba(0,0,0,0.18)] active:scale-95 disabled:opacity-70"
           >
             {locationStatus === "loading" ? <LoaderCircle className="h-6 w-6 animate-spin" /> : <Crosshair className="h-6 w-6" />}
           </button>
@@ -294,7 +294,7 @@ export default function MapPage() {
           border-radius: 9999px;
           background: white;
           padding: 7px 10px;
-          color: #15551f;
+          color: #4cad73;
           font-size: 12px;
           font-weight: 800;
           line-height: 1;

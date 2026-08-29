@@ -50,7 +50,7 @@ export default function PickedUpOrderSheet({
 
         <div className="rounded-2xl bg-[#4CAD73]/10 p-4">
           <div className="flex gap-3">
-            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#15551F]" />
+            <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-[#4CAD73]" />
             <div>
               <p className="text-sm font-bold text-black">Подтвердите, что заказ уже у вас.</p>
               <p className="mt-1 text-xs font-medium leading-relaxed text-black/55">

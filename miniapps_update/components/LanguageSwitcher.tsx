@@ -41,7 +41,7 @@ const LanguageSwitcher = () => {
                 setIsOpen(false);
               }}
               className={`w-full flex items-center gap-3 px-4 py-2 transition-colors ${
-                language === lang.code ? 'bg-[#EDF7F0] text-[#15551F]' : 'bg-white'
+                language === lang.code ? 'bg-[#EDF7F0] text-[#4CAD73]' : 'bg-white'
               }`}
             >
               <span className="text-lg">{lang.flag}</span>

@@ -380,8 +380,8 @@ function MarketsContent() {
       onClick={onClick}
       className={`rounded-full px-4 py-2.5 text-sm font-bold transition-colors font-inter ${
         active
-          ? "bg-[#15551F] text-white shadow-[0_7px_18px_rgba(21,85,31,0.16)]"
-          : "border border-[#15551F]/10 bg-white text-[#15551F] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
+          ? "bg-[#4CAD73] text-white shadow-[0_7px_18px_rgba(76,173,115,0.20)]"
+          : "border border-[#4CAD73]/20 bg-white text-[#4CAD73] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
       }`}
     >
       {children}
@@ -394,8 +394,8 @@ function MarketsContent() {
       onClick={() => setSortMode(value)}
       className={`min-h-11 rounded-2xl px-3 py-2 text-sm font-bold leading-tight transition-colors font-inter ${
         sortMode === value
-          ? "bg-[#15551F] text-white shadow-[0_7px_18px_rgba(21,85,31,0.16)]"
-          : "border border-[#15551F]/10 bg-white text-[#15551F] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
+          ? "bg-[#4CAD73] text-white shadow-[0_7px_18px_rgba(76,173,115,0.20)]"
+          : "border border-[#4CAD73]/20 bg-white text-[#4CAD73] shadow-[0_4px_14px_rgba(17,37,44,0.05)]"
       }`}
     >
       {label}
@@ -525,7 +525,7 @@ function MarketsContent() {
             </div>
           )}
           <div className="mt-1 flex items-baseline gap-2">
-            <span className={`text-sm font-bold font-inter ${isReservable ? "text-[#15551F]" : "text-black/55"}`}>
+            <span className={`text-sm font-bold font-inter ${isReservable ? "text-[#4CAD73]" : "text-black/55"}`}>
               {formatPrice(price)}
             </span>
             {originalPrice > price && (
@@ -577,7 +577,7 @@ function MarketsContent() {
                   >
                     <span className="flex items-center gap-3 text-base font-bold text-black">
                       <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-white">
-                        <SlidersHorizontal className="h-4 w-4 text-[#15551F]" />
+                        <SlidersHorizontal className="h-4 w-4 text-[#4CAD73]" />
                       </span>
                       {t("filter")}
                     </span>
@@ -601,7 +601,7 @@ function MarketsContent() {
                       {activeFilterChips.slice(0, 4).map((chip) => (
                         <span
                           key={chip}
-                          className="rounded-full border border-[#15551F]/10 bg-[#EDF7F0] px-3 py-1.5 text-xs font-bold text-[#15551F] font-inter"
+                          className="rounded-full border border-[#4CAD73]/20 bg-[#EDF7F0] px-3 py-1.5 text-xs font-bold text-[#4CAD73] font-inter"
                         >
                           {chip}
                         </span>
@@ -648,7 +648,7 @@ function MarketsContent() {
                           <>
                             {canChooseProductStore && (
                             <label className="block">
-                              <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterWhere")}</span>
+                              <span className="mb-2 block text-sm font-bold text-[#4CAD73] font-inter">{t("filterWhere")}</span>
                               <div className="relative">
                                 <select
                                   value={selectedProductStoreId}
@@ -668,7 +668,7 @@ function MarketsContent() {
                             )}
                             {productCategoryOptions.length > 1 && (
                               <label className="block">
-                                <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterWhat")}</span>
+                                <span className="mb-2 block text-sm font-bold text-[#4CAD73] font-inter">{t("filterWhat")}</span>
                                 <div className="relative">
                                   <select
                                     value={selectedProductCategoryId}
@@ -687,7 +687,7 @@ function MarketsContent() {
                               </label>
                             )}
                             <div>
-                              <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterPrice")}</span>
+                              <span className="mb-2 block text-sm font-bold text-[#4CAD73] font-inter">{t("filterPrice")}</span>
                               <div className="grid grid-cols-2 gap-3">
                                 <input
                                   value={minPrice}
@@ -709,7 +709,7 @@ function MarketsContent() {
                         )}
 
                         <div>
-                          <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterQuickChoice")}</span>
+                          <span className="mb-2 block text-sm font-bold text-[#4CAD73] font-inter">{t("filterQuickChoice")}</span>
                           <div className="flex flex-wrap gap-2">
                             <FilterToggle active={favoritesOnly} onClick={() => setFavoritesOnly((value) => !value)}>
                               {t("filterFavorites")}
@@ -723,7 +723,7 @@ function MarketsContent() {
                         </div>
 
                         <div>
-                          <span className="mb-2 block text-sm font-bold text-[#15551F]/70 font-inter">{t("filterShowFirst")}</span>
+                          <span className="mb-2 block text-sm font-bold text-[#4CAD73] font-inter">{t("filterShowFirst")}</span>
                           <div className="grid grid-cols-2 gap-2">
                             {sortOptions.map(([value, label]) => (
                               <SortButton key={value} value={value} label={label} />
@@ -742,7 +742,7 @@ function MarketsContent() {
                         </button>
                         <button
                           type="submit"
-                          className="h-12 rounded-2xl bg-[#15551F] text-base font-bold text-white font-inter"
+                          className="h-12 rounded-2xl bg-[#4CAD73] text-base font-bold text-white shadow-[0_7px_18px_rgba(76,173,115,0.20)] font-inter"
                         >
                           {t("filterShow")} {visibleResultCount}
                         </button>

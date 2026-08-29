@@ -13,7 +13,7 @@ export default function NotFound() {
           {/* Empty box icon */}
           <div className="w-20 h-20 border-2 border-dashed border-[#4CAD73]/35 rounded-2xl flex items-center justify-center">
             <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center shadow-sm">
-              <Search className="w-6 h-6 text-[#15551F]" />
+              <Search className="w-6 h-6 text-[#4CAD73]" />
             </div>
           </div>
           
@@ -38,7 +38,7 @@ export default function NotFound() {
       <div className="w-full max-w-sm space-y-3 mb-8">
         <Link 
           href="/"
-          className="w-full bg-[#4CAD73] text-white py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 hover:bg-[#429565] active:scale-95 font-inter"
+          className="w-full bg-[#4CAD73] text-white py-4 px-6 rounded-2xl font-semibold text-center block transition-all duration-300 hover:bg-[#4CAD73] active:scale-95 font-inter"
         >
           <div className="flex items-center justify-center gap-2">
             <Home className="w-5 h-5" />
@@ -67,7 +67,7 @@ export default function NotFound() {
             // Используем стандартный способ открытия ссылки в Telegram
             window.open('https://t.me/FoodSave_kz', '_blank');
           }}
-          className="text-[#4CAD73] font-semibold text-sm font-inter flex items-center gap-1 mx-auto transition-colors hover:text-[#429565]"
+          className="text-[#4CAD73] font-semibold text-sm font-inter flex items-center gap-1 mx-auto transition-colors hover:text-[#4CAD73]"
         >
           <MessageCircle className="w-4 h-4" />
           Написать в поддержку

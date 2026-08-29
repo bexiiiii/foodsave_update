@@ -23,7 +23,7 @@ export default function NotificationsPage() {
       </header>
 
       <main className="flex min-h-[65vh] flex-col items-center justify-center px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EDF7F0] text-[#15551F] shadow-[0_8px_24px_rgba(21,85,31,0.08)]">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EDF7F0] text-[#4CAD73] shadow-[0_8px_24px_rgba(76,173,115,0.10)]">
           <BellOff className="h-7 w-7" strokeWidth={1.8} />
         </div>
         <h2 className="mt-5 text-lg font-bold text-black">Уведомлений пока нет</h2>

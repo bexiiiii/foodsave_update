@@ -361,7 +361,7 @@ export default function HomePage() {
             </div>
           )}
           <div className="mt-1 flex items-baseline gap-2">
-            <span className={`text-base font-bold font-inter ${isReservable ? "text-[#15551F]" : "text-black/55"}`}>
+            <span className={`text-base font-bold font-inter ${isReservable ? "text-[#4CAD73]" : "text-black/55"}`}>
               {formatPrice(price)}
             </span>
             {originalPrice > price && (
@@ -402,7 +402,7 @@ export default function HomePage() {
 
         <form
           onSubmit={handleSearch}
-          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#15551F]/35 focus-within:shadow-[0_5px_18px_rgba(21,85,31,0.10)]"
+          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)]"
         >
           <button type="submit" className="flex h-7 w-7 items-center justify-center" aria-label={t("search")}>
             <svg className="h-5 w-5 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -472,7 +472,7 @@ export default function HomePage() {
           {locationFeedback && (
             <div
               role="status"
-              className="absolute left-1/2 top-3 max-w-[calc(100%-24px)] -translate-x-1/2 rounded-full bg-[#15551F] px-4 py-2 text-center text-xs font-bold text-white shadow-[0_8px_24px_rgba(0,0,0,0.16)] font-inter"
+              className="absolute left-1/2 top-3 max-w-[calc(100%-24px)] -translate-x-1/2 rounded-full bg-[#4CAD73] px-4 py-2 text-center text-xs font-bold text-white shadow-[0_8px_24px_rgba(76,173,115,0.22)] font-inter"
             >
               {locationFeedback}
             </div>
@@ -482,7 +482,7 @@ export default function HomePage() {
             type="button"
             onClick={requestUserLocation}
             disabled={locationStatus === "loading"}
-            className="absolute bottom-3 left-3 inline-flex h-11 max-w-[62%] items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#15551F] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] disabled:opacity-80 font-inter"
+            className="absolute bottom-3 left-3 inline-flex h-11 max-w-[62%] items-center gap-2 rounded-full bg-white px-4 text-sm font-bold text-[#4CAD73] shadow-[0_8px_24px_rgba(0,0,0,0.14)] transition-transform active:scale-[0.97] disabled:opacity-80 font-inter"
           >
             {locationStatus === "loading" ? (
               <LoaderCircle className="h-4 w-4 shrink-0 animate-spin" />
@@ -511,7 +511,7 @@ export default function HomePage() {
         <section className="mt-8">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-xl font-bold text-black font-inter">{t("recommendedForYou")}</h2>
-            <Link href="/markets?view=products" className="flex items-center gap-1 text-base font-semibold text-[#15551F] font-inter">
+            <Link href="/markets?view=products" className="flex items-center gap-1 text-base font-semibold text-[#4CAD73] font-inter">
               {t("seeAll")}
               <ChevronRight className="h-5 w-5" />
             </Link>
@@ -529,7 +529,7 @@ export default function HomePage() {
             </div>
           ) : featuredProducts.length === 0 ? (
             <div className="flex items-center gap-3 border-y border-black/[0.06] py-4">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EDF7F0] text-[#15551F]">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#EDF7F0] text-[#4CAD73]">
                 <PackageOpen className="h-5 w-5" strokeWidth={2} />
               </div>
               <div className="min-w-0">
@@ -552,7 +552,7 @@ export default function HomePage() {
           href="https://t.me/FoodSave_kz"
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#15551F] px-4 py-3.5 text-white shadow-sm active:scale-[0.99] transition-transform"
+          className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#4CAD73] px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(76,173,115,0.20)] active:scale-[0.99] transition-transform"
         >
           <div className="min-w-0">
             <p className="text-base font-bold font-inter">{t("becomePartner")}</p>

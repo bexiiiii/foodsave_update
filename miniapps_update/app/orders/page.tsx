@@ -142,7 +142,7 @@ export default function OrdersPage() {
       case "PREPARING":
         return "bg-orange-500";
       case "READY_FOR_PICKUP":
-        return "bg-green-500";
+        return "bg-[#4CAD73]";
       case "OUT_FOR_DELIVERY":
         return "bg-cyan-500";
       case "CANCELLED":
@@ -200,7 +200,7 @@ export default function OrdersPage() {
             type="button"
             onClick={() => setActiveTab("active")}
             className={`h-11 rounded-xl text-sm font-bold transition-colors font-inter ${
-              activeTab === "active" ? "bg-white text-[#15551F] shadow-sm" : "text-black/50"
+              activeTab === "active" ? "bg-white text-[#4CAD73] shadow-sm" : "text-black/50"
             }`}
           >
             {t("activeOrders")} {activeOrders.length > 0 ? `(${activeOrders.length})` : ""}
@@ -209,7 +209,7 @@ export default function OrdersPage() {
             type="button"
             onClick={() => setActiveTab("history")}
             className={`h-11 rounded-xl text-sm font-bold transition-colors font-inter ${
-              activeTab === "history" ? "bg-white text-[#15551F] shadow-sm" : "text-black/50"
+              activeTab === "history" ? "bg-white text-[#4CAD73] shadow-sm" : "text-black/50"
             }`}
           >
             {t("orderHistory")}
@@ -278,7 +278,7 @@ export default function OrdersPage() {
                         type="button"
                         onClick={() => setOrderPendingPickupConfirmation(order)}
                         disabled={isCompletingOrderId === order.id || isCancellingOrderId === order.id}
-                        className="inline-flex items-center justify-end gap-1 rounded-full bg-[#4CAD73]/10 px-2.5 py-1 text-xs font-semibold text-[#15551F] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:text-[#4CAD73]/50"
+                        className="inline-flex items-center justify-end gap-1 rounded-full bg-[#4CAD73]/10 px-2.5 py-1 text-xs font-semibold text-[#4CAD73] transition-colors active:scale-95 disabled:cursor-not-allowed disabled:text-[#4CAD73]/50"
                       >
                         {isCompletingOrderId === order.id ? (
                           <>

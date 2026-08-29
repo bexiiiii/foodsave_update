@@ -339,7 +339,7 @@ export default function ProductDetailsPage() {
         <button
           type="button"
           onClick={() => setLoadAttempt((attempt) => attempt + 1)}
-          className="mt-6 h-12 w-full max-w-xs rounded-xl bg-[#15551F] font-bold text-white"
+          className="mt-6 h-12 w-full max-w-xs rounded-xl bg-[#4CAD73] font-bold text-white"
         >
           Повторить
         </button>
@@ -393,7 +393,7 @@ export default function ProductDetailsPage() {
         <div className="px-4 mt-4">
           <div className="rounded-2xl border border-[#4CAD73]/20 bg-[#F1FAF4] p-3 shadow-sm">
             <div className="flex items-start gap-3">
-              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#15551F]">
+              <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#4CAD73]">
                 <HelpCircle className="h-5 w-5" />
               </div>
               <button
@@ -516,7 +516,7 @@ export default function ProductDetailsPage() {
         {/* Category */}
         {product.categoryName && (
           <div className="mt-4">
-            <span className="inline-flex rounded-full border border-[#15551F]/10 bg-[#EDF7F0] px-3 py-1 text-sm text-[#15551F] font-inter">
+            <span className="inline-flex rounded-full border border-[#4CAD73]/20 bg-[#EDF7F0] px-3 py-1 text-sm text-[#4CAD73] font-inter">
               {product.categoryName}
             </span>
           </div>
@@ -624,7 +624,7 @@ export default function ProductDetailsPage() {
           <button
             onClick={handlePickupClick}
             disabled={!canReserve || isReserving}
-            className="flex-1 bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#429565] transition-colors"
+            className="flex-1 bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#4CAD73] transition-colors"
           >
             <span className="text-lg font-medium text-white font-inter">
               {isReserving ? 'Бронирование...' : 'Забронировать'}
@@ -739,7 +739,7 @@ export default function ProductDetailsPage() {
               <button
                 onClick={handlePhoneSubmit}
                 disabled={isReserving}
-                className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center gap-2 hover:bg-[#429565] active:scale-95 transition-all disabled:bg-gray-300"
+                className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center gap-2 hover:bg-[#4CAD73] active:scale-95 transition-all disabled:bg-gray-300"
               >
                 <Truck className="w-5 h-5 text-white" />
                 <span className="text-base font-semibold text-white font-inter">
@@ -789,7 +789,7 @@ export default function ProductDetailsPage() {
                 <div className="mt-4 bg-[#4CAD73]/10 rounded-2xl p-4">
                   <p className="text-sm text-black/70 font-inter text-center leading-relaxed">
                     Детали заказа и обновления статуса{"\n"}появятся в чате с ботом{" "}
-                    <span className="font-semibold text-[#3F8F5F]">FoodSave</span>.
+                    <span className="font-semibold text-[#4CAD73]">FoodSave</span>.
                   </p>
                 </div>
 
@@ -797,7 +797,7 @@ export default function ProductDetailsPage() {
                 <div className="mt-5 flex flex-col gap-3">
                   <button
                     onClick={() => router.push('/orders')}
-                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#429565] active:scale-95 transition-all"
+                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#4CAD73] active:scale-95 transition-all"
                   >
                     <span className="text-base font-semibold text-white font-inter">Мои заказы</span>
                   </button>
@@ -833,7 +833,7 @@ export default function ProductDetailsPage() {
                 <div className="mt-5 flex flex-col gap-3">
                   <button
                     onClick={() => setOrderModal(null)}
-                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#429565] active:scale-95 transition-all"
+                    className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#4CAD73] active:scale-95 transition-all"
                   >
                     <span className="text-base font-semibold text-white font-inter">Попробовать снова</span>
                   </button>

@@ -40,7 +40,7 @@ export default function SupportPage() {
           {/* Telegram Support */}
           <button
             onClick={handleTelegramSupport}
-            className="w-full bg-[#4CAD73] rounded-2xl p-6 transition-all duration-300 hover:bg-[#429565] active:scale-95"
+            className="w-full bg-[#4CAD73] rounded-2xl p-6 transition-all duration-300 hover:bg-[#4CAD73] active:scale-95"
           >
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
@@ -62,7 +62,7 @@ export default function SupportPage() {
           <div className="fs-surface rounded-2xl p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EDF7F0]">
-                <Mail className="w-6 h-6 text-[#15551F]" />
+                <Mail className="w-6 h-6 text-[#4CAD73]" />
               </div>
               <div className="flex-1">
                 <h3 className="text-black font-semibold text-lg font-inter">Email</h3>
@@ -75,7 +75,7 @@ export default function SupportPage() {
           <div className="fs-surface rounded-2xl p-5">
             <div className="flex items-center gap-4">
               <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#EDF7F0]">
-                <Phone className="w-6 h-6 text-[#15551F]" />
+                <Phone className="w-6 h-6 text-[#4CAD73]" />
               </div>
               <div className="flex-1">
                 <h3 className="text-black font-semibold text-lg font-inter">Телефон</h3>
