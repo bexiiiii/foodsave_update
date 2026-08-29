@@ -101,6 +101,16 @@ html[data-tg-fullscreen="true"] body {
   );
 }
 
+/* iOS may keep Telegram's floating header controls even when fullscreen is rejected. */
+html[data-tg-webapp="true"][data-tg-platform="ios"] body {
+  padding-top: max(
+    env(safe-area-inset-top),
+    var(--tg-content-safe-area-inset-top, 0px),
+    var(--tg-safe-area-top),
+    88px
+  );
+}
+
 /* Hide scrollbar for Chrome, Safari and Opera */
 .no-scrollbar::-webkit-scrollbar {
   display: none;

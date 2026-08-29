@@ -20,6 +20,7 @@ declare global {
         setBottomBarColor?: (color: string) => void;
         setHeaderColor: (color: string) => void;
         setBackgroundColor: (color: string) => void;
+        platform?: string;
         safeAreaInset?: TelegramSafeAreaInset;
         contentSafeAreaInset?: TelegramSafeAreaInset;
         onEvent?: (eventType: string, eventHandler: (eventData?: unknown) => void) => void;
@@ -93,6 +94,8 @@ export const useTelegram = () => {
       const tg = window.Telegram.WebApp;
       
       try {
+        document.documentElement.dataset.tgWebapp = 'true';
+        document.documentElement.dataset.tgPlatform = tg.platform || 'unknown';
         tg.ready();
         tg.setHeaderColor("#FFFFFF");
         tg.setBackgroundColor("#FFFFFF");
