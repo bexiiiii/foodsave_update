@@ -17,12 +17,12 @@ import FavoriteToast from "../components/FavoriteToast";
 import { useTranslation } from "../hooks/useTranslation";
 import { useAuth } from "../hooks/useAuth";
 import { useTelegram } from "../hooks/useTelegram";
-import { useCategories, useFeaturedProducts } from "../hooks/useData";
+import { useCategories, useRecommendedProducts } from "../hooks/useData";
 import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
 import { apiClient, canReserveProduct, Category, Product, isProductDisplayableInMiniApp } from "../lib/api";
 import ProductAvailabilityBadge from "../components/ProductAvailabilityBadge";
-import { getProductRecommendationScore, seedRecommendationsFromOrders } from "../lib/personalization";
+import { rankProductsForRecommendations, seedRecommendationsFromOrders } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
 import { isLocationFresh, readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
 
@@ -107,7 +107,11 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: categoriesResponse, isLoading: categoriesLoading } = useCategories();
-  const { data: featuredProductsResponse, isLoading: productsLoading } = useFeaturedProducts(0, 100);
+  const {
+    data: featuredProductsResponse,
+    isLoading: productsLoading,
+    refetch: refetchRecommendations,
+  } = useRecommendedProducts(0, 100);
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
@@ -118,27 +122,14 @@ export default function HomePage() {
   const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
   const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
-  const featuredProducts = safeArray(featuredProductsResponse?.content)
+  const featuredProducts = rankProductsForRecommendations(safeArray(featuredProductsResponse?.content)
     .filter((product: Product) => isProductDisplayableInMiniApp(product))
     .map((product) => ({
       ...product,
       isFavorite: favoriteOverrides[product.id] ?? product.isFavorite,
-    }))
-    .sort((a, b) => {
+    })), (product) => {
       void recommendationVersion;
-      const availabilityDiff = Number(canReserveProduct(b)) - Number(canReserveProduct(a));
-      if (availabilityDiff !== 0) return availabilityDiff;
-      const aScore = getProductRecommendationScore(a) + getLocationRecommendationBoost(userLocation, a);
-      const bScore = getProductRecommendationScore(b) + getLocationRecommendationBoost(userLocation, b);
-      const scoreDiff = bScore - aScore;
-      if (scoreDiff !== 0) return scoreDiff;
-
-      const aDistance = getDistanceKm(userLocation, a);
-      const bDistance = getDistanceKm(userLocation, b);
-      if (aDistance !== null && bDistance !== null) return aDistance - bDistance;
-      if (aDistance !== null) return -1;
-      if (bDistance !== null) return 1;
-      return 0;
+      return getLocationRecommendationBoost(userLocation, product);
     });
 
   const toggleProductFavorite = async (product: Product) => {
@@ -191,6 +182,12 @@ export default function HomePage() {
       isMounted = false;
     };
   }, [authLoading, user]);
+
+  useEffect(() => {
+    if (authLoading || !user?.id) return;
+
+    void refetchRecommendations();
+  }, [authLoading, user?.id, refetchRecommendations]);
 
   useEffect(() => {
     if (

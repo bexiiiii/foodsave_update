@@ -1,7 +1,9 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.domain.enums.ProductEventSource;
+import com.foodsave.backend.domain.enums.ProductEventType;
 import com.foodsave.backend.dto.analytics.ProductEventRequest;
+import com.foodsave.backend.dto.analytics.DecisionHelpResponse;
 import com.foodsave.backend.entity.Order;
 import com.foodsave.backend.entity.ProductEvent;
 import com.foodsave.backend.entity.User;
@@ -26,6 +28,16 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class ProductEventService {
+
+    private static final int DECISION_HELP_MIN_VIEWS = 4;
+    private static final int DECISION_HELP_MIN_UNIQUE_BOXES = 3;
+    private static final int DECISION_HELP_WINDOW_MINUTES = 20;
+    private static final int DECISION_HELP_COOLDOWN_HOURS = 24;
+    private static final Set<ProductEventType> DECISION_HELP_EVENTS = Set.of(
+            ProductEventType.DECISION_HELP_SHOWN,
+            ProductEventType.DECISION_HELP_OPENED,
+            ProductEventType.DECISION_HELP_DISMISSED
+    );
 
     private static final int MAX_METADATA_ENTRIES = 50;
     private static final Set<String> SENSITIVE_KEYS = Set.of(
@@ -98,6 +110,32 @@ public class ProductEventService {
         event.setMetadata(sanitizeMetadata(request.metadata()));
         event.setOccurredAt(LocalDateTime.now());
         productEventRepository.save(event);
+    }
+
+    @Transactional(readOnly = true)
+    public DecisionHelpResponse getDecisionHelp(String sessionId) {
+        Long userId = securityUtil.getCurrentUserId();
+        String normalizedSessionId = limit(sessionId == null || sessionId.isBlank() ? null : sessionId, 120);
+        if (userId == null && normalizedSessionId == null) {
+            return new DecisionHelpResponse(false, 0, 0);
+        }
+
+        if (productEventRepository.countRecentDecisionHelpEvents(
+                DECISION_HELP_EVENTS, userId, normalizedSessionId,
+                LocalDateTime.now().minusHours(DECISION_HELP_COOLDOWN_HOURS)) > 0) {
+            return new DecisionHelpResponse(false, 0, 0);
+        }
+
+        ProductEventRepository.DecisionHelpProjection activity = productEventRepository.findDecisionHelpActivity(
+                ProductEventType.BOX_VIEWED, userId, normalizedSessionId,
+                LocalDateTime.now().minusMinutes(DECISION_HELP_WINDOW_MINUTES));
+        long views = activity == null || activity.getViewCount() == null ? 0 : activity.getViewCount();
+        long uniqueBoxes = activity == null || activity.getUniqueBoxCount() == null ? 0 : activity.getUniqueBoxCount();
+        return new DecisionHelpResponse(
+                views >= DECISION_HELP_MIN_VIEWS && uniqueBoxes >= DECISION_HELP_MIN_UNIQUE_BOXES,
+                views,
+                uniqueBoxes
+        );
     }
 
     private User resolveUser(ProductEventRequest request) {

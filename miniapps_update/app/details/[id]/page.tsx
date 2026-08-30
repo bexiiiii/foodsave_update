@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import { CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
-import { apiClient, canReserveProduct, getProductAvailabilityPresentation, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
+import { useTranslation } from "../../../hooks/useTranslation";
+import { apiClient, canReserveProduct, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
 import ProductAvailabilityBadge from "../../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
@@ -13,9 +14,12 @@ import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
 import {
   dismissDecisionHelpPrompt,
+  canShowDecisionHelpPrompt,
   getPersonalizationSessionId,
+  markDecisionHelpPromptShown,
   recordProductReservation,
   recordProductView,
+  shouldCheckDecisionHelpServer,
   shouldShowDecisionHelpPrompt,
 } from "../../../lib/personalization";
 
@@ -41,6 +45,7 @@ export default function ProductDetailsPage() {
   const router = useRouter();
   const productId = params.id as string;
   const { } = useTelegram(); // Initialize Telegram singleton
+  const { t, language } = useTranslation();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [store, setStore] = useState<Store | null>(null);
@@ -79,6 +84,7 @@ export default function ProductDetailsPage() {
   useEffect(() => {
     let isMounted = true;
     let loadingStarted = false;
+    let decisionHelpTimer: number | undefined;
 
     const loadProduct = async () => {
       if (!productId || loadingStarted) return;
@@ -93,9 +99,7 @@ export default function ProductDetailsPage() {
           setIsFavorite(!!productData.isFavorite);
           try {
             const recordedView = recordProductView(productData);
-            window.setTimeout(() => {
-              if (isMounted) setShowDecisionHelpPrompt(shouldShowDecisionHelpPrompt());
-            }, 300);
+            const localEligible = shouldShowDecisionHelpPrompt();
             if (recordedView) {
               const attribution = readAttribution();
               const sessionId = getPersonalizationSessionId();
@@ -118,6 +122,32 @@ export default function ProductDetailsPage() {
                   discountPercent: productData.discountPercentage,
                 },
               });
+
+              decisionHelpTimer = window.setTimeout(async () => {
+                let serverEligible = false;
+                if (!localEligible && shouldCheckDecisionHelpServer()) {
+                  try {
+                    const serverDecision = await apiClient.shouldShowDecisionHelp(sessionId);
+                    serverEligible = serverDecision.showPrompt;
+                  } catch (decisionHelpError) {
+                    console.warn("Optional decision help check skipped:", decisionHelpError);
+                  }
+                }
+                if (!isMounted || !canShowDecisionHelpPrompt() || (!localEligible && !serverEligible)) return;
+
+                markDecisionHelpPromptShown();
+                setShowDecisionHelpPrompt(true);
+                void apiClient.trackEvent({
+                  eventType: "DECISION_HELP_SHOWN",
+                  sessionId,
+                  source: String(attribution.source || "direct"),
+                  partnerId: productData.storeId,
+                  branchId: productData.storeId,
+                  boxId: productData.id,
+                  language: localStorage.getItem("language") || undefined,
+                  idempotencyKey: `decision-help-shown-${sessionId}`,
+                });
+              }, localEligible ? 150 : 800);
             }
           } catch (personalizationError) {
             console.warn("Optional personalization skipped:", personalizationError);
@@ -147,6 +177,7 @@ export default function ProductDetailsPage() {
 
     return () => {
       isMounted = false;
+      if (decisionHelpTimer) window.clearTimeout(decisionHelpTimer);
     };
   }, [productId, loadAttempt]);
 
@@ -308,6 +339,15 @@ export default function ProductDetailsPage() {
     dismissDecisionHelpPrompt();
     setShowDecisionHelpPrompt(false);
     const supportUrl = "https://t.me/FoodSave_kz";
+    void apiClient.trackEvent({
+      eventType: "DECISION_HELP_OPENED",
+      sessionId: getPersonalizationSessionId(),
+      partnerId: product?.storeId,
+      branchId: product?.storeId,
+      boxId: product?.id,
+      language,
+      idempotencyKey: `decision-help-opened-${getPersonalizationSessionId()}`,
+    });
     if (window.Telegram?.WebApp?.openTelegramLink) {
       window.Telegram.WebApp.openTelegramLink(supportUrl);
       return;
@@ -350,15 +390,14 @@ export default function ProductDetailsPage() {
   if (!product || !isProductDisplayableInMiniApp(product)) {
     return (
       <div className="min-h-screen bg-white pb-24 flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
-        <p className="px-6 text-center text-black/50 font-inter">Бокс больше недоступен</p>
+        <p className="px-6 text-center text-black/50 font-inter">{t("boxNoLongerAvailable")}</p>
       </div>
     );
   }
 
   const productImages = resolveProductImages(product);
-  const availability = getProductAvailabilityPresentation(product);
   const canReserve = canReserveProduct(product);
-  const availabilityLabel = availability.label;
+  const availabilityLabel = t("boxReserved");
   const activeImage = productImages[activeImageIndex] || null;
   const hasMultipleImages = productImages.length > 1;
   const showPreviousImage = () => {
@@ -401,17 +440,26 @@ export default function ProductDetailsPage() {
                 onClick={openDecisionHelp}
                 className="min-w-0 flex-1 text-left"
               >
-                <p className="text-sm font-bold text-black font-inter">Сомневаетесь?</p>
+                <p className="text-sm font-bold text-black font-inter">{t("decisionHelpTitle")}</p>
                 <p className="mt-0.5 text-xs font-medium leading-relaxed text-black/55 font-inter">
-                  Напишите нам, и мы быстро поможем выбрать подходящий бокс.
+                  {t("decisionHelpDescription")}
                 </p>
               </button>
               <button
                 type="button"
-                aria-label="Скрыть подсказку"
+                aria-label={t("decisionHelpDismiss")}
                 onClick={() => {
                   dismissDecisionHelpPrompt();
                   setShowDecisionHelpPrompt(false);
+                  void apiClient.trackEvent({
+                    eventType: "DECISION_HELP_DISMISSED",
+                    sessionId: getPersonalizationSessionId(),
+                    partnerId: product.storeId,
+                    branchId: product.storeId,
+                    boxId: product.id,
+                    language,
+                    idempotencyKey: `decision-help-dismissed-${getPersonalizationSessionId()}`,
+                  });
                 }}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white text-black/35"
               >
@@ -428,7 +476,7 @@ export default function ProductDetailsPage() {
         <div className="flex items-center gap-3 mt-2 text-sm font-medium text-black/60 font-inter">
           <span>{Math.max(product.stockQuantity, 0)} шт.</span>
           <span>•</span>
-          <span>{canReserve ? "В наличии" : availabilityLabel}</span>
+          <span>{canReserve ? t("boxAvailable") : availabilityLabel}</span>
         </div>
         {store?.address && (
           <div className="flex items-center gap-2 mt-2 text-sm text-black/60 font-inter">
@@ -573,7 +621,7 @@ export default function ProductDetailsPage() {
         <div className="px-4 mt-4">
           <div className="bg-red-100 border border-red-200 rounded-xl p-3">
             <p className="text-red-800 text-sm font-inter">
-              {availability.message}
+              {t("boxReservedMessage")}
             </p>
           </div>
         </div>

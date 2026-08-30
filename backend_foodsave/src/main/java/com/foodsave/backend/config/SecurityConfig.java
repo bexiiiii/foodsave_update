@@ -58,6 +58,7 @@ public class SecurityConfig {
                 // Telegram webhooks - only Telegram servers should call these endpoints
                 .requestMatchers("/api/telegram/webhook/**").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/analytics/events").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/analytics/decision-help").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/notifications/groups/**").authenticated()
                 .requestMatchers(HttpMethod.POST, "/api/notifications/groups/*/opened").authenticated()
                 
@@ -69,6 +70,7 @@ public class SecurityConfig {
                 
                 // Public product endpoints - ТОЛЬКО GET для чтения
                 .requestMatchers(HttpMethod.GET, "/api/products/featured").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/products/recommended").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/categories").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/store/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products/category/**").permitAll()

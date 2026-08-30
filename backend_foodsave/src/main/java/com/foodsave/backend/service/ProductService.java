@@ -9,6 +9,9 @@ import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
 import com.foodsave.backend.repository.NotificationSettingsRepository;
+import com.foodsave.backend.repository.FavoriteRepository;
+import com.foodsave.backend.repository.ProductEventRepository;
+import com.foodsave.backend.domain.enums.ProductEventType;
 import com.foodsave.backend.domain.enums.ProductAvailabilityState;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.util.SecurityUtil;
@@ -23,6 +26,7 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.core.task.TaskExecutor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import java.util.Optional;
@@ -31,10 +35,14 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Set;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.Comparator;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,6 +62,8 @@ public class ProductService {
     private final NotificationGroupService notificationGroupService;
     private final AuthorizationService authorizationService;
     private final ProductAvailabilityService productAvailabilityService;
+    private final FavoriteRepository favoriteRepository;
+    private final ProductEventRepository productEventRepository;
 
     public ProductService(ProductRepository productRepository,
                           StoreRepository storeRepository,
@@ -66,7 +76,9 @@ public class ProductService {
                           RealtimeEventService realtimeEventService,
                           NotificationGroupService notificationGroupService,
                           AuthorizationService authorizationService,
-                          ProductAvailabilityService productAvailabilityService) {
+                          ProductAvailabilityService productAvailabilityService,
+                          FavoriteRepository favoriteRepository,
+                          ProductEventRepository productEventRepository) {
         this.productRepository = productRepository;
         this.storeRepository = storeRepository;
         this.categoryRepository = categoryRepository;
@@ -79,6 +91,8 @@ public class ProductService {
         this.notificationGroupService = notificationGroupService;
         this.authorizationService = authorizationService;
         this.productAvailabilityService = productAvailabilityService;
+        this.favoriteRepository = favoriteRepository;
+        this.productEventRepository = productEventRepository;
     }
 
     public Page<ProductDTO> getAllProducts(Pageable pageable) {
@@ -223,6 +237,98 @@ public class ProductService {
         return productRepository.findAllActiveAvailableProducts(
                         ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), pageable)
                 .map(this::convertToDTO);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProductDTO> getRecommendedProducts(Pageable pageable) {
+        int requestedSize = Math.max(1, Math.min(pageable.getPageSize(), 100));
+        int candidateSize = Math.max(100, Math.min(300, requestedSize * 4));
+        Page<Product> candidates = productRepository.findCustomerCatalog(
+                ProductAvailability.visibilityCutoff(), ProductAvailability.catalogDayStart(),
+                ProductAvailability.currentTimeText(), PageRequest.of(0, candidateSize));
+        List<ProductDTO> products = new ArrayList<>(toCustomerCatalogPage(candidates).getContent());
+
+        Long userId = securityUtil.getCurrentUserId();
+        Set<Long> favoriteProductIds = userId == null
+                ? Collections.emptySet()
+                : favoriteRepository.findFavoriteProductIds(userId);
+        products.forEach(product -> product.setIsFavorite(favoriteProductIds.contains(product.getId())));
+        Map<Long, Double> productScores = new HashMap<>();
+        Map<Long, Double> storeScores = new HashMap<>();
+
+        if (userId != null) {
+            LocalDateTime since = LocalDateTime.now().minusDays(90);
+            for (ProductEventRepository.ProductSignalProjection signal
+                    : productEventRepository.findProductSignalsForUser(userId, since)) {
+                double recency = recommendationRecency(signal.getLastOccurredAt());
+                double weight = recommendationEventWeight(signal.getEventType());
+                double score = Math.min(signal.getCount() == null ? 0 : signal.getCount(), 12) * weight * recency;
+                productScores.merge(signal.getBoxId(), score, Double::sum);
+                if (signal.getPartnerId() != null) {
+                    storeScores.merge(signal.getPartnerId(), score * 0.18, Double::sum);
+                }
+            }
+        }
+
+        products.sort(Comparator
+                .comparingDouble((ProductDTO product) -> recommendationScore(
+                        product, favoriteProductIds, productScores, storeScores)).reversed()
+                .thenComparing(ProductDTO::getCreatedAt, Comparator.nullsLast(Comparator.reverseOrder())));
+
+        List<ProductDTO> diversified = diversifyRecommendations(products);
+        int from = Math.min(pageable.getPageNumber() * requestedSize, diversified.size());
+        int to = Math.min(from + requestedSize, diversified.size());
+        return new PageImpl<>(diversified.subList(from, to), PageRequest.of(pageable.getPageNumber(), requestedSize),
+                candidates.getTotalElements());
+    }
+
+    private double recommendationScore(ProductDTO product, Set<Long> favoriteProductIds,
+                                       Map<Long, Double> productScores, Map<Long, Double> storeScores) {
+        double score = productScores.getOrDefault(product.getId(), 0.0)
+                + storeScores.getOrDefault(product.getStoreId(), 0.0);
+        if (favoriteProductIds.contains(product.getId())) score += 90;
+        if (Boolean.TRUE.equals(product.getCanReserve())) score += 200;
+        if (product.getDiscountPercentage() != null) score += Math.min(product.getDiscountPercentage(), 60);
+        if (product.getSortOrder() != null) score += Math.max(20 - product.getSortOrder(), 0);
+        return score;
+    }
+
+    private double recommendationEventWeight(ProductEventType type) {
+        return switch (type) {
+            case ORDER_COMPLETED, ORDER_PICKED_UP -> 45;
+            case RESERVATION_CREATED, RESERVATION_CONFIRMED -> 32;
+            case BOX_FAVORITED -> 20;
+            case RESERVATION_STARTED, RESERVATION_BUTTON_CLICKED -> 8;
+            case BOX_VIEWED -> 2;
+            case RESERVATION_CANCELLED_BY_USER, RESERVATION_REJECTED, CUSTOMER_NO_SHOW -> -8;
+            default -> 0;
+        };
+    }
+
+    private double recommendationRecency(LocalDateTime occurredAt) {
+        if (occurredAt == null) return 0.5;
+        long ageDays = Math.max(0, java.time.Duration.between(occurredAt, LocalDateTime.now()).toDays());
+        return Math.max(0.25, 1.0 - Math.min(ageDays, 90) / 120.0);
+    }
+
+    private List<ProductDTO> diversifyRecommendations(List<ProductDTO> ranked) {
+        List<ProductDTO> remaining = new ArrayList<>(ranked);
+        List<ProductDTO> result = new ArrayList<>(ranked.size());
+        Map<Long, Integer> storeCounts = new HashMap<>();
+        while (!remaining.isEmpty()) {
+            int selectedIndex = 0;
+            for (int i = 0; i < Math.min(remaining.size(), 12); i++) {
+                ProductDTO candidate = remaining.get(i);
+                if (storeCounts.getOrDefault(candidate.getStoreId(), 0) < 2) {
+                    selectedIndex = i;
+                    break;
+                }
+            }
+            ProductDTO selected = remaining.remove(selectedIndex);
+            result.add(selected);
+            storeCounts.merge(selected.getStoreId(), 1, Integer::sum);
+        }
+        return result;
     }
 
     @Caching(evict = {
@@ -616,6 +722,8 @@ public class ProductService {
                 .storeName(product.getStore().getName())
                 .storeLogo(product.getStore().getLogo())
                 .storeAddress(product.getStore().getAddress())
+                .storeLatitude(product.getStore().getLatitude())
+                .storeLongitude(product.getStore().getLongitude())
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .images(images)

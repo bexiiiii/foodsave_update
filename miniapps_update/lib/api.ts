@@ -29,6 +29,11 @@ const getApiBaseUrl = (): string => {
 
 const API_BASE_URL = getApiBaseUrl();
 
+const isRateLimitError = (error: unknown) => {
+  const message = error instanceof Error ? error.message : String(error || '');
+  return /(?:\b429\b|too many requests|rate limit)/i.test(message);
+};
+
 // API response types
 export interface ApiResponse<T> {
   data: T;
@@ -762,6 +767,7 @@ class ApiClient {
       return response;
     } catch (error) {
       console.error('Failed to fetch featured products:', error);
+      if (isRateLimitError(error)) throw error;
       
       // Try fallback to all products if featured fails
       try {
@@ -797,6 +803,7 @@ class ApiClient {
       return response;
     } catch (error) {
       console.error('Failed to fetch recommended products:', error);
+      if (isRateLimitError(error)) throw error;
       return this.getFeaturedProducts(page, size, minPrice, maxPrice);
     }
   }
@@ -1126,12 +1133,12 @@ export const getProductAvailabilityPresentation = (product: Product | null | und
     case 'SOLD_OUT':
       return {
         state,
-        label: 'Нет в наличии',
-        message: 'Свободных боксов больше нет. Посмотрите другие доступные варианты.',
+        label: 'Забронировано',
+        message: 'Все боксы уже забронированы. Посмотрите другие доступные варианты.',
         tone: 'sold-out' as const,
       };
     case 'UNAVAILABLE':
-      return { state, label: 'Недоступно', message: 'Этот бокс сейчас недоступен для бронирования.', tone: 'unavailable' as const };
+      return { state, label: 'Забронировано', message: 'Этот бокс уже нельзя забронировать.', tone: 'unavailable' as const };
     default:
       return { state, label: 'В наличии', message: '', tone: 'available' as const };
   }

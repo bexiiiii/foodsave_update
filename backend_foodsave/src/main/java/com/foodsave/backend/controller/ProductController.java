@@ -60,6 +60,12 @@ public class ProductController {
             Pageable pageable) {
         return ResponseEntity.ok(productService.getFeaturedProducts(includeUnavailable, pageable));
     }
+
+    @GetMapping("/recommended")
+    @Operation(summary = "Get personalized product recommendations")
+    public ResponseEntity<Page<ProductDTO>> getRecommendedProducts(Pageable pageable) {
+        return ResponseEntity.ok(productService.getRecommendedProducts(pageable));
+    }
     
     @PostMapping
     @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")

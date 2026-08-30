@@ -3,6 +3,7 @@ package com.foodsave.backend.controller;
 import com.foodsave.backend.dto.AnalyticsDTO;
 import com.foodsave.backend.dto.analytics.ProductEventRequest;
 import com.foodsave.backend.dto.analytics.ProductEventResponse;
+import com.foodsave.backend.dto.analytics.DecisionHelpResponse;
 import com.foodsave.backend.service.AnalyticsService;
 import com.foodsave.backend.service.ProductEventService;
 import com.foodsave.backend.exception.ApiException;
@@ -30,6 +31,12 @@ public class AnalyticsController {
     public ResponseEntity<ProductEventResponse> trackProductEvent(@Valid @RequestBody ProductEventRequest request) {
         productEventService.trackAsync(request);
         return ResponseEntity.accepted().body(new ProductEventResponse(true));
+    }
+
+    @GetMapping("/decision-help")
+    public ResponseEntity<DecisionHelpResponse> getDecisionHelp(
+            @RequestParam(required = false) String sessionId) {
+        return ResponseEntity.ok(productEventService.getDecisionHelp(sessionId));
     }
 
     @GetMapping("/daily-sales")

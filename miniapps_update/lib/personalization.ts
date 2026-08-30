@@ -18,10 +18,21 @@ const INTERACTIONS_KEY = "foodsave_product_interactions_v1";
 const RECENT_VIEWS_KEY = "foodsave_recent_product_views_v1";
 const HELP_DISMISSED_KEY = "foodsave_decision_help_dismissed_at_v1";
 const HELP_SHOWN_SESSION_KEY = "foodsave_decision_help_shown_v2";
+const HELP_SERVER_CHECKED_AT_KEY = "foodsave_decision_help_checked_at_v1";
 const MAX_INTERACTIONS = 60;
 const RECENT_VIEW_WINDOW_MS = 20 * 60 * 1000;
 const HELP_COOLDOWN_MS = 24 * 60 * 60 * 1000;
 const SAME_PRODUCT_VIEW_COOLDOWN_MS = 45 * 1000;
+const HELP_SERVER_CHECK_COOLDOWN_MS = 60 * 1000;
+const NON_POSITIVE_ORDER_STATUSES = new Set([
+  "CANCELLED",
+  "CANCELLED_BY_USER",
+  "CANCELLED_BY_PARTNER",
+  "EXPIRED",
+  "NO_SHOW",
+  "REJECTED",
+  "REFUNDED",
+]);
 
 const isBrowser = () => typeof window !== "undefined";
 
@@ -139,6 +150,8 @@ export const seedRecommendationsFromOrders = (orders: Order[]) => {
   let changed = false;
 
   orders.forEach((order) => {
+    if (NON_POSITIVE_ORDER_STATUSES.has(order.status)) return;
+
     const orderItems = Array.isArray(order.orderItems)
       ? order.orderItems
       : Array.isArray(order.items)
@@ -186,8 +199,10 @@ export const seedRecommendationsFromOrders = (orders: Order[]) => {
   return changed;
 };
 
-export const getProductRecommendationScore = (product: Product) => {
-  const interactions = readInteractions();
+const calculateProductRecommendationScore = (
+  product: Product,
+  interactions: Record<string, ProductInteraction>
+) => {
   const own = interactions[String(product.id)];
   const storeAffinity = Object.values(interactions)
     .filter((item) => item.storeId && item.storeId === product.storeId)
@@ -208,20 +223,101 @@ export const getProductRecommendationScore = (product: Product) => {
   );
 };
 
-export const shouldShowDecisionHelpPrompt = () => {
+export const getProductRecommendationScore = (product: Product) =>
+  calculateProductRecommendationScore(product, readInteractions());
+
+export const rankProductsForRecommendations = (
+  products: Product[],
+  additionalScore: (product: Product) => number = () => 0
+) => {
+  const interactions = readInteractions();
+  const remaining = products
+    .map((product) => ({
+      product,
+      baseScore:
+        calculateProductRecommendationScore(product, interactions)
+        + additionalScore(product)
+        + (product.canReserve === false ? -1000 : 0),
+    }))
+    .sort((a, b) => b.baseScore - a.baseScore);
+  const ranked: Product[] = [];
+  const storeCounts = new Map<number, number>();
+  const categoryCounts = new Map<string, number>();
+
+  while (remaining.length > 0) {
+    let bestIndex = 0;
+    let bestScore = Number.NEGATIVE_INFINITY;
+    const candidateWindow = Math.min(remaining.length, 12);
+    for (let index = 0; index < candidateWindow; index += 1) {
+      const { product, baseScore } = remaining[index];
+      const storeCount = storeCounts.get(product.storeId) || 0;
+      const categoryKey = product.categoryName || String(product.categoryId || "unknown");
+      const categoryCount = categoryCounts.get(categoryKey) || 0;
+      const diversityPenalty = storeCount * 36 + categoryCount * 10;
+      const score = baseScore - diversityPenalty;
+      if (score > bestScore) {
+        bestScore = score;
+        bestIndex = index;
+      }
+    }
+
+    const [selected] = remaining.splice(bestIndex, 1);
+    ranked.push(selected.product);
+    storeCounts.set(selected.product.storeId, (storeCounts.get(selected.product.storeId) || 0) + 1);
+    const categoryKey = selected.product.categoryName || String(selected.product.categoryId || "unknown");
+    categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) || 0) + 1);
+  }
+
+  return ranked;
+};
+
+export const canShowDecisionHelpPrompt = () => {
   if (!isBrowser()) return false;
   try {
     if (sessionStorage.getItem(HELP_SHOWN_SESSION_KEY) === "1") return false;
-    const now = Date.now();
     const dismissedAt = Number(localStorage.getItem(HELP_DISMISSED_KEY) || 0);
-    if (dismissedAt && now - dismissedAt < HELP_COOLDOWN_MS) return false;
+    return !dismissedAt || Date.now() - dismissedAt >= HELP_COOLDOWN_MS;
+  } catch {
+    return false;
+  }
+};
+
+export const markDecisionHelpPromptShown = () => {
+  if (!isBrowser()) return;
+  try {
+    sessionStorage.setItem(HELP_SHOWN_SESSION_KEY, "1");
+  } catch {
+    // Personalization remains optional in restricted browser storage modes.
+  }
+};
+
+export const shouldShowDecisionHelpPrompt = () => {
+  if (!canShowDecisionHelpPrompt()) return false;
+  try {
+    const now = Date.now();
+    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+      .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
+    const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
+    return recentViews.length >= 4 && uniqueProductIds.size >= 3;
+  } catch {
+    return false;
+  }
+};
+
+export const shouldCheckDecisionHelpServer = () => {
+  if (!canShowDecisionHelpPrompt()) return false;
+  try {
+    const now = Date.now();
+    const lastCheckedAt = Number(sessionStorage.getItem(HELP_SERVER_CHECKED_AT_KEY) || 0);
+    if (lastCheckedAt && now - lastCheckedAt < HELP_SERVER_CHECK_COOLDOWN_MS) return false;
 
     const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
       .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
     const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
-    const shouldShow = recentViews.length >= 4 && uniqueProductIds.size >= 3;
-    if (shouldShow) sessionStorage.setItem(HELP_SHOWN_SESSION_KEY, "1");
-    return shouldShow;
+    if (recentViews.length < 3 || uniqueProductIds.size < 2) return false;
+
+    sessionStorage.setItem(HELP_SERVER_CHECKED_AT_KEY, String(now));
+    return true;
   } catch {
     return false;
   }
