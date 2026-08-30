@@ -70,6 +70,7 @@ export default function ProductDetailsPage() {
   // so someone who scrolled past the inline warning still has to acknowledge it.
   const [showClosingSoonConfirm, setShowClosingSoonConfirm] = useState(false);
   const [pendingReserveType, setPendingReserveType] = useState<'PICKUP' | 'COURIER' | null>(null);
+  const [reserveConfirm, setReserveConfirm] = useState<{ deliveryType: 'PICKUP' | 'COURIER'; contactPhone?: string } | null>(null);
 
   // Load user profile phone on mount to pre-fill and use in reservations
   useEffect(() => {
@@ -263,7 +264,7 @@ export default function ProductDetailsPage() {
   };
 
   const proceedWithPickup = () => {
-    handleReserve('PICKUP', phoneNumber || undefined);
+    setReserveConfirm({ deliveryType: 'PICKUP', contactPhone: phoneNumber || undefined });
   };
 
   const proceedWithCourier = () => {
@@ -306,7 +307,14 @@ export default function ProductDetailsPage() {
       return;
     }
     setShowPhoneModal(false);
-    handleReserve('COURIER', phoneNumber.trim());
+    setReserveConfirm({ deliveryType: 'COURIER', contactPhone: phoneNumber.trim() });
+  };
+
+  const handleReserveConfirm = () => {
+    const pending = reserveConfirm;
+    setReserveConfirm(null);
+    if (!pending) return;
+    handleReserve(pending.deliveryType, pending.contactPhone);
   };
 
   const calculateTotalPrice = () => {
@@ -700,6 +708,84 @@ export default function ProductDetailsPage() {
           </button>
         </div>}
       </div>
+
+      {/* Reservation Confirmation — final review of what is being booked */}
+      {reserveConfirm && product && (
+        <div className="fixed inset-0 z-[75] flex items-end justify-center bg-black/50 px-4 pb-6">
+          <div className="w-full bg-white rounded-3xl p-6 shadow-2xl" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 bg-[#4CAD73] rounded-2xl flex items-center justify-center">
+                <CheckCircle className="w-7 h-7 text-white" strokeWidth={2} />
+              </div>
+            </div>
+
+            <h2 className="text-xl font-semibold text-black text-center font-inter mb-1.5">
+              {t("confirmReservationTitle")}
+            </h2>
+            <p className="text-[15px] leading-relaxed text-black/55 text-center font-inter mb-5">
+              {t("confirmReservationSubtitle")}
+            </p>
+
+            <div className="fs-surface rounded-2xl p-4 mb-5 flex flex-col gap-2.5">
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationBox")}</span>
+                <span className="text-sm font-medium text-black font-inter text-right">{product.name}</span>
+              </div>
+              {store?.name && (
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationStore")}</span>
+                  <span className="text-sm font-medium text-black font-inter text-right">{store.name}</span>
+                </div>
+              )}
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationQuantity")}</span>
+                <span className="text-sm font-medium text-black font-inter text-right">
+                  {t("confirmReservationPieces").replace("{count}", String(quantity))}
+                </span>
+              </div>
+              <div className="flex items-start justify-between gap-3">
+                <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationMethod")}</span>
+                <span className="text-sm font-medium text-black font-inter text-right">
+                  {reserveConfirm.deliveryType === 'COURIER'
+                    ? t("confirmReservationCourier")
+                    : t("confirmReservationPickup")}
+                </span>
+              </div>
+              {store?.closingHours && reserveConfirm.deliveryType === 'PICKUP' && (
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationPickupBy")}</span>
+                  <span className="text-sm font-medium text-black font-inter text-right">{store.closingHours}</span>
+                </div>
+              )}
+              <div className="h-px bg-black/[0.07] my-0.5" />
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm text-black/50 font-inter shrink-0">{t("confirmReservationTotal")}</span>
+                <span className="text-base font-bold text-[#15551F] font-inter text-right">
+                  {formatPrice(calculateTotalPrice())}
+                </span>
+              </div>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={handleReserveConfirm}
+                disabled={isReserving}
+                className="w-full bg-[#4CAD73] rounded-2xl h-[50px] flex items-center justify-center hover:opacity-90 active:scale-[0.97] transition-transform disabled:bg-gray-300"
+              >
+                <span className="text-[17px] font-semibold text-white font-inter">
+                  {isReserving ? 'Бронирование...' : t("confirmReservationSubmit")}
+                </span>
+              </button>
+              <button
+                onClick={() => setReserveConfirm(null)}
+                className="fs-surface w-full rounded-2xl h-[50px] flex items-center justify-center active:scale-[0.97] transition-transform"
+              >
+                <span className="text-[17px] font-medium text-black font-inter">{t("confirmReservationCancel")}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Closing Soon Confirmation — required acknowledgement before the reserve goes through */}
       {showClosingSoonConfirm && product && (
