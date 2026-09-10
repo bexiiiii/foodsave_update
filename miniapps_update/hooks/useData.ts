@@ -136,10 +136,16 @@ export const useFeaturedProducts = (page = 0, size = 20) => {
 };
 
 export const useRecommendedProducts = (page = 0, size = 20) => {
-  const queryFn = useCallback(
-    () => apiClient.getRecommendedProducts(page, size),
-    [page, size]
-  );
+  const queryFn = useCallback(() => {
+    // Keep the home feed usable during rolling deployments where a cached
+    // client bundle can briefly lag behind the hook bundle.
+    const getRecommendations = apiClient.getRecommendedProducts;
+    if (typeof getRecommendations === 'function') {
+      return getRecommendations.call(apiClient, page, size);
+    }
+
+    return apiClient.getFeaturedProducts(page, size);
+  }, [page, size]);
 
   const defaultValue: PaginationResponse<Product> = {
     content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true,
