@@ -497,10 +497,14 @@ public class ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
+        Store targetStore = storeRepository.findById(productDTO.getStoreId())
+                .orElseThrow(() -> new EntityNotFoundException("Store not found"));
+        authorizationService.requireCanManageStore(targetStore.getId());
         Category category = categoryRepository.findById(productDTO.getCategoryId())
                 .orElseThrow(() -> new EntityNotFoundException("Category not found"));
         
         updateProductFromDTO(product, productDTO);
+        product.setStore(targetStore);
         product.setCategory(category);
         return convertToDTO(productRepository.save(product));
     }
