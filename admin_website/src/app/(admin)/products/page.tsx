@@ -105,35 +105,10 @@ export default function ProductsPage() {
 
     const fetchStats = async () => {
         try {
-            // Calculate stats from products data instead of API call
-            if (products.length > 0) {
-                const totalProducts = products.length;
-                const activeProducts = products.filter(p => p.status === 'AVAILABLE').length;
-                const outOfStockProducts = products.filter(p => p.status === 'OUT_OF_STOCK').length;
-                const lowStockProducts = products.filter(p => p.stockQuantity < 10).length;
-                const totalValue = products.reduce((sum, p) => sum + (p.price * p.stockQuantity), 0);
-                const averagePrice = products.reduce((sum, p) => sum + p.price, 0) / products.length;
-
-                setStats({
-                    totalProducts,
-                    activeProducts,
-                    outOfStockProducts,
-                    lowStockProducts,
-                    totalValue,
-                    averagePrice
-                });
-            } else {
-                setStats({
-                    totalProducts: 0,
-                    activeProducts: 0,
-                    outOfStockProducts: 0,
-                    lowStockProducts: 0,
-                    totalValue: 0,
-                    averagePrice: 0
-                });
-            }
+            setStats(await ProductService.getProductStats());
         } catch (error) {
-            console.error('Failed to calculate product stats:', error);
+            console.error('Failed to load product stats:', error);
+            setStats(null);
         }
     };
 
@@ -520,7 +495,6 @@ export default function ProductsPage() {
             }
 
             await fetchProducts();
-            await fetchStats();
             closeModal();
             resetForm();
         } catch (error: any) {
@@ -544,10 +518,9 @@ export default function ProductsPage() {
             await ProductService.deleteProduct(id);
             toast.success('Товар успешно удален');
             await fetchProducts();
-            await fetchStats();
         } catch (error) {
             console.error('Error deleting product:', error);
-            toast.error('Не удалось удалить товар');
+            toast.error('Не удалось удалить товар. Обновите страницу и войдите снова, если сессия истекла.');
         }
     };
 

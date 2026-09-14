@@ -4,6 +4,7 @@ import com.foodsave.backend.entity.Product;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.Category;
 import com.foodsave.backend.dto.ProductDTO;
+import com.foodsave.backend.dto.ProductStatsDTO;
 import com.foodsave.backend.exception.InsufficientStockException;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
@@ -128,7 +129,7 @@ public class ProductService {
             
             // Store users see only their store's products
             log.info("DEBUG: User is store owner, fetching store products");
-            Set<Long> userStoreIds = securityUtil.getCurrentUserStoreIds();
+            Set<Long> userStoreIds = getAccessibleStoreIds();
             log.info("DEBUG: User store IDs: {}", userStoreIds);
             if (userStoreIds.isEmpty()) {
                 return Page.empty(pageable);
@@ -136,6 +137,51 @@ public class ProductService {
             return productRepository.findByStoreIdIn(userStoreIds, pageable)
                     .map(this::convertToDTO);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ProductStatsDTO getProductStats() {
+        if (securityUtil.isCurrentUserAdmin()) {
+            return toProductStats(productRepository.getProductStats());
+        }
+
+        Set<Long> storeIds = getAccessibleStoreIds();
+        if (storeIds.isEmpty()) {
+            return new ProductStatsDTO(0, 0, 0, 0, BigDecimal.ZERO, 0.0);
+        }
+        return toProductStats(productRepository.getProductStatsByStoreIdIn(storeIds));
+    }
+
+    private ProductStatsDTO toProductStats(Object[] values) {
+        if (values == null || values.length < 6) {
+            return new ProductStatsDTO(0, 0, 0, 0, BigDecimal.ZERO, 0.0);
+        }
+        return new ProductStatsDTO(
+                ((Number) values[0]).longValue(),
+                ((Number) values[1]).longValue(),
+                ((Number) values[2]).longValue(),
+                ((Number) values[3]).longValue(),
+                values[4] instanceof BigDecimal
+                        ? (BigDecimal) values[4]
+                        : BigDecimal.valueOf(((Number) values[4]).doubleValue()),
+                ((Number) values[5]).doubleValue());
+    }
+
+    private Set<Long> getAccessibleStoreIds() {
+        Long userId = securityUtil.getCurrentUserId();
+        if (userId == null) {
+            return Collections.emptySet();
+        }
+
+        com.foodsave.backend.entity.User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            return Collections.emptySet();
+        }
+
+        List<Store> accessibleStores = user.getRole() == com.foodsave.backend.domain.enums.UserRole.STORE_MANAGER
+                ? storeRepository.findAllByManager(user)
+                : storeRepository.findByOwnerId(userId);
+        return accessibleStores.stream().map(Store::getId).collect(Collectors.toSet());
     }
 
     private Long getCurrentManagedStoreId(Long managerId) {

@@ -51,6 +51,24 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     // Add method for filtering by multiple store IDs
     Page<Product> findByStoreIdIn(Set<Long> storeIds, Pageable pageable);
+
+    @Query("SELECT COUNT(p), " +
+           "SUM(CASE WHEN p.active = true AND p.status = 'AVAILABLE' AND COALESCE(p.stockQuantity, 0) > 0 THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN p.status = 'OUT_OF_STOCK' OR COALESCE(p.stockQuantity, 0) <= 0 THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
+           "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
+           "COALESCE(AVG(p.price), 0) " +
+           "FROM Product p")
+    Object[] getProductStats();
+
+    @Query("SELECT COUNT(p), " +
+           "SUM(CASE WHEN p.active = true AND p.status = 'AVAILABLE' AND COALESCE(p.stockQuantity, 0) > 0 THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN p.status = 'OUT_OF_STOCK' OR COALESCE(p.stockQuantity, 0) <= 0 THEN 1 ELSE 0 END), " +
+           "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
+           "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
+           "COALESCE(AVG(p.price), 0) " +
+           "FROM Product p WHERE p.store.id IN :storeIds")
+    Object[] getProductStatsByStoreIdIn(@Param("storeIds") Set<Long> storeIds);
     
     Page<Product> findByCategory(Category category, Pageable pageable);
     

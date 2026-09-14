@@ -2,6 +2,7 @@ package com.foodsave.backend.controller;
 
 import com.foodsave.backend.domain.enums.Permission;
 import com.foodsave.backend.dto.ProductDTO;
+import com.foodsave.backend.dto.ProductStatsDTO;
 import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,6 +31,13 @@ public class ProductController {
     @Operation(summary = "Get all products with pagination")
     public ResponseEntity<Page<ProductDTO>> getAllProducts(Pageable pageable) {
         return ResponseEntity.ok(productService.getAllProducts(pageable));
+    }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")
+    @Operation(summary = "Get product statistics for the current administrator")
+    public ResponseEntity<ProductStatsDTO> getProductStats() {
+        return ResponseEntity.ok(productService.getProductStats());
     }
     
     @GetMapping("/{id}")

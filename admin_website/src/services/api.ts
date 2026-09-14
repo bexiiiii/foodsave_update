@@ -8,6 +8,15 @@ const api = axios.create({
     headers: DEFAULT_HEADERS
 });
 
+const isJwtExpired = (token: string): boolean => {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')));
+        return typeof payload.exp === 'number' && payload.exp * 1000 <= Date.now();
+    } catch {
+        return false;
+    }
+};
+
 // Add request interceptor for authentication
 api.interceptors.request.use((config) => {
     const token = safeLocalStorage.getItem('token');
@@ -47,7 +56,16 @@ api.interceptors.response.use(
                     break;
                 case 403:
                     console.error('Access denied - Insufficient permissions');
-                    window.location.href = '/unauthorized';
+                    const currentToken = safeLocalStorage.getItem('token');
+                    if (currentToken && isJwtExpired(currentToken)) {
+                        safeLocalStorage.removeItem('token');
+                        safeLocalStorage.removeItem('user');
+                        if (typeof window !== 'undefined') {
+                            window.location.href = '/login?reason=session-expired';
+                        }
+                    } else if (typeof window !== 'undefined') {
+                        window.location.href = '/unauthorized';
+                    }
                     break;
                 case 500:
                     console.error('Server error - Please try again later');

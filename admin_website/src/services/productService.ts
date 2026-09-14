@@ -83,7 +83,7 @@ export class ProductService {
   static async searchProducts(query: string, page = 0, size = 20): Promise<PageableResponse<ProductDTO>> {
     try {
       const response = await api.get(
-        `${this.ENDPOINT}/search?q=${encodeURIComponent(query)}&page=${page}&size=${size}`
+        `${this.ENDPOINT}/search?query=${encodeURIComponent(query)}&page=${page}&size=${size}`
       );
       return response.data;
     } catch (error: any) {
