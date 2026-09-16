@@ -29,6 +29,27 @@ import { isLocationFresh, readSavedLocation, requestCurrentLocation, UserLocatio
 const getCurrentPrice = (product: Partial<Product>) =>
   normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
 
+const syncUserLocation = (
+  latitude: number,
+  longitude: number,
+  accuracyMeters?: number,
+) => {
+  const updateLocation = (apiClient as typeof apiClient & {
+    updateMyLocation?: (
+      nextLatitude: number,
+      nextLongitude: number,
+      nextAccuracyMeters?: number,
+    ) => Promise<unknown>;
+  }).updateMyLocation;
+
+  if (typeof updateLocation !== "function") {
+    console.warn("Location sync is unavailable in the cached app version");
+    return Promise.resolve();
+  }
+
+  return updateLocation.call(apiClient, latitude, longitude, accuracyMeters);
+};
+
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
 
 const getDistanceKm = (from: UserLocation | null, product: Product) => {
@@ -215,7 +236,7 @@ export default function HomePage() {
   useEffect(() => {
     if (!user?.id || !userLocation || locationSavedForUserId === user.id) return;
 
-    apiClient.updateMyLocation(
+    syncUserLocation(
       userLocation.latitude,
       userLocation.longitude,
       userLocation.accuracyMeters,
@@ -273,7 +294,7 @@ export default function HomePage() {
       );
 
       if (user) {
-        apiClient.updateMyLocation(
+        syncUserLocation(
           nextLocation.latitude,
           nextLocation.longitude,
           nextLocation.accuracyMeters,

@@ -14,6 +14,27 @@ const astanaCenter: Leaflet.LatLngTuple = [51.1694, 71.4491];
 const getStoresWithLocation = (stores: Store[]) =>
   stores.filter((store) => typeof store.latitude === "number" && typeof store.longitude === "number");
 
+const syncUserLocation = (
+  latitude: number,
+  longitude: number,
+  accuracyMeters?: number,
+) => {
+  const updateLocation = (apiClient as typeof apiClient & {
+    updateMyLocation?: (
+      nextLatitude: number,
+      nextLongitude: number,
+      nextAccuracyMeters?: number,
+    ) => Promise<unknown>;
+  }).updateMyLocation;
+
+  if (typeof updateLocation !== "function") {
+    console.warn("Location sync is unavailable in the cached app version");
+    return Promise.resolve();
+  }
+
+  return updateLocation.call(apiClient, latitude, longitude, accuracyMeters);
+};
+
 const escapeHtml = (value: string) =>
   value
     .replace(/&/g, "&amp;")
@@ -209,7 +230,7 @@ export default function MapPage() {
       setUserLocation(nextLocation);
       setLocationStatus("ready");
 
-      apiClient.updateMyLocation(
+      syncUserLocation(
         nextLocation.latitude,
         nextLocation.longitude,
         nextLocation.accuracyMeters,
