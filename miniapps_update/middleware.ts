@@ -77,6 +77,11 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+
+  const acceptsHtml = request.headers.get('accept')?.includes('text/html');
+  if (acceptsHtml) {
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
   
   return response;
 }
