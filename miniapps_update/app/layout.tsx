@@ -8,6 +8,8 @@ import RealtimeBridge from "../components/RealtimeBridge";
 import NavigationTracker from "../components/NavigationTracker";
 import StartParamRouter from "../components/StartParamRouter";
 
+export const dynamic = "force-dynamic";
+
 export const metadata: Metadata = {
   title: "FoodSave - Экономь на еде",
   description: "Telegram Mini App для экономии на еде",
