@@ -1,5 +1,11 @@
 version: '3.8'
 
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # Backend - Spring Boot API
   backend:
@@ -8,6 +14,7 @@ services:
       dockerfile: Dockerfile
     container_name: foodsave-backend
     restart: unless-stopped
+    logging: *default-logging
     entrypoint: ["java", "-Djava.security.egd=file:/dev/./urandom", "-Djava.net.preferIPv4Stack=true", "-jar", "app.jar"]
     ports:
       - "8080:8080"
@@ -62,6 +69,7 @@ services:
       dockerfile: Dockerfile
     container_name: foodsave-miniapp
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3000:3000"
     environment:
@@ -79,6 +87,7 @@ services:
         - CACHEBUST=${CACHEBUST:-1}
     container_name: foodsave-admin
     restart: unless-stopped
+    logging: *default-logging
     ports:
       - "3001:3001"
     environment:

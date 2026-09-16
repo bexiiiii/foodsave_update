@@ -395,37 +395,17 @@ export default function ProductsPage() {
 
     const uploadImages = async (files: File[]): Promise<string[]> => {
         const uploadedUrls: string[] = [];
-        
-        for (const file of files) {
-            if (file) {
-                try {
-                    // Validate file before upload
-                    const validationError = FileUploadService.validateImageFile(file);
-                    if (validationError) {
-                        console.error('File validation error:', validationError);
-                        // Fallback to base64 encoding
-                        const base64 = await FileUploadService.convertToBase64(file);
-                        uploadedUrls.push(base64);
-                        continue;
-                    }
 
-                    // Upload file using the service
-                    const uploadResponse = await FileUploadService.uploadImage(file);
-                    uploadedUrls.push(uploadResponse.url);
-                } catch (error) {
-                    console.error('Error uploading image:', error);
-                    // Fallback to base64 encoding
-                    try {
-                        const base64 = await FileUploadService.convertToBase64(file);
-                        uploadedUrls.push(base64);
-                    } catch (base64Error) {
-                        console.error('Error converting to base64:', base64Error);
-                        // Skip this file if both upload and base64 fail
-                    }
-                }
+        for (const file of files) {
+            const validationError = FileUploadService.validateImageFile(file);
+            if (validationError) {
+                throw new Error(`${file.name}: ${validationError}`);
             }
+
+            const uploadResponse = await FileUploadService.uploadImage(file);
+            uploadedUrls.push(uploadResponse.url);
         }
-        
+
         return uploadedUrls;
     };
 
@@ -501,6 +481,8 @@ export default function ProductsPage() {
             console.error('Error saving product:', error);
             if (error.response?.data?.message) {
                 toast.error(`Ошибка: ${error.response.data.message}`);
+            } else if (error instanceof Error && error.message) {
+                toast.error(error.message);
             } else {
                 toast.error('Не удалось сохранить товар');
             }

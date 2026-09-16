@@ -6,6 +6,8 @@ export interface UploadResponse {
     filename: string;
     size: number;
     contentType: string;
+    originalSize?: number;
+    deduplicated?: boolean;
 }
 
 export interface MultipleUploadResponse {
@@ -112,15 +114,4 @@ export class FileUploadService {
         return null;
     }
 
-    /**
-     * Convert file to base64 (fallback)
-     */
-    static convertToBase64(file: File): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = error => reject(error);
-        });
-    }
 }

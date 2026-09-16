@@ -1,5 +1,8 @@
 package com.foodsave.backend.controller;
 
+import com.foodsave.backend.service.ImageStorageService;
+import com.foodsave.backend.service.ImageStorageService.InvalidImageException;
+import com.foodsave.backend.service.ImageStorageService.StoredImage;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
@@ -18,9 +21,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @RestController
@@ -33,15 +33,10 @@ public class FileUploadController {
     @Value("${app.upload.dir:uploads}")
     private String uploadDir;
 
-    @Value("${app.upload.max-file-size:10485760}") // 10MB
-    private long maxFileSize;
-
     @Value("${app.base-url:}")
     private String baseUrl;
 
-    private static final Set<String> ALLOWED_IMAGE_TYPES = Set.of(
-            "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp"
-    );
+    private final ImageStorageService imageStorageService;
 
     @PostMapping("/image")
     @PreAuthorize("hasRole('STORE_OWNER') or hasRole('STORE_MANAGER') or hasRole('SUPER_ADMIN')")
@@ -61,62 +56,28 @@ public class FileUploadController {
 
     private ResponseEntity<?> handleFileUpload(MultipartFile file, String targetDirectory, HttpServletRequest request) {
         try {
-            // Validate file
-            if (file.isEmpty()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "File is empty"));
-            }
+            StoredImage storedImage = imageStorageService.store(file, targetDirectory);
 
-            // Check file size
-            if (file.getSize() > maxFileSize) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "File size exceeds maximum allowed size (15MB)"));
-            }
+            String fileUrl = resolveBaseUrl(request) + "/uploads/" + targetDirectory + "/" + storedImage.fileName();
 
-            // Check file type
-            String contentType = file.getContentType();
-            if (contentType == null || !ALLOWED_IMAGE_TYPES.contains(contentType.toLowerCase())) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Invalid file type. Only images are allowed."));
-            }
-
-            // Create upload directory if it doesn't exist
-            Path uploadPath = Paths.get(uploadDir, targetDirectory);
-            if (!Files.exists(uploadPath)) {
-                Files.createDirectories(uploadPath);
-            }
-
-            // Generate unique filename
-            byte[] bytes = file.getBytes();
-            String fileExtension = detectImageExtension(bytes, contentType);
-            if (fileExtension == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "File content is not a supported image"));
-            }
-            String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss"));
-            String randomString = UUID.randomUUID().toString().substring(0, 8);
-            String fileName = timestamp + "_" + randomString + fileExtension;
-
-            // Save file
-            Path filePath = uploadPath.resolve(fileName);
-            Files.write(filePath, bytes);
-
-            // Generate file URL
-            String fileUrl = resolveBaseUrl(request) + "/uploads/" + targetDirectory + "/" + fileName;
-
-            log.info("File uploaded successfully: {}", fileName);
+            log.info("Image stored: filename={}, originalSize={}, storedSize={}, deduplicated={}",
+                    storedImage.fileName(), storedImage.originalSize(), storedImage.size(), storedImage.deduplicated());
 
             return ResponseEntity.ok(Map.of(
-                    "message", "File uploaded successfully",
+                    "message", storedImage.deduplicated() ? "Existing image reused" : "File uploaded successfully",
                     "url", fileUrl,
-                    "filename", fileName,
-                    "size", file.getSize(),
-                    "contentType", contentType
+                    "filename", storedImage.fileName(),
+                    "size", storedImage.size(),
+                    "originalSize", storedImage.originalSize(),
+                    "contentType", storedImage.contentType(),
+                    "deduplicated", storedImage.deduplicated()
             ));
-
+        } catch (InvalidImageException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (IOException e) {
             log.error("Error uploading file", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to upload file: " + e.getMessage()));
+                    .body(Map.of("error", "Failed to store image"));
         }
     }
 
@@ -163,6 +124,11 @@ public class FileUploadController {
     @Operation(summary = "Delete uploaded image")
     public ResponseEntity<?> deleteImage(@RequestParam("filename") String filename) {
         try {
+            if (filename.matches("[a-f0-9]{64}\\.(jpg|png|gif|webp)")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
+                        "error", "Content-addressed images are shared and cannot be deleted directly"
+                ));
+            }
             Path productDirectory = Paths.get(uploadDir, "products").toAbsolutePath().normalize();
             Path filePath = productDirectory.resolve(filename).normalize();
             if (!filePath.startsWith(productDirectory) || filename.contains("/") || filename.contains("\\")) {
@@ -181,26 +147,6 @@ public class FileUploadController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to delete file: " + e.getMessage()));
         }
-    }
-
-    private String detectImageExtension(byte[] bytes, String contentType) {
-        if (bytes == null || bytes.length < 12) {
-            return null;
-        }
-        if ((bytes[0] & 0xff) == 0xff && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff) {
-            return contentType.equalsIgnoreCase("image/jpeg") || contentType.equalsIgnoreCase("image/jpg") ? ".jpg" : null;
-        }
-        if ((bytes[0] & 0xff) == 0x89 && bytes[1] == 'P' && bytes[2] == 'N' && bytes[3] == 'G') {
-            return contentType.equalsIgnoreCase("image/png") ? ".png" : null;
-        }
-        if (bytes[0] == 'G' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == '8') {
-            return contentType.equalsIgnoreCase("image/gif") ? ".gif" : null;
-        }
-        if (bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' && bytes[3] == 'F'
-                && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P') {
-            return contentType.equalsIgnoreCase("image/webp") ? ".webp" : null;
-        }
-        return null;
     }
 
     private String resolveBaseUrl(HttpServletRequest request) {

@@ -1,11 +1,18 @@
 version: '3.8'
 
+x-default-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
 services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
     container_name: foodsave-postgres
     restart: unless-stopped
+    logging: *default-logging
     environment:
       POSTGRES_DB: foodsave
       POSTGRES_USER: behruz
@@ -53,6 +60,7 @@ services:
     image: redis:7-alpine
     container_name: foodsave-redis
     restart: unless-stopped
+    logging: *default-logging
     command: >
       redis-server
       --appendonly yes
