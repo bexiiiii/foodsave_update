@@ -35,6 +35,9 @@ export function middleware(request: NextRequest) {
   const forwarded = request.headers.get('x-forwarded-for');
   const ip = forwarded?.split(',')[0].trim() || request.headers.get('x-real-ip') || 'unknown';
 
+  // Do not rate-limit page requests by IP here. Telegram WebViews and mobile
+  // carriers can share one public IP across many unrelated users.
+
   if (BLOCKED_IPS.includes(ip)) {
     console.log(`[SECURITY] Blocked IP: ${ip}`);
     return new NextResponse('Forbidden', { status: 403 });
