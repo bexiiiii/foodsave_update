@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Helpers for GREEN-API WhatsApp webhooks."""
 import json
+import threading
 import time
 import unicodedata
 from pathlib import Path
@@ -194,6 +195,9 @@ def build_publication_reply(parse_summary, upload_report, auto_upload):
 
 
 class WebhookStore:
+    _claims = set()
+    _claims_lock = threading.Lock()
+
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -208,7 +212,53 @@ class WebhookStore:
         except OSError:
             return False
 
+    def claim(self, id_message):
+        """Atomically claim an incoming message for processing in this server."""
+        if not id_message:
+            return True
+        key = (str(self.path.resolve()), id_message)
+        with self._claims_lock:
+            if key in self._claims or self.seen(id_message):
+                return False
+            self._claims.add(key)
+            return True
+
+    def release(self, id_message):
+        if id_message:
+            key = (str(self.path.resolve()), id_message)
+            with self._claims_lock:
+                self._claims.discard(key)
+
     def append(self, event):
         record = {"receivedAt": int(time.time()), **event}
         with self.path.open("a", encoding="utf-8") as f:
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def card_fingerprint(card):
+    """Return a stable signature for one CRM product, excluding parser-only fields."""
+    fields = (
+        "storeId", "storeName", "categoryId", "categoryName", "name", "description",
+        "price", "originalPrice", "discountPercentage", "stockQuantity", "images",
+        "expiryDate", "status",
+    )
+    data = {field: card.get(field) for field in fields}
+    return json.dumps(data, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def deduplicate_cards(cards):
+    """Keep the first of byte-for-byte equivalent product cards in one publication."""
+    unique_cards = []
+    duplicate_cards = []
+    seen = set()
+    for card in cards:
+        if card.get("error"):
+            unique_cards.append(card)
+            continue
+        fingerprint = card_fingerprint(card)
+        if fingerprint in seen:
+            duplicate_cards.append(card)
+            continue
+        seen.add(fingerprint)
+        unique_cards.append(card)
+    return unique_cards, duplicate_cards

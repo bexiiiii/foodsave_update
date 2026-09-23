@@ -64,6 +64,7 @@ class CrmClient:
     def _request_with_retry(self, method, path, **kwargs):
         url = f"{self.base_url}{path}"
         headers = kwargs.pop("headers", {})
+        retryable_method = method.upper() in {"GET", "HEAD", "OPTIONS"}
         for attempt in range(1, 5):
             request_headers = {**headers, **self._auth_headers()}
             try:
@@ -72,12 +73,12 @@ class CrmClient:
                     log("401 — обновляю токен и повторяю запрос...")
                     self.refresh()
                     continue
-                if r.status_code not in {408, 425, 429} and r.status_code < 500:
+                if not retryable_method or (r.status_code not in {408, 425, 429} and r.status_code < 500):
                     return r
                 log(f"CRM {r.status_code} для {method} {path}, повтор {attempt}/4")
             except requests.RequestException as exc:
                 log(f"Ошибка сети для {method} {path}: {exc}, повтор {attempt}/4")
-                if attempt == 4:
+                if not retryable_method or attempt == 4:
                     raise
             if attempt < 4:
                 time.sleep(2 ** (attempt - 1))

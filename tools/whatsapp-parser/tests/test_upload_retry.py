@@ -14,15 +14,26 @@ def response(status, body='{"ok":true}'):
 
 
 class CrmRetryTest(unittest.TestCase):
-    def test_retries_transient_http_errors(self):
+    def test_retries_transient_errors_for_safe_requests(self):
         client = CrmClient("https://example.test/api", "user", "password")
         client.access_token = "access"
         with patch("upload_to_crm.requests.request", side_effect=[response(503, "busy"), response(201)]), \
              patch("upload_to_crm.time.sleep") as sleep:
-            result = client._request_with_retry("POST", "/products", json={"name": "Box"})
+            result = client._request_with_retry("GET", "/products")
 
         self.assertEqual(result.status_code, 201)
         self.assertEqual(sleep.call_count, 1)
+
+    def test_does_not_retry_product_creation_after_server_error(self):
+        client = CrmClient("https://example.test/api", "user", "password")
+        client.access_token = "access"
+        with patch("upload_to_crm.requests.request", return_value=response(503, "busy")) as request, \
+             patch("upload_to_crm.time.sleep") as sleep:
+            result = client.create_product({"name": "Box"})
+
+        self.assertEqual(result.status_code, 503)
+        self.assertEqual(request.call_count, 1)
+        sleep.assert_not_called()
 
 
 if __name__ == "__main__":

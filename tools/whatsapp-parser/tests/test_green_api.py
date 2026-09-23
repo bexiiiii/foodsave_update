@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -7,13 +8,37 @@ sys.path.insert(0, str(ROOT))
 
 from green_api import (  # noqa: E402
     build_publication_reply,
+    deduplicate_cards,
     extract_green_api_message,
     group_defaults_for_message,
     is_allowed_group_message,
+    WebhookStore,
 )
 
 
 class GreenApiWebhookTest(unittest.TestCase):
+    def test_deduplicates_identical_cards_without_merging_different_ones(self):
+        first = {
+            "storeName": "Royalty", "name": "Круассан", "price": 600,
+            "originalPrice": 1000, "stockQuantity": 2, "expiryDate": "2026-09-24T21:00:00",
+        }
+        different = {**first, "name": "Тарт"}
+
+        unique, duplicates = deduplicate_cards([first, dict(first), different])
+
+        self.assertEqual(unique, [first, different])
+        self.assertEqual(duplicates, [first])
+
+    def test_claim_blocks_concurrent_or_completed_message(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = WebhookStore(Path(directory) / "events.jsonl")
+
+            self.assertTrue(store.claim("message-1"))
+            self.assertFalse(store.claim("message-1"))
+            store.append({"message": {"idMessage": "message-1"}, "result": {"ok": True}})
+            store.release("message-1")
+
+            self.assertFalse(store.claim("message-1"))
     def test_extracts_group_chat_name(self):
         message = extract_green_api_message(
             {

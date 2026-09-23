@@ -23,7 +23,9 @@ The token is stored on the server in:
 - Incoming text messages and media captions are parsed.
 - Parsed boxes are uploaded to CRM when `green_api.auto_upload=true`.
 - Cards with `needsReview=true` are skipped unless `green_api.force_upload=true`.
-- Duplicate Green API `idMessage` values are ignored.
+- Duplicate Green API `idMessage` values are ignored, including concurrent deliveries while the first webhook is still being processed.
+- Identical product cards parsed from one publication are sent to CRM only once.
+- Creating a product is never retried automatically after a network error or `5xx`: a retry after an ambiguous POST response could otherwise create a duplicate product.
 - Webhook payloads and parse/upload results are appended to `data/green_api_events.jsonl`.
 - If a media message produces exactly one parsed card, its `downloadUrl` is attached as the card image.
 - If one media message produces several cards, the image is not auto-attached to avoid assigning the wrong photo.

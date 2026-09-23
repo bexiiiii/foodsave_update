@@ -9,6 +9,7 @@ from urllib.parse import parse_qs, unquote, urlparse
 from green_api import (
     WebhookStore,
     build_publication_reply,
+    deduplicate_cards,
     extract_green_api_message,
     group_defaults_for_message,
     is_allowed_group_message,
@@ -134,6 +135,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": str(exc)}, status=500)
 
     def handle_green_api_webhook(self, parsed):
+        claimed_message_id = None
         try:
             cfg = load_config()
             if not verify_webhook_token(self.headers, parse_qs(parsed.query), cfg):
@@ -143,8 +145,10 @@ class Handler(BaseHTTPRequestHandler):
             message = extract_green_api_message(payload)
             store = WebhookStore(WEBHOOK_LOG_PATH)
 
-            if message.get("idMessage") and store.seen(message["idMessage"]):
+            message_id = message.get("idMessage")
+            if message_id and not store.claim(message_id):
                 return self.send_json({"ok": True, "duplicate": True})
+            claimed_message_id = message_id
 
             group_allowed, group_reason = is_allowed_group_message(message, cfg)
             if not group_allowed:
@@ -194,13 +198,18 @@ class Handler(BaseHTTPRequestHandler):
                 download_url = media.get("downloadUrl")
                 if download_url and len(items) == 1:
                     items[0]["images"] = [download_url]
+                items, duplicates = deduplicate_cards(items)
                 result["parse"] = summarize_items(items)
                 result["items"] = items
-                if items:
-                    upload_report = upload_cards(items, dry_run=dry_run, force=force)
+                if duplicates:
+                    result["duplicateItems"] = len(duplicates)
+                publishable_items = [item for item in items if not item.get("error")]
+                if publishable_items:
+                    upload_report = upload_cards(publishable_items, dry_run=dry_run, force=force)
                     result["upload"] = upload_report
                     result["autoUpload"] = auto_upload
-                    reply = build_publication_reply(result["parse"], upload_report, auto_upload)
+                if items:
+                    reply = build_publication_reply(result["parse"], result.get("upload"), auto_upload)
                     result["reply"] = send_green_api_message(cfg, message.get("chatId"), reply)
             else:
                 result["parse"] = {"total": 0, "ok": 0, "review": 0, "stores": 0}
@@ -214,6 +223,9 @@ class Handler(BaseHTTPRequestHandler):
             except Exception:
                 pass
             return self.send_json({"ok": False, "error": str(exc)}, status=500)
+        finally:
+            if claimed_message_id:
+                WebhookStore(WEBHOOK_LOG_PATH).release(claimed_message_id)
 
     def read_json(self):
         length = int(self.headers.get("Content-Length", "0"))
@@ -287,6 +299,7 @@ def upload_cards(cards, dry_run=False, force=False):
     categories = client.get_categories()
     stores = client.get_stores()
 
+    cards, duplicates = deduplicate_cards(cards)
     report = []
     for card in cards:
         result = upload_one_card(
@@ -302,6 +315,12 @@ def upload_cards(cards, dry_run=False, force=False):
         )
         report.append(result)
 
+    for card in duplicates:
+        report.append({
+            "result": "skipped",
+            "name": card.get("name") or card.get("rawLine") or "unknown",
+            "reason": "дублирующаяся карточка в одной публикации",
+        })
     ok = sum(1 for item in report if item["result"] in {"ok", "dry-run"})
     skipped = sum(1 for item in report if item["result"] == "skipped")
     failed = sum(1 for item in report if item["result"] in {"failed", "error"})
