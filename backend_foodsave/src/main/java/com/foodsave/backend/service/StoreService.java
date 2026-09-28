@@ -44,7 +44,7 @@ public class StoreService {
 
     public Page<StoreDTO> getAllStores(Pageable pageable) {
         return storeRepository.findAll(pageable)
-                .map(StoreDTO::fromEntity);
+                .map(this::convertToStoreDTO);
     }
 
     public List<StorePublicDTO> getActiveStores() {

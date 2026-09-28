@@ -362,7 +362,9 @@ export { api };
 
 export const storeApi = {
     getAll: async (): Promise<PageableResponse<StoreDTO> | StoreDTO[]> => {
-        const response = await api.get(API_ENDPOINTS.STORES.BASE);
+        const response = await api.get(API_ENDPOINTS.STORES.BASE, {
+            params: { size: 1000, sort: 'createdAt,desc' },
+        });
         // Обработка пагинированного ответа от Spring Boot
         if (response.data && typeof response.data === 'object' && 'content' in response.data) {
             return response.data as PageableResponse<StoreDTO>; // Возвращаем весь пагинированный объект

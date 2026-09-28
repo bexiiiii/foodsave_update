@@ -108,9 +108,9 @@ export default function StoresPage() {
             errors.push({ field: 'name', message: 'Название заведения обязательно' });
         }
 
-        if (!formData.user.email.trim()) {
+        if (!selectedStore && !formData.user.email.trim()) {
             errors.push({ field: 'user.email', message: 'Email владельца обязателен' });
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.user.email)) {
+        } else if (formData.user.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.user.email)) {
             errors.push({ field: 'user.email', message: 'Неверный формат email' });
         }
 
@@ -140,20 +140,10 @@ export default function StoresPage() {
         try {
             setLoading(true);
             setError('');
-            // Попробуем сначала получить активные магазины с количеством продуктов
-            let response;
-            try {
-                response = await storeApi.getActive();
-                if (Array.isArray(response)) {
-                    setStores(response as StoreDTO[]);
-                    return;
-                }
-            } catch (activeError) {
-                console.warn('Failed to fetch active stores, falling back to getAll:', activeError);
-            }
-
-            // Если не удалось получить активные, используем старый метод
-            response = await storeApi.getAll();
+            // The public active-stores response intentionally omits administrative
+            // fields (phone, email, owner and manager). Editing must use the full
+            // admin response so saving an address does not submit blank fields.
+            const response = await storeApi.getAll();
             if (response && typeof response === 'object' && 'content' in response) {
                 // Пагинированный ответ от Spring Boot
                 const pageableResponse = response as PageableResponse<StoreDTO>;
@@ -239,8 +229,7 @@ export default function StoresPage() {
         }
     };
 
-    const handleEdit = (store: StoreDTO) => {
-        console.log('Editing store:', store);
+    const openEditForm = (store: StoreDTO) => {
         setSelectedStore(store);
         setFormData({
             name: store.name,
@@ -265,6 +254,22 @@ export default function StoresPage() {
         setLogoFilename(getFileNameFromUrl(store.logo));
         setLogoUploadError(null);
         openModal();
+    };
+
+    const handleEdit = async (store: StoreDTO) => {
+        try {
+            // Always load the complete, current record before editing. This also
+            // protects the form if a caller passes a public StoreDTO-shaped item.
+            const fullStore = await storeApi.getById(store.id);
+            openEditForm(fullStore);
+        } catch (error) {
+            console.error('Failed to load store details:', error);
+            toast({
+                title: 'Ошибка',
+                description: 'Не удалось загрузить данные заведения для редактирования',
+                variant: 'destructive',
+            });
+        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
