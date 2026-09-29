@@ -16,7 +16,7 @@ export default function BackButton({
   const router = useRouter();
 
   const goBack = () => {
-    router.push(getPreviousPath(fallback));
+    router.replace(getPreviousPath(fallback));
   };
 
   return (

@@ -12,6 +12,7 @@ import BackButton from "../../../components/BackButton";
 import { formatMinutesUntilClose } from "../../../components/ClosingSoonBadge";
 import FavoriteToast from "../../../components/FavoriteToast";
 import { readAttribution } from "../../../components/StartParamRouter";
+import { resetNavigationStack } from "../../../components/NavigationTracker";
 import {
   dismissDecisionHelpPrompt,
   canShowDecisionHelpPrompt,
@@ -930,7 +931,11 @@ export default function ProductDetailsPage() {
                 {/* Actions */}
                 <div className="mt-5 flex flex-col gap-3">
                   <button
-                    onClick={() => router.push('/orders')}
+                    onClick={() => {
+                      setOrderModal(null);
+                      resetNavigationStack('/');
+                      router.replace('/orders');
+                    }}
                     className="w-full bg-[#4CAD73] rounded-xl h-12 flex items-center justify-center hover:bg-[#4CAD73] active:scale-95 transition-all"
                   >
                     <span className="text-base font-semibold text-white font-inter">Мои заказы</span>
@@ -938,7 +943,8 @@ export default function ProductDetailsPage() {
                   <button
                     onClick={() => {
                       setOrderModal(null);
-                      router.push('/');
+                      resetNavigationStack('/');
+                      router.replace('/');
                     }}
                     className="fs-surface w-full rounded-xl h-12 flex items-center justify-center active:scale-95 transition-all"
                   >
