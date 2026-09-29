@@ -542,7 +542,8 @@ public class ProductService {
     public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
-        authorizationService.requireCanManageStore(product.getStore().getId());
+        Long previousStoreId = product.getStore().getId();
+        authorizationService.requireCanManageStore(previousStoreId);
         Store targetStore = storeRepository.findById(productDTO.getStoreId())
                 .orElseThrow(() -> new EntityNotFoundException("Store not found"));
         authorizationService.requireCanManageStore(targetStore.getId());
@@ -552,7 +553,9 @@ public class ProductService {
         updateProductFromDTO(product, productDTO);
         product.setStore(targetStore);
         product.setCategory(category);
-        return convertToDTO(productRepository.save(product));
+        Product savedProduct = productRepository.saveAndFlush(product);
+        log.info("Product {} store updated: {} -> {}", id, previousStoreId, savedProduct.getStore().getId());
+        return convertToDTO(savedProduct);
     }
 
     @Caching(evict = {

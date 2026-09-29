@@ -452,7 +452,25 @@ export default function ProductsPage() {
             };
 
             if (selectedProduct) {
-                await ProductService.updateProduct(selectedProduct.id, formattedData);
+                const requestedStoreId = formData.storeId as number;
+                const updatedProduct = await ProductService.updateProduct(selectedProduct.id, formattedData);
+
+                if (Number(updatedProduct.storeId) !== requestedStoreId) {
+                    throw new Error('Сервер не сохранил выбранное заведение');
+                }
+
+                const selectedStore = stores.find(store => store.id === requestedStoreId);
+                const productWithCurrentStore = {
+                    ...updatedProduct,
+                    storeId: requestedStoreId,
+                    storeName: updatedProduct.storeName || selectedStore?.name,
+                    storeAddress: updatedProduct.storeAddress || selectedStore?.address,
+                };
+
+                setProducts(currentProducts => currentProducts.map(product =>
+                    product.id === updatedProduct.id ? productWithCurrentStore : product
+                ));
+                await fetchStats();
                 toast.success('Товар успешно обновлен');
             } else {
                 // For create, we need ProductCreateRequest
@@ -471,10 +489,10 @@ export default function ProductsPage() {
                     active: formData.active,
                 };
                 await ProductService.createProduct(createData);
+                await fetchProducts();
                 toast.success('Товар успешно создан');
             }
 
-            await fetchProducts();
             closeModal();
             resetForm();
         } catch (error: any) {
