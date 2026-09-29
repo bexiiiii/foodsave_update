@@ -17,6 +17,23 @@ const isJwtExpired = (token: string): boolean => {
     }
 };
 
+const clearExpiredSession = () => {
+    safeLocalStorage.removeItem('token');
+    safeLocalStorage.removeItem('admin_token');
+    safeLocalStorage.removeItem('user');
+    safeLocalStorage.removeItem('userRole');
+
+    if (typeof document !== 'undefined') {
+        document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        document.cookie = 'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    }
+
+    if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/signin')) {
+        window.location.replace('/signin?reason=session-expired');
+    }
+};
+
 // Add request interceptor for authentication
 api.interceptors.request.use((config) => {
     const token = safeLocalStorage.getItem('token');
@@ -41,28 +58,16 @@ api.interceptors.response.use(
             // Handle specific error cases
             switch (error.response.status) {
                 case 401:
-                    // Проверяем, не находимся ли мы уже на странице логина
-                    // и не является ли это ответом на запрос логина
                     const isLoginRequest = error.config?.url?.includes('/auth/login');
-                    const isLoginPage = typeof window !== 'undefined' && window.location.pathname.includes('/login');
-                    const token = safeLocalStorage.getItem('token');
-                    
-                    // Если нет токена и мы не на странице логина - редирект
-                    if (!token && !isLoginPage && !isLoginRequest && typeof window !== 'undefined') {
-                        safeLocalStorage.removeItem('token');
-                        safeLocalStorage.removeItem('user');
-                        window.location.href = '/login';
+                    if (!isLoginRequest) {
+                        clearExpiredSession();
                     }
                     break;
                 case 403:
                     console.error('Access denied - Insufficient permissions');
-                    const currentToken = safeLocalStorage.getItem('token');
+                    const currentToken = safeLocalStorage.getItem('token') || safeLocalStorage.getItem('admin_token');
                     if (currentToken && isJwtExpired(currentToken)) {
-                        safeLocalStorage.removeItem('token');
-                        safeLocalStorage.removeItem('user');
-                        if (typeof window !== 'undefined') {
-                            window.location.href = '/login?reason=session-expired';
-                        }
+                        clearExpiredSession();
                     } else if (typeof window !== 'undefined') {
                         window.location.href = '/unauthorized';
                     }
@@ -146,7 +151,7 @@ class ApiService {
                 // Обработка ошибок аутентификации
                 if (error.response?.status === 401) {
                     this.clearToken();
-                    window.location.href = '/login';
+                    clearExpiredSession();
                     throw new Error('Session expired. Please login again.');
                 }
 

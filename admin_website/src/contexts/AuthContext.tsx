@@ -30,6 +30,19 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 // BASE_URL должен быть https://foodsave.kz/api (с /api на конце)
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://foodsave.kz/api';
 
+const clearStoredSession = () => {
+  safeLocalStorage.removeItem('admin_token');
+  safeLocalStorage.removeItem('token');
+  safeLocalStorage.removeItem('userRole');
+  safeLocalStorage.removeItem('user');
+
+  if (typeof document !== 'undefined') {
+    document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+    document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  }
+};
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,14 +78,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           storeId: userData.storeId
         });
       } else {
-        safeLocalStorage.removeItem('admin_token');
-        safeLocalStorage.removeItem('token');
+        clearStoredSession();
         setUser(null);
+        router.replace('/signin?reason=session-expired');
       }
     } catch (error) {
       console.error('Auth check failed:', error);
-      safeLocalStorage.removeItem('admin_token');
-      safeLocalStorage.removeItem('token');
+      clearStoredSession();
       setUser(null);
     } finally {
       setIsLoading(false);
@@ -143,17 +155,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     console.log('Clearing local storage and redirecting...');
     // Всегда очищаем локальное состояние
-    safeLocalStorage.removeItem('admin_token');
-    safeLocalStorage.removeItem('token');
-    safeLocalStorage.removeItem('userRole');
-    safeLocalStorage.removeItem('user');
-    
-    // Также очищаем cookies
-    if (typeof document !== 'undefined') {
-      document.cookie = 'token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'userRole=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    }
+    clearStoredSession();
     
     setUser(null);
     
