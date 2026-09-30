@@ -25,7 +25,6 @@ import org.springframework.cache.annotation.Caching;
 import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -52,9 +51,7 @@ public class MiniAppReservationService {
     private final UserRepository userRepository;
     private final ProductEventService productEventService;
     private final ReservationStatusService reservationStatusService;
-
-    @Value("${telegram.order-notifications.notify-store-users:false}")
-    private boolean notifyStoreUsersDirectly;
+    private final NotificationAttributionService notificationAttributionService;
 
     @Transactional
     @Caching(evict = {
@@ -83,6 +80,13 @@ public class MiniAppReservationService {
         log.info("User authenticated: userId={}, telegramId={}", 
             user.getId(), user.getTelegramUserId());
 
+        NotificationAttributionService.ResolvedNotificationAttribution notificationAttribution =
+                notificationAttributionService.resolve(
+                        request != null ? request.notificationGroupId() : null,
+                        request != null ? request.startParam() : null,
+                        user
+                );
+
         productEventService.trackAsync(new ProductEventRequest(
                 ProductEventType.RESERVATION_STARTED,
                 null,
@@ -93,14 +97,14 @@ public class MiniAppReservationService {
                 productId,
                 null,
                 null,
-                resolveSource(request),
+                resolveSource(request, notificationAttribution),
                 null,
                 request != null ? request.campaignId() : null,
                 request != null ? request.telegramPostId() : null,
                 request != null ? request.notificationId() : null,
-                request != null ? request.notificationGroupId() : null,
+                notificationAttribution.notificationGroupId(),
                 null,
-                request != null ? request.startParam() : null,
+                notificationAttribution.startParam(),
                 request != null ? request.sessionId() : null,
                 "miniapp",
                 null,
@@ -138,12 +142,12 @@ public class MiniAppReservationService {
         order.setStatus(OrderStatus.CREATED);
         order.setPaymentStatus(PaymentStatus.PENDING);
         order.setPaymentMethod(PaymentMethod.CASH);
-        order.setAcquisitionSource(request != null ? request.acquisitionSource() : null);
+        order.setAcquisitionSource(resolveSource(request, notificationAttribution).name());
         order.setCampaignId(request != null ? request.campaignId() : null);
         order.setNotificationId(request != null ? request.notificationId() : null);
-        order.setNotificationGroupId(request != null ? request.notificationGroupId() : null);
+        order.setNotificationGroupId(notificationAttribution.notificationGroupId());
         order.setTelegramPostId(request != null ? request.telegramPostId() : null);
-        order.setStartParam(request != null ? request.startParam() : null);
+        order.setStartParam(notificationAttribution.startParam());
         order.setStatusActorType(ReservationActorType.USER);
         DeliveryType deliveryType = request.deliveryType() != null ? request.deliveryType() : DeliveryType.PICKUP;
         order.setDeliveryType(deliveryType);
@@ -178,9 +182,6 @@ public class MiniAppReservationService {
         log.info("Order saved: orderId={}, orderNumber={}", 
             savedOrder.getId(), savedOrder.getOrderNumber());
 
-        // Validate response mapping before sending notifications to customers or partners.
-        OrderDTO response = OrderDTO.fromEntity(savedOrder);
-
         productEventService.trackAsync(new ProductEventRequest(
                 ProductEventType.RESERVATION_CREATED,
                 null,
@@ -191,14 +192,14 @@ public class MiniAppReservationService {
                 product.getId(),
                 null,
                 null,
-                resolveSource(request),
+                resolveSource(request, notificationAttribution),
                 null,
                 request != null ? request.campaignId() : null,
                 request != null ? request.telegramPostId() : null,
                 request != null ? request.notificationId() : null,
-                request != null ? request.notificationGroupId() : null,
+                notificationAttribution.notificationGroupId(),
                 null,
-                request != null ? request.startParam() : null,
+                notificationAttribution.startParam(),
                 request != null ? request.sessionId() : null,
                 "miniapp",
                 null,
@@ -225,12 +226,10 @@ public class MiniAppReservationService {
             log.error("Failed to send Telegram confirmation", e);
         }
 
-        if (notifyStoreUsersDirectly) {
-            try {
-                sendSellerNotification(user, savedOrder, product);
-            } catch (Exception e) {
-                log.error("Failed to send seller notification for order {}", savedOrder.getOrderNumber(), e);
-            }
+        try {
+            sendSellerNotification(user, savedOrder, product);
+        } catch (Exception e) {
+            log.error("Failed to send seller notification for order {}", savedOrder.getOrderNumber(), e);
         }
 
         try {
@@ -241,7 +240,7 @@ public class MiniAppReservationService {
         }
 
         log.info("=== RESERVATION COMPLETE === orderId={}", savedOrder.getId());
-        return response;
+        return OrderDTO.fromEntity(savedOrder);
     }
 
     private void sendSellerNotification(User customer, Order order, Product product) {
@@ -278,7 +277,6 @@ public class MiniAppReservationService {
         text.append("\nИтого: ").append(formatPrice(order.getTotal())).append("\n");
         text.append("Клиент: ").append(customerName).append("\n");
         text.append("Телефон: ").append(phone);
-        appendBlacklistWarning(text, customer);
 
         for (Long chatId : sellerChatIds) {
             try {
@@ -290,17 +288,6 @@ public class MiniAppReservationService {
             }
         }
         log.info("Order {} seller notification sent to {} chat(s)", order.getOrderNumber(), sellerChatIds.size());
-    }
-
-    private void appendBlacklistWarning(StringBuilder text, User customer) {
-        if (customer == null || !customer.isBlacklisted()) {
-            return;
-        }
-
-        text.append("\n\n<b>⚠️ Внимание! Клиент в черном списке.</b>");
-        if (customer.getBlacklistReason() != null && !customer.getBlacklistReason().isBlank()) {
-            text.append("\nПричина: ").append(html(customer.getBlacklistReason().trim()));
-        }
     }
 
     private void sendTelegramConfirmation(User user, Order order, Product product) {
@@ -373,16 +360,6 @@ public class MiniAppReservationService {
         return value;
     }
 
-    private String html(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value
-                .replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;");
-    }
-
     private String resolvePhone(User user) {
         if (user.getPhone() != null && !user.getPhone().isBlank()) {
             return user.getPhone();
@@ -403,12 +380,19 @@ public class MiniAppReservationService {
         return String.format("%06d", random);
     }
 
-    private ProductEventSource resolveSource(MiniAppReservationRequest request) {
+    private ProductEventSource resolveSource(
+            MiniAppReservationRequest request,
+            NotificationAttributionService.ResolvedNotificationAttribution notificationAttribution
+    ) {
+        if (notificationAttribution.valid()) {
+            return ProductEventSource.telegram_notification;
+        }
         if (request == null || request.acquisitionSource() == null || request.acquisitionSource().isBlank()) {
             return ProductEventSource.direct;
         }
         try {
-            return ProductEventSource.valueOf(request.acquisitionSource());
+            ProductEventSource requested = ProductEventSource.valueOf(request.acquisitionSource());
+            return requested == ProductEventSource.telegram_notification ? ProductEventSource.direct : requested;
         } catch (IllegalArgumentException ignored) {
             return ProductEventSource.unknown;
         }

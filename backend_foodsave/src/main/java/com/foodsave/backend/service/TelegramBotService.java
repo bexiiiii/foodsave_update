@@ -8,6 +8,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+import org.springframework.web.client.ResourceAccessException;
+
+import java.net.SocketTimeoutException;
 
 import java.time.Duration;
 import java.util.HashMap;
@@ -34,6 +38,21 @@ public class TelegramBotService {
 
     public record TelegramMessagePayload(String text, String imageUrl, String buttonText, String buttonUrl) {}
 
+    public enum TelegramFailureCategory {
+        NOT_CONFIGURED, INVALID_RECIPIENT, INVALID_PAYLOAD, REJECTED,
+        FORBIDDEN, RATE_LIMITED, TIMEOUT, NETWORK, SERVER_ERROR, UNKNOWN
+    }
+
+    public record TelegramSendResult(boolean sent, TelegramFailureCategory failureCategory, int attempts) {
+        static TelegramSendResult success(int attempts) {
+            return new TelegramSendResult(true, null, attempts);
+        }
+
+        static TelegramSendResult failure(TelegramFailureCategory category, int attempts) {
+            return new TelegramSendResult(false, category, attempts);
+        }
+    }
+
     private RestTemplate getRestTemplate() {
         if (restTemplate == null) {
             restTemplate = restTemplateBuilder
@@ -45,25 +64,33 @@ public class TelegramBotService {
     }
 
     public boolean sendMessage(Long chatId, TelegramMessagePayload message) {
-        return sendMessageWithToken(botToken, chatId, message);
+        return sendMessageDetailed(chatId, message).sent();
+    }
+
+    public TelegramSendResult sendMessageDetailed(Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithTokenDetailed(botToken, chatId, message);
     }
 
     public boolean sendManagerMessage(Long chatId, TelegramMessagePayload message) {
-        return sendMessageWithToken(resolveManagerBotToken(), chatId, message);
+        return sendMessageWithTokenDetailed(resolveManagerBotToken(), chatId, message).sent();
     }
 
     public boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithTokenDetailed(token, chatId, message).sent();
+    }
+
+    TelegramSendResult sendMessageWithTokenDetailed(String token, Long chatId, TelegramMessagePayload message) {
         if (token == null || token.isBlank()) {
-            log.warn("Telegram bot token is not configured");
-            return false;
+            log.warn("Telegram send failed category={}", TelegramFailureCategory.NOT_CONFIGURED);
+            return TelegramSendResult.failure(TelegramFailureCategory.NOT_CONFIGURED, 0);
         }
         if (chatId == null) {
-            log.warn("Cannot send Telegram message without chat id");
-            return false;
+            log.warn("Telegram send failed category={}", TelegramFailureCategory.INVALID_RECIPIENT);
+            return TelegramSendResult.failure(TelegramFailureCategory.INVALID_RECIPIENT, 0);
         }
         if (message == null || (message.text() == null && message.imageUrl() == null)) {
-            log.warn("Telegram message payload is empty");
-            return false;
+            log.warn("Telegram send failed category={}", TelegramFailureCategory.INVALID_PAYLOAD);
+            return TelegramSendResult.failure(TelegramFailureCategory.INVALID_PAYLOAD, 0);
         }
 
         boolean hasImage = message.imageUrl() != null && !message.imageUrl().isBlank();
@@ -93,51 +120,66 @@ public class TelegramBotService {
                 button.put("url", buttonUrl);
             }
 
-            Map<String, Object> replyMarkup = Map.of(
+            payload.put("reply_markup", Map.of(
                     "inline_keyboard",
                     List.of(List.of(button))
-            );
-            payload.put("reply_markup", replyMarkup);
+            ));
         }
 
         Exception lastError = null;
+        int attempts = 0;
         for (int attempt = 1; attempt <= 3; attempt++) {
+            attempts = attempt;
             try {
                 ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
                 if (!response.getStatusCode().is2xxSuccessful()
                         || response.getBody() == null
                         || !response.getBody().contains("\"ok\":true")) {
-                    throw new IllegalStateException("Telegram rejected request: " + response.getBody());
+                    throw new IllegalStateException("Telegram rejected request");
                 }
-                log.debug("Telegram {} status: {} chatId={} attempt={}",
-                        endpoint, response.getStatusCode().value(), chatId, attempt);
-                return true;
-            } catch (Exception e) {
-                lastError = e;
-                if (isPermanentTelegramError(e)) {
-                    break;
-                }
+                log.debug("Telegram {} succeeded status={} attempt={}",
+                        endpoint, response.getStatusCode().value(), attempt);
+                return TelegramSendResult.success(attempt);
+            } catch (Exception error) {
+                lastError = error;
+                TelegramFailureCategory category = classifyFailure(error);
+                if (!isRetryable(category)) break;
                 if (attempt < 3) {
-                    log.warn("Telegram {} failed for chatId={} attempt={}, retrying",
-                            endpoint, chatId, attempt, e);
+                    log.warn("Telegram {} failed category={} attempt={} retrying=true",
+                            endpoint, category, attempt);
                     sleepBeforeRetry(attempt);
                 }
             }
         }
 
-        log.error("Failed to send Telegram {} to chatId={} after retries", endpoint, chatId, lastError);
-        return false;
+        TelegramFailureCategory category = classifyFailure(lastError);
+        log.error("Telegram {} failed category={} attempts={}", endpoint, category, attempts);
+        return TelegramSendResult.failure(category, attempts);
     }
 
-    private boolean isPermanentTelegramError(Exception error) {
-        if (!(error instanceof HttpClientErrorException clientError)) {
-            return false;
+    TelegramFailureCategory classifyFailure(Throwable error) {
+        if (error instanceof HttpClientErrorException clientError) {
+            int status = clientError.getStatusCode().value();
+            if (status == 401 || status == 403) return TelegramFailureCategory.FORBIDDEN;
+            if (status == 429) return TelegramFailureCategory.RATE_LIMITED;
+            return TelegramFailureCategory.REJECTED;
         }
-        int status = clientError.getStatusCode().value();
-        return status == 400 || status == 403;
+        if (error instanceof HttpServerErrorException) return TelegramFailureCategory.SERVER_ERROR;
+        if (error instanceof ResourceAccessException) {
+            return error.getCause() instanceof SocketTimeoutException
+                    ? TelegramFailureCategory.TIMEOUT
+                    : TelegramFailureCategory.NETWORK;
+        }
+        return TelegramFailureCategory.UNKNOWN;
     }
 
-    private void sleepBeforeRetry(int attempt) {
+    private boolean isRetryable(TelegramFailureCategory category) {
+        // Retry only an explicit rate-limit response, which confirms Telegram did not accept
+        // the message. Server errors, timeout/network and unknown outcomes may duplicate a send.
+        return category == TelegramFailureCategory.RATE_LIMITED;
+    }
+
+    void sleepBeforeRetry(int attempt) {
         try {
             Thread.sleep(500L * attempt);
         } catch (InterruptedException e) {
@@ -219,60 +261,33 @@ public class TelegramBotService {
         postWithRetry(url, payload, "sendWebAppMessage", chatId);
     }
 
-    public boolean sendMessageWithKeyboard(Long chatId,
-                                           String text,
-                                           List<List<Map<String, Object>>> inlineKeyboard) {
-        return sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
+    public void sendMessageWithKeyboard(Long chatId,
+                                        String text,
+                                        List<List<Map<String, Object>>> inlineKeyboard) {
+        sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
     }
 
-    public boolean sendManagerMessageWithKeyboard(Long chatId,
-                                                  String text,
-                                                  List<List<Map<String, Object>>> inlineKeyboard) {
-        return sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
+    public void sendManagerMessageWithKeyboard(Long chatId,
+                                               String text,
+                                               List<List<Map<String, Object>>> inlineKeyboard) {
+        sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
     }
 
-    public boolean answerCallbackQuery(String callbackQueryId, String text, boolean showAlert) {
-        return answerCallbackQueryWithToken(botToken, callbackQueryId, text, showAlert);
-    }
-
-    private boolean answerCallbackQueryWithToken(String token,
-                                                 String callbackQueryId,
-                                                 String text,
-                                                 boolean showAlert) {
+    private void sendMessageWithKeyboard(String token,
+                                         Long chatId,
+                                         String text,
+                                         List<List<Map<String, Object>>> inlineKeyboard) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram bot token is not configured");
-            return false;
-        }
-        if (callbackQueryId == null || callbackQueryId.isBlank()) {
-            log.warn("Cannot answer Telegram callback without callback query id");
-            return false;
-        }
-
-        String url = "https://api.telegram.org/bot" + token + "/answerCallbackQuery";
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("callback_query_id", callbackQueryId);
-        payload.put("show_alert", showAlert);
-        if (text != null && !text.isBlank()) {
-            payload.put("text", text);
-        }
-        return postWithRetry(url, payload, "answerCallbackQuery", null);
-    }
-
-    private boolean sendMessageWithKeyboard(String token,
-                                            Long chatId,
-                                            String text,
-                                            List<List<Map<String, Object>>> inlineKeyboard) {
-        if (token == null || token.isBlank()) {
-            log.warn("Telegram bot token is not configured");
-            return false;
+            return;
         }
         if (chatId == null) {
             log.warn("Cannot send Telegram message without chat id");
-            return false;
+            return;
         }
         if (text == null || text.isBlank()) {
             log.warn("Telegram message text is empty");
-            return false;
+            return;
         }
 
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
@@ -285,26 +300,31 @@ public class TelegramBotService {
             payload.put("reply_markup", Map.of("inline_keyboard", inlineKeyboard));
         }
 
-        return postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
+        postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
     }
 
     private boolean postWithRetry(String url, Map<String, Object> payload, String operation, Long chatId) {
         Exception lastError = null;
+        int attempts = 0;
         for (int attempt = 1; attempt <= 3; attempt++) {
+            attempts = attempt;
             try {
                 ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
                 if (!response.getStatusCode().is2xxSuccessful()
                         || response.getBody() == null
                         || !response.getBody().contains("\"ok\":true")) {
-                    throw new IllegalStateException("Telegram rejected request: " + response.getBody());
+                    throw new IllegalStateException("Telegram rejected request");
                 }
                 return true;
-            } catch (Exception e) {
-                lastError = e;
+            } catch (Exception error) {
+                lastError = error;
+                TelegramFailureCategory category = classifyFailure(error);
+                if (!isRetryable(category)) break;
                 if (attempt < 3) sleepBeforeRetry(attempt);
             }
         }
-        log.error("Telegram {} failed for chatId={} after retries", operation, chatId, lastError);
+        log.error("Telegram {} failed category={} attempts={}",
+                operation, classifyFailure(lastError), attempts);
         return false;
     }
 

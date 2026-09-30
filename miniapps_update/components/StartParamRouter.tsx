@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTelegram } from "../hooks/useTelegram";
+import { apiClient } from "../lib/api";
 import {
   HANDLED_START_PARAM_KEY,
   readAttribution,
@@ -46,6 +47,22 @@ export default function StartParamRouter() {
       sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/markets?notificationGroupId=${id}`);
       return;
+    }
+
+    if (startParam.startsWith("match_")) {
+      const match = /^match_(\d+)_(\d+)$/.exec(startParam);
+      if (match) {
+        const notificationGroupId = Number(match[1]);
+        const boxId = Number(match[2]);
+        attribution.source = "telegram_notification";
+        attribution.notificationGroupId = notificationGroupId;
+        attribution.boxId = boxId;
+        saveAttribution(attribution);
+        sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
+        void apiClient.markNotificationGroupOpened(notificationGroupId);
+        router.replace(`/details/${boxId}`);
+        return;
+      }
     }
 
     if (startParam.startsWith("partner_") || startParam.startsWith("branch_")) {

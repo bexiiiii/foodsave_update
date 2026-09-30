@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +39,7 @@ public class NotificationGroupService {
     private final UserNotificationPreferencesRepository preferencesRepository;
     private final NotificationFrequencyStateRepository frequencyStateRepository;
     private final NotificationSettingsRepository notificationSettingsRepository;
+    private final FavoriteRepository favoriteRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final TelegramBotService telegramBotService;
@@ -45,8 +47,15 @@ public class NotificationGroupService {
     private final JdbcTemplate jdbcTemplate;
     private final AuthorizationService authorizationService;
 
+    /** Marketing digests can be paused without affecting order-status notifications. */
+    @Value("${notifications.marketing.enabled:false}")
+    private boolean marketingNotificationsEnabled;
+
     @Transactional
     public void collectNewProduct(ProductDTO productDTO) {
+        if (!marketingNotificationsEnabled) {
+            return;
+        }
         if (productDTO == null || productDTO.getId() == null) return;
         Product product = productRepository.findById(productDTO.getId()).orElse(null);
         if (!isAvailable(product)) return;
@@ -54,13 +63,23 @@ public class NotificationGroupService {
         List<User> users = userRepository.findByTelegramUserTrue();
         if (users.isEmpty()) return;
 
-        NotificationScheduleSetting setting = resolveSetting(NotificationWindowType.LUNCH, null);
+        NotificationScheduleSetting setting = resolveCollectionSetting();
+        if (!setting.isEnabled()) return;
         LocalDateTime scheduledAt = resolveNextScheduledAt(setting);
+        Set<Long> favoriteUserIds = favoriteRepository.findByStoreIdAndType(
+                product.getStore().getId(), FavoriteType.STORE).stream()
+                .map(Favorite::getUserId)
+                .collect(Collectors.toSet());
 
         for (User user : users) {
             if (!isMarketingEnabled(user)) continue;
             UserNotificationPreferences prefs = getOrCreatePreferences(user);
-            if (!prefs.isTelegramNotificationsEnabled() || !prefs.isLunchDigestEnabled()) continue;
+            boolean favoritePartner = favoriteUserIds.contains(user.getId());
+            if (!isWindowEnabled(prefs, setting.getNotificationWindowType())
+                    || !isEligibleForProduct(user, prefs, product, favoritePartner)) continue;
+            if (itemRepository.existsRecentlySentToUser(user.getId(), product.getId(), LocalDateTime.now().minusHours(24))) {
+                continue;
+            }
 
             NotificationGroup group = groupRepository
                     .findFirstByUserAndTimeWindowAndScheduledAtAndStatusIn(
@@ -69,7 +88,8 @@ public class NotificationGroupService {
                             scheduledAt,
                             List.of(NotificationGroupStatus.COLLECTING, NotificationGroupStatus.SCHEDULED)
                     )
-                    .orElseGet(() -> createGroup(user, setting, scheduledAt));
+                    .orElseGet(() -> createGroup(user, setting, scheduledAt,
+                            favoritePartner ? NotificationTriggerType.FAVORITE_PARTNER : NotificationTriggerType.NEW_BOX));
             if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) continue;
 
             NotificationGroupItem item = new NotificationGroupItem();
@@ -111,6 +131,14 @@ public class NotificationGroupService {
         return NotificationGroupResponse.fromEntity(group);
     }
 
+    @Transactional(readOnly = true)
+    public List<NotificationGroupResponse> getMiniAppGroups(User user) {
+        return groupRepository.findTop50ByUserAndStatusOrderBySentAtDesc(user, NotificationGroupStatus.SENT)
+                .stream()
+                .map(NotificationGroupResponse::fromEntity)
+                .toList();
+    }
+
     @Transactional
     public void markOpened(Long id) {
         groupRepository.findById(id).ifPresent(group -> {
@@ -147,6 +175,9 @@ public class NotificationGroupService {
     }
 
     public void processDueGroups() {
+        if (!marketingNotificationsEnabled) {
+            return;
+        }
         if (!tryLock()) {
             log.debug("Notification scheduler skipped: lock is held by another instance");
             return;
@@ -166,11 +197,107 @@ public class NotificationGroupService {
         }
     }
 
+    /** One concrete, relevant offer prevents users from having to scan a large catalogue. */
+    public void sendFoodSaveMatches() {
+        if (!marketingNotificationsEnabled || !tryLock()) return;
+        try {
+            List<Product> products = productRepository.findAllActiveAvailableProducts(
+                    ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText(), PageRequest.of(0, 100)).getContent();
+            NotificationScheduleSetting setting = resolveSetting(NotificationWindowType.EVENING, null);
+            for (User user : userRepository.findByTelegramUserTrue()) {
+                try {
+                    UserNotificationPreferences prefs = getOrCreatePreferences(user);
+                    if (!isWindowEnabled(prefs, NotificationWindowType.EVENING) || !canSendMarketing(user, setting)) continue;
+                    Set<Long> favoriteStoreIds = favoriteRepository.findFavoriteStoreIds(user.getId());
+                    Product match = products.stream()
+                            .filter(product -> isEligibleForProduct(user, prefs, product,
+                                    favoriteStoreIds.contains(product.getStore().getId())))
+                            .filter(product -> !itemRepository.existsRecentlySentToUser(user.getId(), product.getId(), LocalDateTime.now().minusHours(24)))
+                            .sorted(Comparator.comparing((Product product) -> favoriteStoreIds.contains(product.getStore().getId())).reversed()
+                                    .thenComparing(product -> product.getDiscountPercentage() != null ? product.getDiscountPercentage() : 0.0,
+                                            Comparator.reverseOrder()))
+                            .findFirst().orElse(null);
+                    if (match != null) sendFoodSaveMatch(user, match);
+                } catch (Exception error) {
+                    log.warn("FoodSave Match skipped for user={}: {}", user.getId(), error.getMessage());
+                }
+            }
+        } finally {
+            unlock();
+        }
+    }
+
+    private void sendFoodSaveMatch(User user, Product product) {
+        NotificationGroup group = new NotificationGroup();
+        group.setUser(user);
+        group.setStatus(NotificationGroupStatus.PROCESSING);
+        group.setScheduledAt(LocalDateTime.now());
+        group.setTimeWindow(NotificationWindowType.EVENING);
+        group.setTriggerType(NotificationTriggerType.NEARBY_OFFERS);
+        group.setCampaignId("foodsave-match-" + LocalDate.now(DEFAULT_ZONE));
+        group.setIdempotencyKey("foodsave-match:" + user.getId() + ":" + LocalDate.now(DEFAULT_ZONE));
+        NotificationGroup saved = groupRepository.findByIdempotencyKey(group.getIdempotencyKey()).orElseGet(() -> groupRepository.save(group));
+        if (saved.getStatus() != NotificationGroupStatus.PROCESSING) return;
+
+        NotificationGroupItem item = new NotificationGroupItem();
+        item.setNotificationGroup(saved);
+        item.setPartner(product.getStore());
+        item.setBranch(product.getStore());
+        item.setBox(product);
+        item.setAvailableQuantity(product.getStockQuantity());
+        item.setPrice(product.getPrice());
+        item.setOriginalPrice(product.getOriginalPrice());
+        item.setDiscountPercent(product.getDiscountPercentage() != null ? product.getDiscountPercentage().intValue() : 0);
+        item.setPickupEndAt(product.getExpiryDate());
+        saved.getItems().add(item);
+        recalculateGroup(saved);
+        String deepLink = buildMiniAppDeepLink("match_" + saved.getId() + "_" + product.getId());
+        saved.setDeepLink(deepLink);
+        String name = user.getFirstName() != null && !user.getFirstName().isBlank() ? user.getFirstName() + ", " : "";
+        String distance = formatMatchDistance(user, product);
+        String text = name + "у нас есть match для вас\n\n<b>" + product.getStore().getName() + "</b>"
+                + (distance != null ? "\n" + distance + " от вас" : "")
+                + "\n<b>" + formatPrice(product.getPrice()) + " вместо " + formatPrice(product.getOriginalPrice()) + "</b>";
+        TelegramBotService.TelegramSendResult sendResult = telegramBotService.sendMessageDetailed(
+                user.getTelegramUserId(),
+                new TelegramBotService.TelegramMessagePayload(text, null, "Открыть предложение", deepLink));
+        if (!sendResult.sent()) {
+            saved.setStatus(NotificationGroupStatus.FAILED);
+            saved.setFailedAt(LocalDateTime.now());
+            saved.setErrorMessage("TELEGRAM_" + sendResult.failureCategory().name());
+            groupRepository.save(saved);
+            return;
+        }
+        saved.setStatus(NotificationGroupStatus.SENT);
+        saved.setSentAt(LocalDateTime.now());
+        groupRepository.save(saved);
+        updateFrequencyAfterSent(user);
+        productEventService.trackAsync(new ProductEventRequest(ProductEventType.NOTIFICATION_SENT, null,
+                user.getTelegramUserId(), null, product.getStore().getId(), product.getStore().getId(), product.getId(),
+                null, null, ProductEventSource.telegram_notification, null, saved.getCampaignId(), null,
+                null, saved.getId(), deepLink, "match_" + saved.getId() + "_" + product.getId(), null,
+                "backend", null, null, null, resolveLanguage(user), "foodsave-match-sent-" + saved.getId(),
+                Map.of("notificationGroupId", saved.getId(), "match", true)));
+    }
+
+    private String formatMatchDistance(User user, Product product) {
+        if (user.getLastLatitude() == null || user.getLastLongitude() == null || product.getStore() == null
+                || product.getStore().getLatitude() == null || product.getStore().getLongitude() == null) return null;
+        double distance = distanceKm(user.getLastLatitude(), user.getLastLongitude(), product.getStore().getLatitude(), product.getStore().getLongitude());
+        return distance < 1 ? Math.max(1, Math.round(distance * 1000)) + " м" : String.format(Locale.US, "%.1f км", distance);
+    }
+
     @Transactional
     public void sendGroup(Long groupId) {
         NotificationGroup group = groupRepository.findWithItemsById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification group not found"));
         if (group.getStatus() != NotificationGroupStatus.SCHEDULED) return;
+        if (!marketingNotificationsEnabled) {
+            group.setStatus(NotificationGroupStatus.CANCELLED);
+            group.setErrorMessage("Marketing notifications are paused");
+            groupRepository.save(group);
+            return;
+        }
         group.setStatus(NotificationGroupStatus.PROCESSING);
         groupRepository.save(group);
 
@@ -189,12 +316,13 @@ public class NotificationGroupService {
             String text = buildMessage(group, resolveLanguage(group.getUser()));
             String deepLink = buildMiniAppDeepLink("notification_" + group.getId());
             group.setDeepLink(deepLink);
-            boolean sent = telegramBotService.sendMessage(group.getUser().getTelegramUserId(),
+            TelegramBotService.TelegramSendResult sendResult = telegramBotService.sendMessageDetailed(
+                    group.getUser().getTelegramUserId(),
                     new TelegramBotService.TelegramMessagePayload(text, null, resolveButtonText(group), deepLink));
-            if (!sent) {
+            if (!sendResult.sent()) {
                 group.setStatus(NotificationGroupStatus.FAILED);
                 group.setFailedAt(LocalDateTime.now());
-                group.setErrorMessage("Telegram API returned failure");
+                group.setErrorMessage("TELEGRAM_" + sendResult.failureCategory().name());
                 groupRepository.save(group);
                 return;
             }
@@ -214,8 +342,9 @@ public class NotificationGroupService {
         } catch (Exception e) {
             group.setStatus(NotificationGroupStatus.FAILED);
             group.setFailedAt(LocalDateTime.now());
-            group.setErrorMessage(e.getMessage());
+            group.setErrorMessage("INTERNAL_ERROR");
             groupRepository.save(group);
+            log.error("Notification group send failed category=INTERNAL_ERROR", e);
             throw e;
         }
     }
@@ -249,15 +378,16 @@ public class NotificationGroupService {
         return NotificationScheduleSettingDTO.fromEntity(scheduleRepository.save(setting));
     }
 
-    private NotificationGroup createGroup(User user, NotificationScheduleSetting setting, LocalDateTime scheduledAt) {
+    private NotificationGroup createGroup(User user, NotificationScheduleSetting setting, LocalDateTime scheduledAt,
+                                          NotificationTriggerType triggerType) {
         NotificationGroup group = new NotificationGroup();
         group.setUser(user);
         group.setCityId(setting.getCityId());
         group.setStatus(NotificationGroupStatus.SCHEDULED);
         group.setScheduledAt(scheduledAt);
         group.setTimeWindow(setting.getNotificationWindowType());
-        group.setTriggerType(setting.getNotificationWindowType() == NotificationWindowType.LAST_CHANCE
-                ? NotificationTriggerType.LAST_CHANCE : NotificationTriggerType.NEW_BOX);
+        group.setTriggerType(triggerType != null ? triggerType : (setting.getNotificationWindowType() == NotificationWindowType.LAST_CHANCE
+                ? NotificationTriggerType.LAST_CHANCE : NotificationTriggerType.NEW_BOX));
         group.setCampaignId(setting.getNotificationWindowType().name().toLowerCase(Locale.ROOT) + "-" + LocalDate.now(DEFAULT_ZONE));
         group.setIdempotencyKey(user.getId() + ":" + setting.getNotificationWindowType() + ":" + scheduledAt);
         return groupRepository.save(group);
@@ -401,6 +531,44 @@ public class NotificationGroupService {
 
     public String buildMiniAppDeepLink(String startParam) {
         return "https://t.me/FoodSave_bot?startapp=" + startParam;
+    }
+
+    private NotificationScheduleSetting resolveCollectionSetting() {
+        LocalTime now = LocalTime.now(DEFAULT_ZONE);
+        NotificationWindowType type = now.isBefore(LocalTime.of(14, 0))
+                ? NotificationWindowType.LUNCH
+                : now.isBefore(LocalTime.of(20, 0)) ? NotificationWindowType.EVENING : NotificationWindowType.LAST_CHANCE;
+        return resolveSetting(type, null);
+    }
+
+    private boolean isWindowEnabled(UserNotificationPreferences prefs, NotificationWindowType window) {
+        if (prefs == null || !prefs.isTelegramNotificationsEnabled()) return false;
+        return switch (window) {
+            case LUNCH -> prefs.isLunchDigestEnabled();
+            case EVENING -> prefs.isEveningDigestEnabled();
+            case LAST_CHANCE -> prefs.isLastChanceEnabled();
+        };
+    }
+
+    private boolean isEligibleForProduct(User user, UserNotificationPreferences prefs, Product product,
+                                         boolean favoritePartner) {
+        if (favoritePartner) return prefs.isFavoritePartnerAlertsEnabled();
+        if (!prefs.isNearbyOffersEnabled() || product.getStore() == null) return false;
+        if (user.getLastLatitude() == null || user.getLastLongitude() == null
+                || product.getStore().getLatitude() == null || product.getStore().getLongitude() == null) return false;
+        double maxDistanceKm = prefs.getMaxDistanceKm() != null ? prefs.getMaxDistanceKm() : 8.0;
+        return distanceKm(user.getLastLatitude(), user.getLastLongitude(),
+                product.getStore().getLatitude(), product.getStore().getLongitude()) <= maxDistanceKm;
+    }
+
+    private double distanceKm(double startLatitude, double startLongitude, double endLatitude, double endLongitude) {
+        double earthRadiusKm = 6371.0;
+        double latitudeDelta = Math.toRadians(endLatitude - startLatitude);
+        double longitudeDelta = Math.toRadians(endLongitude - startLongitude);
+        double a = Math.sin(latitudeDelta / 2) * Math.sin(latitudeDelta / 2)
+                + Math.cos(Math.toRadians(startLatitude)) * Math.cos(Math.toRadians(endLatitude))
+                * Math.sin(longitudeDelta / 2) * Math.sin(longitudeDelta / 2);
+        return earthRadiusKm * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
     private NotificationScheduleSetting resolveSetting(NotificationWindowType type, Long cityId) {
