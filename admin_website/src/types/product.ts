@@ -1,3 +1,10 @@
+export type ProductImageType = 'COVER' | 'INSIDE' | 'OUTSIDE';
+
+export interface ProductGalleryImage {
+  url: string;
+  type: ProductImageType;
+}
+
 export interface ProductDTO {
   id: number;
   name: string;
@@ -13,6 +20,7 @@ export interface ProductDTO {
   categoryId: number;
   categoryName?: string;
   images?: string[];
+  galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
   status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
   active: boolean;
@@ -33,6 +41,7 @@ export interface ProductCreateRequest {
   storeId?: number;
   categoryId?: number;
   images?: string[];
+  galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
   status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
   active: boolean;
@@ -48,6 +57,7 @@ export interface ProductUpdateRequest {
   storeId?: number;
   categoryId?: number;
   images?: string[];
+  galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
   status?: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
   active?: boolean;
@@ -85,4 +95,4 @@ export interface ProductDiscountData {
   discountPercentage: number;
   startDate: string;
   endDate: string;
-} 
+}

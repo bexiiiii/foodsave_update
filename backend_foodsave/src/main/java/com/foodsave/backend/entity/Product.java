@@ -79,6 +79,12 @@ public class Product extends BaseEntity {
     @Builder.Default
     private List<String> images = new ArrayList<>();
 
+    @ElementCollection
+    @CollectionTable(name = "product_gallery_images", joinColumns = @JoinColumn(name = "product_id"))
+    @OrderColumn(name = "display_order")
+    @Builder.Default
+    private List<ProductGalleryImage> galleryImages = new ArrayList<>();
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "store_id", nullable = false)
     @NotNull

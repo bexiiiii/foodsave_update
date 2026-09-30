@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
+import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -62,6 +63,9 @@ public class ProductDTO {
     private String categoryName;
     
     private List<String> images;
+    @Valid
+    @Size(max = 15, message = "A product can have at most 15 gallery images")
+    private List<ProductGalleryImageDTO> galleryImages;
     
     private LocalDateTime expiryDate;
     
@@ -89,12 +93,24 @@ public class ProductDTO {
     
     public static ProductDTO fromEntity(Product product) {
         List<String> imagesCopy = new ArrayList<>();
+        List<ProductGalleryImageDTO> galleryImagesCopy = new ArrayList<>();
         try {
             if (product.getImages() != null) {
                 imagesCopy = new ArrayList<>(product.getImages());
             }
+            if (product.getGalleryImages() != null) {
+                galleryImagesCopy = product.getGalleryImages().stream()
+                        .map(ProductGalleryImageDTO::fromEntity)
+                        .toList();
+            }
         } catch (Exception e) {
-            // fallback: leave imagesCopy empty
+            // fallback: leave image collections empty
+        }
+        if (galleryImagesCopy.isEmpty()) {
+            galleryImagesCopy = legacyGallery(imagesCopy);
+        }
+        if (!galleryImagesCopy.isEmpty()) {
+            imagesCopy = galleryImagesCopy.stream().map(ProductGalleryImageDTO::getUrl).toList();
         }
         BigDecimal discountedPrice = product.getPrice() != null ? product.getPrice() : BigDecimal.ZERO;
         BigDecimal originalPrice = product.getOriginalPrice();
@@ -120,6 +136,7 @@ public class ProductDTO {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .images(imagesCopy)
+                .galleryImages(galleryImagesCopy)
                 .expiryDate(product.getExpiryDate())
                 .status(product.getStatus())
                 .active(product.getActive())
@@ -134,5 +151,18 @@ public class ProductDTO {
                 .createdAt(product.getCreatedAt() != null ? product.getCreatedAt().toString() : null)
                 .updatedAt(product.getUpdatedAt() != null ? product.getUpdatedAt().toString() : null)
                 .build();
+    }
+
+    private static List<ProductGalleryImageDTO> legacyGallery(List<String> images) {
+        List<ProductGalleryImageDTO> gallery = new ArrayList<>();
+        for (int index = 0; index < images.size(); index++) {
+            com.foodsave.backend.domain.enums.ProductImageType type = switch (index) {
+                case 0 -> com.foodsave.backend.domain.enums.ProductImageType.COVER;
+                case 1 -> com.foodsave.backend.domain.enums.ProductImageType.INSIDE;
+                default -> com.foodsave.backend.domain.enums.ProductImageType.OUTSIDE;
+            };
+            gallery.add(ProductGalleryImageDTO.builder().url(images.get(index)).type(type).build());
+        }
+        return gallery;
     }
 }

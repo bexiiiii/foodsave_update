@@ -133,12 +133,20 @@ export interface Category {
 
 export type ProductAvailability = 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE';
 
+export type ProductImageType = 'COVER' | 'INSIDE' | 'OUTSIDE';
+
+export interface ProductGalleryImage {
+  url: string;
+  type: ProductImageType;
+}
+
 export interface Product {
   id: number;
   name: string;
   description?: string;
   imageUrl?: string;
   images?: string[];
+  galleryImages?: ProductGalleryImage[];
   originalPrice: number;
   price?: number; // Backend sends this field - the calculated discounted price
   discountedPrice?: number; // Alternative field name for compatibility

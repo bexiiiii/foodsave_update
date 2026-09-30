@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle, ChevronLeft, ChevronRight, HelpCircle, MapPin, Minus, Plus, Phone, Star, Timer, Truck, X, XCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useTelegram } from "../../../hooks/useTelegram";
 import { useTranslation } from "../../../hooks/useTranslation";
-import { apiClient, canReserveProduct, isProductDisplayableInMiniApp, Order, Product, Store } from "../../../lib/api";
+import { apiClient, canReserveProduct, isProductDisplayableInMiniApp, Order, Product, ProductGalleryImage, ProductImageType, Store } from "../../../lib/api";
 import ProductAvailabilityBadge from "../../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../../lib/pricing";
 import BackButton from "../../../components/BackButton";
@@ -29,16 +29,40 @@ type OrderModalState =
   | { type: "error"; message: string }
   | null;
 
-const galleryLabels = ["Обложка", "Внутри", "Снаружи", "Детали"];
+const galleryLabels: Record<ProductImageType, string> = {
+  COVER: "Обложка",
+  INSIDE: "Внутри",
+  OUTSIDE: "Снаружи",
+};
 
-function resolveProductImages(product: Product | null): string[] {
+const galleryTypes: ProductImageType[] = ["COVER", "INSIDE", "OUTSIDE"];
+
+function resolveProductImages(product: Product | null): ProductGalleryImage[] {
   if (!product) return [];
 
-  const images = [...(product.images || []), product.imageUrl]
-    .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
-    .map((image) => image.trim());
+  const categorizedImages = (product.galleryImages || [])
+    .filter((image): image is ProductGalleryImage => Boolean(
+      image
+      && typeof image.url === "string"
+      && image.url.trim()
+      && galleryTypes.includes(image.type),
+    ))
+    .map(image => ({ ...image, url: image.url.trim() }));
 
-  return Array.from(new Set(images));
+  const fallbackImages = [...(product.images || []), product.imageUrl]
+    .filter((image): image is string => typeof image === "string" && image.trim().length > 0)
+    .map((url, index) => ({
+      url: url.trim(),
+      type: index === 0 ? "COVER" as const : index === 1 ? "INSIDE" as const : "OUTSIDE" as const,
+    }));
+
+  const images = categorizedImages.length > 0 ? categorizedImages : fallbackImages;
+  const uniqueImages = new Map<string, ProductGalleryImage>();
+  images.forEach(image => {
+    if (!uniqueImages.has(image.url)) uniqueImages.set(image.url, image);
+  });
+
+  return Array.from(uniqueImages.values());
 }
 
 export default function ProductDetailsPage() {
@@ -61,6 +85,7 @@ export default function ProductDetailsPage() {
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [showDecisionHelpPrompt, setShowDecisionHelpPrompt] = useState(false);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const galleryTouchStartX = useRef<number | null>(null);
 
   // Phone modal state
   const [showPhoneModal, setShowPhoneModal] = useState(false);
@@ -409,11 +434,24 @@ export default function ProductDetailsPage() {
   const availabilityLabel = t("boxReserved");
   const activeImage = productImages[activeImageIndex] || null;
   const hasMultipleImages = productImages.length > 1;
+  const availableGalleryTypes = galleryTypes.filter(type => productImages.some(image => image.type === type));
   const showPreviousImage = () => {
     setActiveImageIndex((current) => (current === 0 ? productImages.length - 1 : current - 1));
   };
   const showNextImage = () => {
     setActiveImageIndex((current) => (current + 1) % productImages.length);
+  };
+  const selectGalleryType = (type: ProductImageType) => {
+    const imageIndex = productImages.findIndex(image => image.type === type);
+    if (imageIndex >= 0) setActiveImageIndex(imageIndex);
+  };
+  const finishGallerySwipe = (clientX: number) => {
+    if (galleryTouchStartX.current === null || !hasMultipleImages) return;
+    const distance = clientX - galleryTouchStartX.current;
+    galleryTouchStartX.current = null;
+    if (Math.abs(distance) < 45) return;
+    if (distance > 0) showPreviousImage();
+    else showNextImage();
   };
 
   return (
@@ -497,11 +535,20 @@ export default function ProductDetailsPage() {
 
       {/* Product Gallery */}
       <div className="px-4 mt-6">
-        <div className="relative h-72 overflow-hidden rounded-[28px] bg-gray-100">
+        <div
+          className="relative h-72 touch-pan-y overflow-hidden rounded-[28px] bg-gray-100"
+          onTouchStart={(event) => {
+            galleryTouchStartX.current = event.touches[0]?.clientX ?? null;
+          }}
+          onTouchEnd={(event) => finishGallerySwipe(event.changedTouches[0]?.clientX ?? 0)}
+          onTouchCancel={() => {
+            galleryTouchStartX.current = null;
+          }}
+        >
           {activeImage ? (
             <img
-              src={activeImage}
-              alt={product.name}
+              src={activeImage.url}
+              alt={`${product.name} — ${galleryLabels[activeImage.type].toLowerCase()}`}
               className="w-full h-full object-cover"
             />
           ) : (
@@ -538,12 +585,37 @@ export default function ProductDetailsPage() {
               </div>
             </>
           )}
+          {activeImage && (
+            <div className="absolute bottom-4 left-4 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-black shadow-sm backdrop-blur">
+              {galleryLabels[activeImage.type]}
+            </div>
+          )}
         </div>
+        {availableGalleryTypes.length > 1 && (
+          <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+            {availableGalleryTypes.map(type => {
+              const isActive = activeImage?.type === type;
+              const count = productImages.filter(image => image.type === type).length;
+              return (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => selectGalleryType(type)}
+                  className={`shrink-0 rounded-full px-3.5 py-2 text-xs font-semibold transition ${
+                    isActive ? "bg-[#4CAD73] text-white shadow-sm" : "bg-[#F1F3F2] text-black/60"
+                  }`}
+                >
+                  {galleryLabels[type]} · {count}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {hasMultipleImages && (
           <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
             {productImages.map((image, index) => (
               <button
-                key={`${image}-${index}`}
+                key={`${image.url}-${index}`}
                 type="button"
                 onClick={() => setActiveImageIndex(index)}
                 className={`relative h-20 w-20 shrink-0 overflow-hidden rounded-2xl border-2 bg-gray-100 transition ${
@@ -551,9 +623,9 @@ export default function ProductDetailsPage() {
                 }`}
                 aria-label={`Открыть фото ${index + 1}`}
               >
-                <img src={image} alt="" className="h-full w-full object-cover" />
+                <img src={image.url} alt="" className="h-full w-full object-cover" />
                 <span className="absolute inset-x-1 bottom-1 truncate rounded-full bg-black/50 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  {galleryLabels[index] || `Фото ${index + 1}`}
+                  {galleryLabels[image.type]}
                 </span>
               </button>
             ))}

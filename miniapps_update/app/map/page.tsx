@@ -10,9 +10,31 @@ import { openTelegramLocationSettings, readSavedLocation, requestCurrentLocation
 import BackButton from "../../components/BackButton";
 
 const astanaCenter: Leaflet.LatLngTuple = [51.1694, 71.4491];
+const astanaBounds = {
+  minLatitude: 50.95,
+  maxLatitude: 51.35,
+  minLongitude: 71.20,
+  maxLongitude: 71.75,
+};
 
-const getStoresWithLocation = (stores: Store[]) =>
-  stores.filter((store) => typeof store.latitude === "number" && typeof store.longitude === "number");
+type StoreWithLocation = Store & { latitude: number; longitude: number };
+
+const getStoresWithLocation = (stores: Store[]): StoreWithLocation[] => stores.flatMap((store) => {
+  if (typeof store.latitude !== "number" || typeof store.longitude !== "number") return [];
+  const latitude = store.latitude;
+
+  // A batch of Astana partners was saved with 70.x instead of 71.x longitude.
+  // Correct that obvious one-degree typo for display and reject unrelated points.
+  const longitude = store.longitude >= 70.2 && store.longitude <= 70.8
+    ? store.longitude + 1
+    : store.longitude;
+  const isInsideAstana = latitude >= astanaBounds.minLatitude
+    && latitude <= astanaBounds.maxLatitude
+    && longitude >= astanaBounds.minLongitude
+    && longitude <= astanaBounds.maxLongitude;
+
+  return isInsideAstana ? [{ ...store, latitude, longitude }] : [];
+});
 
 const syncUserLocation = (
   latitude: number,
@@ -144,7 +166,7 @@ export default function MapPage() {
       markersLayer.clearLayers();
 
       storesWithLocation.forEach((store) => {
-        const marker = L.marker([store.latitude as number, store.longitude as number], {
+        const marker = L.marker([store.latitude, store.longitude], {
           icon: L.divIcon({
             className: "",
             html: `
@@ -165,10 +187,10 @@ export default function MapPage() {
       if (hasSetInitialViewportRef.current || userLocation) return;
 
       if (storesWithLocation.length === 1) {
-        mapRef.current.setView([storesWithLocation[0].latitude as number, storesWithLocation[0].longitude as number], 15);
+        mapRef.current.setView([storesWithLocation[0].latitude, storesWithLocation[0].longitude], 15);
       } else if (storesWithLocation.length > 1) {
         const bounds = L.latLngBounds(
-          storesWithLocation.map((store) => [store.latitude as number, store.longitude as number] as Leaflet.LatLngTuple),
+          storesWithLocation.map((store) => [store.latitude, store.longitude] as Leaflet.LatLngTuple),
         );
         mapRef.current.fitBounds(bounds, { padding: [34, 34], maxZoom: 15 });
       } else {

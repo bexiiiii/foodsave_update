@@ -24,7 +24,7 @@ import { useModal } from '@/hooks/useModal';
 import { ProductService } from '@/services/productService';
 import { communicationsApi, storeApi } from '@/services/api';
 import { categoryApi } from '@/services/api/categories';
-import { ProductDTO, ProductCreateRequest, ProductUpdateRequest, ProductStats } from '@/types/product';
+import { ProductDTO, ProductCreateRequest, ProductUpdateRequest, ProductStats, ProductGalleryImage, ProductImageType } from '@/types/product';
 import { StoreDTO, CategoryDTO, PageableResponse } from '@/types/api';
 import { ValidationError } from '@/utils/validation';
 import { formatCurrency } from '@/utils/currency';
@@ -41,8 +41,7 @@ interface ProductFormData {
     stockQuantity: number;
     storeId: number | null;
     categoryId: number | null;
-    images: string[];
-    imageFiles: File[];
+    galleryImages: Array<ProductGalleryImage & { file?: File }>;
     expiryDate: string;
     status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
     active: boolean;
@@ -63,8 +62,7 @@ const getDefaultProductFormData = (): ProductFormData => ({
     stockQuantity: 1,
     storeId: null,
     categoryId: null,
-    images: [],
-    imageFiles: [],
+    galleryImages: [],
     expiryDate: '',
     status: 'AVAILABLE',
     active: true,
@@ -74,6 +72,21 @@ const calculateDiscountedPrice = (originalPrice: number, discountPercentage: num
     const discount = Math.min(Math.max(Number(discountPercentage) || 0, 0), 100);
     return Math.round((Number(originalPrice) || 0) * (1 - discount / 100) * 100) / 100;
 };
+
+const IMAGE_SECTIONS: Array<{
+    type: ProductImageType;
+    title: string;
+    description: string;
+}> = [
+    { type: 'COVER', title: 'Обложка бокса', description: 'Первое фото показывается в каталоге и будет главным.' },
+    { type: 'INSIDE', title: 'Что внутри', description: 'Покажите состав бокса крупным планом.' },
+    { type: 'OUTSIDE', title: 'Как выглядит снаружи', description: 'Добавьте упаковку и общий вид бокса.' },
+];
+
+const legacyGalleryImages = (images: string[] = []): ProductGalleryImage[] => images.map((url, index) => ({
+    url,
+    type: index === 0 ? 'COVER' : index === 1 ? 'INSIDE' : 'OUTSIDE',
+}));
 
 const formatExpiryDateForApi = (date: string) => {
     if (!date) return undefined;
@@ -192,9 +205,9 @@ export default function ProductsPage() {
     useEffect(() => {
         // Clean up object URLs when component unmounts
         return () => {
-            formData.images.forEach(image => {
-                if (image && image.startsWith('blob:')) {
-                    URL.revokeObjectURL(image);
+            formData.galleryImages.forEach(image => {
+                if (image.url.startsWith('blob:')) {
+                    URL.revokeObjectURL(image.url);
                 }
             });
         };
@@ -251,56 +264,52 @@ export default function ProductsPage() {
         });
     };
 
-    const handleImageFileChange = (index: number, file: File | null) => {
-        if (file) {
-            // Валидация файла
-            if (!validateImageFile(file)) {
-                return;
-            }
-        }
+    const handleImageFilesChange = (type: ProductImageType, files: FileList | null) => {
+        const selectedFiles = Array.from(files || []).filter(file => validateImageFile(file));
+        if (selectedFiles.length === 0) return;
 
         setFormData(prev => {
-            const newImageFiles = [...prev.imageFiles];
-            const newImages = [...prev.images];
-            
-            if (file) {
-                newImageFiles[index] = file;
-                // Create a preview URL for display
-                newImages[index] = URL.createObjectURL(file);
-            } else {
-                newImageFiles.splice(index, 1);
-                newImages.splice(index, 1);
+            const availableSlots = Math.max(0, 15 - prev.galleryImages.length);
+            const filesToAdd = selectedFiles.slice(0, availableSlots);
+            if (filesToAdd.length < selectedFiles.length) {
+                toast.error('Для одного бокса можно добавить не более 15 фотографий');
             }
-            
+
             return {
                 ...prev,
-                imageFiles: newImageFiles,
-                images: newImages
+                galleryImages: [
+                    ...prev.galleryImages,
+                    ...filesToAdd.map(file => ({
+                        type,
+                        file,
+                        url: URL.createObjectURL(file),
+                    })),
+                ],
             };
         });
     };
 
-    const addImageField = () => {
+    const removeGalleryImage = (imageToRemove: ProductGalleryImage & { file?: File }) => {
+        setFormData(prev => {
+            if (imageToRemove.url.startsWith('blob:')) {
+                URL.revokeObjectURL(imageToRemove.url);
+            }
+
+            return {
+                ...prev,
+                galleryImages: prev.galleryImages.filter(image => image !== imageToRemove),
+            };
+        });
+    };
+
+    const makePrimaryCover = (imageToPromote: ProductGalleryImage & { file?: File }) => {
         setFormData(prev => ({
             ...prev,
-            images: [...prev.images, ''],
-            imageFiles: [...prev.imageFiles]
+            galleryImages: [
+                imageToPromote,
+                ...prev.galleryImages.filter(image => image !== imageToPromote),
+            ],
         }));
-    };
-
-    const removeImageField = (index: number) => {
-        setFormData(prev => {
-            // Revoke the object URL to prevent memory leaks
-            if (prev.images[index] && prev.images[index].startsWith('blob:')) {
-                URL.revokeObjectURL(prev.images[index]);
-            }
-            
-            return {
-                ...prev,
-                images: prev.images.filter((_, i) => i !== index),
-                imageFiles: prev.imageFiles.filter((_, i) => i !== index)
-            };
-        });
     };
 
     const validateForm = (): boolean => {
@@ -346,9 +355,9 @@ export default function ProductsPage() {
 
     const resetForm = () => {
         // Clean up object URLs to prevent memory leaks
-        formData.images.forEach(image => {
-            if (image && image.startsWith('blob:')) {
-                URL.revokeObjectURL(image);
+        formData.galleryImages.forEach(image => {
+            if (image.url.startsWith('blob:')) {
+                URL.revokeObjectURL(image.url);
             }
         });
         
@@ -372,8 +381,9 @@ export default function ProductsPage() {
             stockQuantity: product.stockQuantity,
             storeId: product.storeId,
             categoryId: product.categoryId,
-            images: product.images && product.images.length > 0 ? product.images : [],
-            imageFiles: [],
+            galleryImages: product.galleryImages && product.galleryImages.length > 0
+                ? product.galleryImages
+                : legacyGalleryImages(product.images),
             expiryDate: product.expiryDate ? product.expiryDate.split('T')[0] : '',
             status: PRODUCT_STATUSES.some((status) => status.value === product.status) ? product.status : 'AVAILABLE',
             active: product.active !== false,
@@ -393,20 +403,24 @@ export default function ProductsPage() {
         }
     };
 
-    const uploadImages = async (files: File[]): Promise<string[]> => {
-        const uploadedUrls: string[] = [];
+    const uploadGalleryImages = async (): Promise<ProductGalleryImage[]> => {
+        const imagesBySection = IMAGE_SECTIONS.flatMap(section =>
+            formData.galleryImages.filter(image => image.type === section.type)
+        );
 
-        for (const file of files) {
-            const validationError = FileUploadService.validateImageFile(file);
-            if (validationError) {
-                throw new Error(`${file.name}: ${validationError}`);
+        return Promise.all(imagesBySection.map(async image => {
+            if (!image.file) {
+                return { url: image.url, type: image.type };
             }
 
-            const uploadResponse = await FileUploadService.uploadImage(file);
-            uploadedUrls.push(uploadResponse.url);
-        }
+            const validationError = FileUploadService.validateImageFile(image.file);
+            if (validationError) {
+                throw new Error(`${image.file.name}: ${validationError}`);
+            }
 
-        return uploadedUrls;
+            const uploadResponse = await FileUploadService.uploadImage(image.file);
+            return { url: uploadResponse.url, type: image.type };
+        }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -426,12 +440,8 @@ export default function ProductsPage() {
                 return;
             }
 
-            // Upload new images if any
-            let imageUrls = formData.images.filter(img => img.trim() && !img.startsWith('blob:'));
-            if (formData.imageFiles.length > 0) {
-                const uploadedUrls = await uploadImages(formData.imageFiles);
-                imageUrls = [...imageUrls, ...uploadedUrls];
-            }
+            const galleryImages = await uploadGalleryImages();
+            const imageUrls = galleryImages.map(image => image.url);
 
             // Format the expiry date to include time if it exists
             // Convert null values to undefined for API compatibility
@@ -446,6 +456,7 @@ export default function ProductsPage() {
                 storeId: formData.storeId ?? undefined,
                 categoryId: formData.categoryId ?? undefined,
                 images: imageUrls,
+                galleryImages,
                 expiryDate: formatExpiryDateForApi(formData.expiryDate),
                 status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
                 active: formData.active,
@@ -484,6 +495,7 @@ export default function ProductsPage() {
                     storeId: formData.storeId ?? undefined,
                     categoryId: formData.categoryId ?? undefined,
                     images: imageUrls,
+                    galleryImages,
                     expiryDate: formatExpiryDateForApi(formData.expiryDate),
                     status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
                     active: formData.active,
@@ -1118,79 +1130,78 @@ export default function ProductsPage() {
 
                             {/* Images */}
                             <div>
-                                <Label>Изображения товара</Label>
+                                <Label>Фотографии бокса</Label>
                                 <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
-                                    Первое фото будет обложкой. Остальные появятся в галерее бокса.
+                                    Добавьте обложки, фотографии содержимого и упаковки. Можно выбрать несколько файлов сразу — до 15 фото на один бокс.
                                 </p>
-                                <div className="space-y-3">
-                                    {formData.images.length === 0 ? (
-                                        <div className="space-y-2">
-                                            <div className="flex items-center space-x-3">
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0] || null;
-                                                        handleImageFileChange(0, file);
-                                                    }}
-                                                    className="flex-1"
-                                                />
-                                            </div>
-                                        </div>
-                                    ) : (
-                                        formData.images.map((image, index) => (
-                                            <div key={index} className="space-y-2">
-                                                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">
-                                                    {index === 0 ? 'Обложка бокса' : `Дополнительное фото ${index + 1}`}
-                                                </p>
-                                                <div className="flex items-center space-x-3">
-                                                    <Input
-                                                        type="file"
-                                                        accept="image/*"
-                                                        onChange={(e) => {
-                                                            const file = e.target.files?.[0] || null;
-                                                            handleImageFileChange(index, file);
-                                                        }}
-                                                        className="flex-1"
-                                                    />
-                                                    {formData.images.length > 1 && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="outline"
-                                                            size="sm"
-                                                            onClick={() => removeImageField(index)}
-                                                            className="text-red-600 hover:text-red-700"
-                                                        >
-                                                            Удалить
-                                                        </Button>
-                                                    )}
+                                <div className="mt-4 space-y-4">
+                                    {IMAGE_SECTIONS.map(section => {
+                                        const sectionImages = formData.galleryImages.filter(image => image.type === section.type);
+                                        const primaryCover = formData.galleryImages.find(image => image.type === 'COVER');
+
+                                        return (
+                                            <div key={section.type} className="rounded-2xl border border-gray-200 bg-gray-50/70 p-4 dark:border-gray-800 dark:bg-gray-900/40">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-semibold text-gray-900 dark:text-white">{section.title}</p>
+                                                        <p className="mt-0.5 text-xs text-gray-500 dark:text-gray-400">{section.description}</p>
+                                                    </div>
+                                                    <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-gray-600 shadow-sm dark:bg-gray-800 dark:text-gray-300">
+                                                        {sectionImages.length} фото
+                                                    </span>
                                                 </div>
-                                                {/* Image preview */}
-                                                {image && (
-                                                    <div className="relative w-32 h-32 border border-gray-300 rounded-lg overflow-hidden">
-                                                        <img
-                                                            src={image}
-                                                            alt={`Превью ${index + 1}`}
-                                                            className="w-full h-full object-cover"
-                                                            onError={(e) => {
-                                                                const target = e.target as HTMLImageElement;
-                                                                target.style.display = 'none';
-                                                            }}
-                                                        />
+
+                                                {sectionImages.length > 0 && (
+                                                    <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+                                                        {sectionImages.map((image, index) => {
+                                                            const isPrimary = section.type === 'COVER' && image === primaryCover;
+                                                            return (
+                                                                <div key={`${image.url}-${index}`} className="group relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800">
+                                                                    <img src={image.url} alt={`${section.title}, фото ${index + 1}`} className="h-full w-full object-cover" />
+                                                                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/75 via-black/25 to-transparent p-2 pt-8">
+                                                                        <span className="text-[11px] font-semibold text-white">
+                                                                            {isPrimary ? 'Главная' : `Фото ${index + 1}`}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => removeGalleryImage(image)}
+                                                                            className="rounded-lg bg-white/90 px-2 py-1 text-[11px] font-semibold text-red-600 shadow-sm transition hover:bg-white"
+                                                                        >
+                                                                            Удалить
+                                                                        </button>
+                                                                    </div>
+                                                                    {section.type === 'COVER' && !isPrimary && (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => makePrimaryCover(image)}
+                                                                            className="absolute left-2 top-2 rounded-full bg-black/60 px-2.5 py-1 text-[10px] font-semibold text-white backdrop-blur"
+                                                                        >
+                                                                            Сделать главной
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
                                                     </div>
                                                 )}
+
+                                                <label className="mt-3 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-[#4CAD73]/50 bg-white px-4 py-3 text-sm font-semibold text-[#328a54] transition hover:border-[#4CAD73] hover:bg-[#F2FAF5] dark:bg-gray-900">
+                                                    <PlusIcon className="h-4 w-4" />
+                                                    Добавить фото
+                                                    <input
+                                                        type="file"
+                                                        accept="image/jpeg,image/png,image/gif,image/webp"
+                                                        multiple
+                                                        className="sr-only"
+                                                        onChange={(event) => {
+                                                            handleImageFilesChange(section.type, event.target.files);
+                                                            event.currentTarget.value = '';
+                                                        }}
+                                                    />
+                                                </label>
                                             </div>
-                                        ))
-                                    )}
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={addImageField}
-                                        className="w-full"
-                                    >
-                                        Добавить еще изображение
-                                    </Button>
+                                        );
+                                    })}
                                 </div>
                             </div>
 

@@ -132,6 +132,21 @@ export default function StoresPage() {
             errors.push({ field: 'category', message: 'Категория обязательна' });
         }
 
+        const hasLatitude = formData.latitude.trim().length > 0;
+        const hasLongitude = formData.longitude.trim().length > 0;
+        if (hasLatitude !== hasLongitude) {
+            errors.push({ field: hasLatitude ? 'longitude' : 'latitude', message: 'Укажите обе координаты' });
+        } else if (hasLatitude && hasLongitude) {
+            const latitude = Number(formData.latitude);
+            const longitude = Number(formData.longitude);
+            if (!Number.isFinite(latitude) || latitude < 50.95 || latitude > 51.35) {
+                errors.push({ field: 'latitude', message: 'Укажите широту заведения в Астане (пример: 51.1694)' });
+            }
+            if (!Number.isFinite(longitude) || longitude < 71.20 || longitude > 71.75) {
+                errors.push({ field: 'longitude', message: 'Укажите долготу заведения в Астане (она начинается с 71)' });
+            }
+        }
+
         setValidationErrors(errors);
         return errors.length === 0;
     };
@@ -843,8 +858,12 @@ export default function StoresPage() {
                                     step="any"
                                     value={formData.latitude}
                                     onChange={handleChange}
-                                    placeholder="43.238949"
+                                    placeholder="51.169400"
+                                    className={getFieldError('latitude') ? 'border-red-500' : ''}
                                 />
+                                {getFieldError('latitude') && (
+                                    <p className="mt-1 text-sm text-red-500">{getFieldError('latitude')}</p>
+                                )}
                             </div>
 
                             <div>
@@ -856,8 +875,12 @@ export default function StoresPage() {
                                     step="any"
                                     value={formData.longitude}
                                     onChange={handleChange}
-                                    placeholder="76.889709"
+                                    placeholder="71.449100"
+                                    className={getFieldError('longitude') ? 'border-red-500' : ''}
                                 />
+                                {getFieldError('longitude') && (
+                                    <p className="mt-1 text-sm text-red-500">{getFieldError('longitude')}</p>
+                                )}
                             </div>
                         </div>
 

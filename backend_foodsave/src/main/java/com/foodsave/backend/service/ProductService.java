@@ -1,8 +1,10 @@
 package com.foodsave.backend.service;
 
 import com.foodsave.backend.entity.Product;
+import com.foodsave.backend.entity.ProductGalleryImage;
 import com.foodsave.backend.entity.Store;
 import com.foodsave.backend.entity.Category;
+import com.foodsave.backend.dto.ProductGalleryImageDTO;
 import com.foodsave.backend.dto.ProductDTO;
 import com.foodsave.backend.dto.ProductStatsDTO;
 import com.foodsave.backend.exception.InsufficientStockException;
@@ -758,7 +760,11 @@ public class ProductService {
         BigDecimal originalPrice = product.getOriginalPrice();
         Double discountPercentage = product.getDiscountPercentage();
         Integer stockQuantity = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
-        List<String> images = product.getImages() != null ? product.getImages() : Collections.emptyList();
+        List<String> storedImages = product.getImages() != null ? product.getImages() : Collections.emptyList();
+        List<ProductGalleryImageDTO> galleryImages = resolveGalleryImages(product, storedImages);
+        List<String> images = galleryImages.isEmpty()
+                ? storedImages
+                : galleryImages.stream().map(ProductGalleryImageDTO::getUrl).toList();
         boolean isAvailable = ProductAvailability.isAvailable(product);
         ProductAvailabilityState availabilityState = productAvailabilityService.resolve(product, reservedIds);
 
@@ -780,6 +786,7 @@ public class ProductService {
                 .categoryId(product.getCategory().getId())
                 .categoryName(product.getCategory().getName())
                 .images(images)
+                .galleryImages(galleryImages)
                 .expiryDate(product.getExpiryDate())
                 .status(product.getStatus())
                 .active(product.getActive())
@@ -836,14 +843,43 @@ public class ProductService {
         } else if (product.getSortOrder() == null) {
             product.setSortOrder(0);
         }
-        if (dto.getImages() != null) {
+        if (dto.getGalleryImages() != null) {
+            List<ProductGalleryImage> galleryImages = dto.getGalleryImages().stream()
+                    .filter(image -> image != null && image.getUrl() != null && !image.getUrl().isBlank() && image.getType() != null)
+                    .limit(15)
+                    .map(ProductGalleryImageDTO::toEntity)
+                    .sorted(Comparator.comparingInt(image -> image.getType().ordinal()))
+                    .toList();
+            product.setGalleryImages(new ArrayList<>(galleryImages));
+            product.setImages(new ArrayList<>(galleryImages.stream().map(ProductGalleryImage::getUrl).toList()));
+        } else if (dto.getImages() != null) {
             product.setImages(dto.getImages());
+            product.setGalleryImages(new ArrayList<>());
         } else if (product.getImages() == null) {
             product.setImages(new ArrayList<>());
         }
         product.setExpiryDate(dto.getExpiryDate());
         product.setStatus(dto.getStatus());
         product.setActive(dto.getActive());
+    }
+
+    private List<ProductGalleryImageDTO> resolveGalleryImages(Product product, List<String> images) {
+        if (product.getGalleryImages() != null && !product.getGalleryImages().isEmpty()) {
+            return product.getGalleryImages().stream()
+                    .map(ProductGalleryImageDTO::fromEntity)
+                    .toList();
+        }
+
+        List<ProductGalleryImageDTO> gallery = new ArrayList<>();
+        for (int index = 0; index < images.size(); index++) {
+            com.foodsave.backend.domain.enums.ProductImageType type = switch (index) {
+                case 0 -> com.foodsave.backend.domain.enums.ProductImageType.COVER;
+                case 1 -> com.foodsave.backend.domain.enums.ProductImageType.INSIDE;
+                default -> com.foodsave.backend.domain.enums.ProductImageType.OUTSIDE;
+            };
+            gallery.add(ProductGalleryImageDTO.builder().url(images.get(index)).type(type).build());
+        }
+        return gallery;
     }
     
     /**
