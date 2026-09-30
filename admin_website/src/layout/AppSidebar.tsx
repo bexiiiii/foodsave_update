@@ -135,6 +135,12 @@ const navItems: NavItem[] = [
     allowedRoles: ["SUPER_ADMIN", "STORE_OWNER", "STORE_MANAGER"],
   },
   {
+    icon: <PieChartIcon />,
+    name: "Эксперименты роста",
+    path: "/communications/experiments",
+    allowedRoles: ["SUPER_ADMIN"],
+  },
+  {
     icon: <PlugInIcon />,
     name: "WhatsApp-парсер",
     path: "/whatsapp-parser",
@@ -176,6 +182,11 @@ const AppSidebar: React.FC = () => {
   const isActive = useCallback((path: string) => path === pathname, [pathname]);
 
   const isItemVisible = useCallback((nav: NavItem): boolean => {
+    // The growth console must stay hidden while no verified role is available.
+    if (nav.path === "/communications/experiments" && user?.role !== "SUPER_ADMIN") {
+      return false;
+    }
+
     // Проверяем разрешения
     if (nav.permission && !hasPermission(nav.permission)) {
       return false;
