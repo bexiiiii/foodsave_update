@@ -51,6 +51,8 @@ public class NotificationGroupService {
     @Value("${notifications.marketing.enabled:false}")
     private boolean marketingNotificationsEnabled;
 
+    private final com.foodsave.backend.growth.GrowthIsolationService growthIsolationService;
+
     @Transactional
     public void collectNewProduct(ProductDTO productDTO) {
         if (!marketingNotificationsEnabled) {
@@ -228,6 +230,14 @@ public class NotificationGroupService {
     }
 
     private void sendFoodSaveMatch(User user, Product product) {
+        if (!marketingNotificationsEnabled) return;
+        growthIsolationService.runForNonParticipant(user.getId(), () -> {
+            sendIsolatedFoodSaveMatch(user, product);
+            return null;
+        }, null);
+    }
+
+    private void sendIsolatedFoodSaveMatch(User user, Product product) {
         NotificationGroup group = new NotificationGroup();
         group.setUser(user);
         group.setStatus(NotificationGroupStatus.PROCESSING);
@@ -291,6 +301,13 @@ public class NotificationGroupService {
     public void sendGroup(Long groupId) {
         NotificationGroup group = groupRepository.findWithItemsById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification group not found"));
+        growthIsolationService.runForNonParticipant(group.getUser().getId(), () -> {
+            sendIsolatedGroup(group);
+            return null;
+        }, null);
+    }
+
+    private void sendIsolatedGroup(NotificationGroup group) {
         if (group.getStatus() != NotificationGroupStatus.SCHEDULED) return;
         if (!marketingNotificationsEnabled) {
             group.setStatus(NotificationGroupStatus.CANCELLED);

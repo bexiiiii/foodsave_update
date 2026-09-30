@@ -41,6 +41,8 @@ public class SecurityConfig {
                 // Always allow CORS preflight checks
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
+                .requestMatchers("/api/admin/growth-experiments/**").hasRole("SUPER_ADMIN")
+
                 // API documentation is administrative surface, never public in production.
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                         "/swagger-resources/**", "/webjars/**").hasRole("SUPER_ADMIN")

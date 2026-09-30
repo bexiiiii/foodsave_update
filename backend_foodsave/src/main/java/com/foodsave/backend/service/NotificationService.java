@@ -33,6 +33,8 @@ public class NotificationService {
     private final UserRepository userRepository;
     private final TelegramBotService telegramBotService;
 
+    private final com.foodsave.backend.growth.GrowthIsolationService growthIsolationService;
+
     public List<NotificationDTO> getAllNotifications() {
         User currentUser = securityUtils.getCurrentUser();
         return notificationRepository.findByUserOrderByCreatedAtDesc(currentUser).stream()
@@ -138,7 +140,7 @@ public class NotificationService {
 
         int recipients = userRepository.findByTelegramUserTrue().stream()
                 .filter(user -> user.getTelegramUserId() != null)
-                .mapToInt(user -> {
+                .mapToInt(user -> growthIsolationService.runForNonParticipant(user.getId(), () -> {
                     telegramBotService.sendMessage(user.getTelegramUserId(), telegramMessage);
                     Notification notification = new Notification();
                     notification.setTitle(storedTitle);
@@ -148,7 +150,7 @@ public class NotificationService {
                     notification.setUser(user);
                     notificationRepository.save(notification);
                     return 1;
-                })
+                }, 0))
                 .sum();
 
         try {
