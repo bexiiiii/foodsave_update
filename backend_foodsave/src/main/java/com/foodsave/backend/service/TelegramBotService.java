@@ -71,6 +71,11 @@ public class TelegramBotService {
         return sendMessageWithTokenDetailed(botToken, chatId, message);
     }
 
+    /** For callers that own delivery retries and must make at most one transport attempt. */
+    public TelegramSendResult sendMessageOnceDetailed(Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithTokenDetailed(botToken, chatId, message, 1);
+    }
+
     public boolean sendManagerMessage(Long chatId, TelegramMessagePayload message) {
         return sendMessageWithTokenDetailed(resolveManagerBotToken(), chatId, message).sent();
     }
@@ -80,6 +85,11 @@ public class TelegramBotService {
     }
 
     TelegramSendResult sendMessageWithTokenDetailed(String token, Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithTokenDetailed(token, chatId, message, 3);
+    }
+
+    private TelegramSendResult sendMessageWithTokenDetailed(String token, Long chatId,
+                                                            TelegramMessagePayload message, int maxAttempts) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram send failed category={}", TelegramFailureCategory.NOT_CONFIGURED);
             return TelegramSendResult.failure(TelegramFailureCategory.NOT_CONFIGURED, 0);
@@ -128,7 +138,7 @@ public class TelegramBotService {
 
         Exception lastError = null;
         int attempts = 0;
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             attempts = attempt;
             try {
                 ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
@@ -144,7 +154,7 @@ public class TelegramBotService {
                 lastError = error;
                 TelegramFailureCategory category = classifyFailure(error);
                 if (!isRetryable(category)) break;
-                if (attempt < 3) {
+                if (attempt < maxAttempts) {
                     log.warn("Telegram {} failed category={} attempt={} retrying=true",
                             endpoint, category, attempt);
                     sleepBeforeRetry(attempt);
@@ -261,33 +271,33 @@ public class TelegramBotService {
         postWithRetry(url, payload, "sendWebAppMessage", chatId);
     }
 
-    public void sendMessageWithKeyboard(Long chatId,
+    public boolean sendMessageWithKeyboard(Long chatId,
                                         String text,
                                         List<List<Map<String, Object>>> inlineKeyboard) {
-        sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
+        return sendMessageWithKeyboard(botToken, chatId, text, inlineKeyboard);
     }
 
-    public void sendManagerMessageWithKeyboard(Long chatId,
+    public boolean sendManagerMessageWithKeyboard(Long chatId,
                                                String text,
                                                List<List<Map<String, Object>>> inlineKeyboard) {
-        sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
+        return sendMessageWithKeyboard(resolveManagerBotToken(), chatId, text, inlineKeyboard);
     }
 
-    private void sendMessageWithKeyboard(String token,
+    private boolean sendMessageWithKeyboard(String token,
                                          Long chatId,
                                          String text,
                                          List<List<Map<String, Object>>> inlineKeyboard) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram bot token is not configured");
-            return;
+            return false;
         }
         if (chatId == null) {
             log.warn("Cannot send Telegram message without chat id");
-            return;
+            return false;
         }
         if (text == null || text.isBlank()) {
             log.warn("Telegram message text is empty");
-            return;
+            return false;
         }
 
         String url = "https://api.telegram.org/bot" + token + "/sendMessage";
@@ -300,7 +310,21 @@ public class TelegramBotService {
             payload.put("reply_markup", Map.of("inline_keyboard", inlineKeyboard));
         }
 
-        postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
+        return postWithRetry(url, payload, "sendMessageWithKeyboard", chatId);
+    }
+
+    public boolean answerCallbackQuery(String callbackQueryId, String text, boolean showAlert) {
+        if (botToken == null || botToken.isBlank() || callbackQueryId == null || callbackQueryId.isBlank()) {
+            return false;
+        }
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("callback_query_id", callbackQueryId);
+        payload.put("show_alert", showAlert);
+        if (text != null && !text.isBlank()) {
+            payload.put("text", text);
+        }
+        return postWithRetry("https://api.telegram.org/bot" + botToken + "/answerCallbackQuery",
+                payload, "answerCallbackQuery", null);
     }
 
     private boolean postWithRetry(String url, Map<String, Object> payload, String operation, Long chatId) {

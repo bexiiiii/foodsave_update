@@ -49,6 +49,16 @@ public interface ProductEventRepository extends JpaRepository<ProductEvent, Long
                                        @Param("sessionId") String sessionId,
                                        @Param("since") LocalDateTime since);
 
+    @Query("SELECT e.eventType as eventType, e.createdAt as createdAt FROM ProductEvent e " +
+            "WHERE e.createdAt >= :start AND e.createdAt < :end")
+    List<EventTimestampProjection> findEventTimestampsBetween(@Param("start") LocalDateTime start,
+                                                             @Param("end") LocalDateTime end);
+
+    interface EventTimestampProjection {
+        ProductEventType getEventType();
+        LocalDateTime getCreatedAt();
+    }
+
     interface EventCountProjection {
         ProductEventType getEventType();
         Long getCount();

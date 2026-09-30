@@ -35,5 +35,11 @@ public interface NotificationGroupRepository extends JpaRepository<NotificationG
             List<NotificationGroupStatus> statuses
     );
 
+    List<NotificationGroup> findTop50ByUserAndStatusOrderBySentAtDesc(User user, NotificationGroupStatus status);
+
+    long countBySentAtGreaterThanEqualAndSentAtLessThan(LocalDateTime start, LocalDateTime end);
+
+    long countByOpenedAtGreaterThanEqualAndOpenedAtLessThan(LocalDateTime start, LocalDateTime end);
+
     long countByStatusAndCreatedAtBetween(NotificationGroupStatus status, LocalDateTime start, LocalDateTime end);
 }
