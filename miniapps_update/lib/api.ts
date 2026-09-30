@@ -301,12 +301,16 @@ export interface TelegramAuthRequest {
   initData: string;
 }
 
+export const isReplaySafeMethod = (method?: string) =>
+  ['GET', 'HEAD', 'OPTIONS'].includes((method || 'GET').toUpperCase());
+
 // API client class
-class ApiClient {
+export class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private activeRequests = new Map<string, Promise<unknown>>(); // Cache for preventing duplicate requests
   private isAuthenticating = false; // Flag to prevent multiple auth attempts
+  private reauthenticationPromise: Promise<boolean> | null = null;
 
   constructor() {
     this.baseURL = API_BASE_URL;
@@ -335,6 +339,39 @@ class ApiClient {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
     }
+  }
+
+  private async reauthenticateWithTelegram(): Promise<boolean> {
+    if (this.reauthenticationPromise) return this.reauthenticationPromise;
+
+    const initData = typeof window !== 'undefined'
+      ? window.Telegram?.WebApp?.initData?.trim()
+      : '';
+    if (!initData) return false;
+
+    this.reauthenticationPromise = (async () => {
+      try {
+        const response = await fetch(`${this.baseURL}/auth/telegram`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ initData }),
+          cache: 'no-store',
+        });
+        if (!response.ok) return false;
+
+        const auth = await response.json() as AuthResponse;
+        const token = auth.accessToken || auth.token;
+        if (!token || !auth.user) return false;
+        this.setToken(token);
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.reauthenticationPromise = null;
+      }
+    })();
+
+    return this.reauthenticationPromise;
   }
 
   private async makeRequest<T>(
@@ -367,7 +404,23 @@ class ApiClient {
 
     const requestPromise = (async () => {
       try {
-        const response = await fetch(url, config);
+        let response = await fetch(url, config);
+
+        // A Mini App JWT can expire while Telegram remains open. Re-authenticate once
+        // with signed initData; /auth/telegram validates its HMAC and auth_date server-side.
+        if (response.status === 401 && headers.Authorization && endpoint !== '/auth/telegram') {
+          if (await this.reauthenticateWithTelegram()) {
+            if (!isReplaySafeMethod(options.method)) {
+              throw new Error('Session renewed. Please repeat the action.');
+            }
+            response = await fetch(url, {
+              ...config,
+              headers: { ...headers, Authorization: `Bearer ${this.token}` },
+            });
+          } else {
+            this.clearToken();
+          }
+        }
         
         if (!response.ok) {
           // Handle 401 Unauthorized - clear tokens

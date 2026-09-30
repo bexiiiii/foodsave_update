@@ -3,8 +3,11 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useTelegram } from "../hooks/useTelegram";
-
-const ATTRIBUTION_KEY = "foodsaveAttribution";
+import {
+  HANDLED_START_PARAM_KEY,
+  readAttribution,
+  saveAttribution,
+} from "../lib/attribution";
 
 const ensureSessionId = () => {
   if (typeof window === "undefined") return undefined;
@@ -16,14 +19,7 @@ const ensureSessionId = () => {
   return sessionId;
 };
 
-export const readAttribution = () => {
-  if (typeof window === "undefined") return {};
-  try {
-    return JSON.parse(sessionStorage.getItem(ATTRIBUTION_KEY) || "{}") as Record<string, unknown>;
-  } catch {
-    return {};
-  }
-};
+export { readAttribution } from "../lib/attribution";
 
 export default function StartParamRouter() {
   const router = useRouter();
@@ -31,7 +27,11 @@ export default function StartParamRouter() {
 
   useEffect(() => {
     const startParam = getTelegramStartParam();
-    if (!startParam || sessionStorage.getItem("foodsaveHandledStartParam") === startParam) return;
+    const existingAttribution = readAttribution();
+    if (!startParam || (
+      sessionStorage.getItem(HANDLED_START_PARAM_KEY) === startParam
+      && existingAttribution.startParam === startParam
+    )) return;
 
     const attribution: Record<string, unknown> = {
       startParam,
@@ -42,8 +42,8 @@ export default function StartParamRouter() {
       const id = Number(startParam.replace("notification_", ""));
       attribution.source = "telegram_notification";
       attribution.notificationGroupId = id;
-      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
-      sessionStorage.setItem("foodsaveHandledStartParam", startParam);
+      saveAttribution(attribution);
+      sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/markets?notificationGroupId=${id}`);
       return;
     }
@@ -52,8 +52,8 @@ export default function StartParamRouter() {
       const id = Number(startParam.replace("partner_", "").replace("branch_", ""));
       attribution.source = "telegram_post";
       attribution.partnerId = id;
-      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
-      sessionStorage.setItem("foodsaveHandledStartParam", startParam);
+      saveAttribution(attribution);
+      sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/boxes?storeId=${id}`);
       return;
     }
@@ -62,8 +62,8 @@ export default function StartParamRouter() {
       const id = Number(startParam.replace("box_", ""));
       attribution.source = "telegram_post";
       attribution.boxId = id;
-      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
-      sessionStorage.setItem("foodsaveHandledStartParam", startParam);
+      saveAttribution(attribution);
+      sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/details/${id}`);
       return;
     }
@@ -71,8 +71,8 @@ export default function StartParamRouter() {
     if (startParam.startsWith("campaign_")) {
       attribution.source = "telegram_channel";
       attribution.campaignId = startParam.replace("campaign_", "");
-      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
-      sessionStorage.setItem("foodsaveHandledStartParam", startParam);
+      saveAttribution(attribution);
+      sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/markets?campaignId=${encodeURIComponent(String(attribution.campaignId))}`);
       return;
     }
@@ -80,8 +80,8 @@ export default function StartParamRouter() {
     if (startParam.startsWith("telegram_post_")) {
       attribution.source = "telegram_post";
       attribution.telegramPostId = startParam.replace("telegram_post_", "");
-      sessionStorage.setItem(ATTRIBUTION_KEY, JSON.stringify(attribution));
-      sessionStorage.setItem("foodsaveHandledStartParam", startParam);
+      saveAttribution(attribution);
+      sessionStorage.setItem(HANDLED_START_PARAM_KEY, startParam);
       router.replace(`/markets?telegramPostId=${encodeURIComponent(String(attribution.telegramPostId))}`);
     }
   }, [getTelegramStartParam, router]);
