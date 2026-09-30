@@ -165,6 +165,30 @@ export interface DailySalesOrderDetail {
     items: DailySalesOrderItem[];
 }
 
+export interface CommunicationsAnalyticsSummaryDTO {
+    notificationSent: number;
+    notificationOpened: number;
+    miniAppOpened: number;
+    partnerViewed: number;
+    boxViewed: number;
+    reservationsCreated: number;
+    pickedUpOrders: number;
+    completedOrders: number;
+    pickupConversionPerThousand: number;
+    notificationToReservationConversion: number;
+    reservationToCompletionConversion: number;
+    reservationToPickupEventRatio: number;
+}
+
+export interface CommunicationsAnalyticsBucketDTO extends Omit<CommunicationsAnalyticsSummaryDTO, 'boxViewed'> {
+    period: string;
+}
+
+export interface CommunicationsAnalyticsRangeDTO {
+    summary: CommunicationsAnalyticsSummaryDTO;
+    buckets: CommunicationsAnalyticsBucketDTO[];
+}
+
 export interface CommunicationsOverviewDTO {
     sentToday: number;
     deliveredToday: number;

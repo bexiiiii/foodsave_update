@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosError } from 'axios';
-import { NotificationDTO, DiscountDTO, AnalyticsData, DailySalesAnalytics, DailySalesOrderDetail, LoginRequest, AuthResponse, OrderDTO, StoreDTO, StoreCreateRequest, StoreUpdateRequest, PageableResponse, UserDTO, UserCreateRequest, UserUpdateRequest, ReviewDTO, CartDTO, CartAddItemRequest, CartUpdateItemRequest, OrderStatsDTO, StoreOrderStatsDTO, CommunicationsOverviewDTO, NotificationScheduleSettingDTO } from '@/types/api';
+import { NotificationDTO, DiscountDTO, AnalyticsData, DailySalesAnalytics, DailySalesOrderDetail, LoginRequest, AuthResponse, OrderDTO, StoreDTO, StoreCreateRequest, StoreUpdateRequest, PageableResponse, UserDTO, UserCreateRequest, UserUpdateRequest, ReviewDTO, CartDTO, CartAddItemRequest, CartUpdateItemRequest, OrderStatsDTO, StoreOrderStatsDTO, CommunicationsOverviewDTO, CommunicationsAnalyticsRangeDTO, NotificationScheduleSettingDTO } from '@/types/api';
 import { BASE_URL, API_ENDPOINTS, DEFAULT_HEADERS } from '../config/api';
 import { safeLocalStorage } from '@/utils/storage';
 
@@ -492,6 +492,8 @@ export const analyticsApi = {
 };
 
 export const communicationsApi = {
+    getAnalytics: (params: { fromDate: string; toDate: string; groupBy: 'day' | 'month' }) =>
+        api.get<CommunicationsAnalyticsRangeDTO>('/admin/communications/analytics', { params }).then(response => response.data),
     getOverview: () => api.get<CommunicationsOverviewDTO>('/admin/communications/overview').then(response => response.data),
     getScheduleSettings: () => api.get<NotificationScheduleSettingDTO[]>('/admin/communications/schedule-settings').then(response => response.data),
     updateScheduleSetting: (data: NotificationScheduleSettingDTO) =>
