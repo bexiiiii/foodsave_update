@@ -228,6 +228,9 @@ public class ProductService {
     public ProductDTO getProductById(Long id) {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+        if (product.getDeletedAt() != null) {
+            throw new EntityNotFoundException("Product not found");
+        }
         Set<Long> reservedIds = productAvailabilityService.findReservedProductIds(List.of(id));
         return convertToDTO(product, reservedIds);
     }
@@ -542,7 +545,8 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public ProductDTO updateProduct(Long id, ProductDTO productDTO) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdForUpdate(id)
+                .filter(p -> p.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         Long previousStoreId = product.getStore().getId();
         authorizationService.requireCanManageStore(previousStoreId);
@@ -567,10 +571,17 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public void deleteProduct(Long id) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
-        productRepository.delete(product);
+        if (product.getDeletedAt() != null) {
+            return;
+        }
+        product.setDeletedAt(ProductAvailability.now());
+        product.setActive(false);
+        product.setStatus(ProductStatus.DISCONTINUED);
+        // Do not change stock, images, orders, or notification relationships.
+        productRepository.saveAndFlush(product);
     }
 
     // Note: Page objects don't cache well with Redis due to serialization issues
@@ -617,7 +628,8 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public ProductDTO updateProductStatus(Long id, ProductStatus status) {
-        Product product = productRepository.findById(id)
+        Product product = productRepository.findByIdForUpdate(id)
+                .filter(p -> p.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
         product.setStatus(status);
@@ -634,7 +646,8 @@ public class ProductService {
             @CacheEvict(value = "discountedProducts", allEntries = true)
     })
     public ProductDTO updateStockQuantity(Long productId, Integer newQuantity) {
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdForUpdate(productId)
+                .filter(p -> p.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
         
@@ -655,7 +668,8 @@ public class ProductService {
     public ProductDTO updateProductPrices(Long productId,
                                           BigDecimal originalPrice,
                                           BigDecimal discountedPrice) {
-        Product product = productRepository.findById(productId)
+        Product product = productRepository.findByIdForUpdate(productId)
+                .filter(p -> p.getDeletedAt() == null)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
 

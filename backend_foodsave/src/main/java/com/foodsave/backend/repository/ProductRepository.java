@@ -25,32 +25,34 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     
     // Оптимизированные запросы с EntityGraph для быстрой загрузки
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.deletedAt IS NULL AND p.active = true")
     Page<Product> findLightByStoreId(@Param("storeId") Long storeId, Pageable pageable);
     
     @EntityGraph(attributePaths = {"store", "category"})  
-    @Query("SELECT p FROM Product p WHERE p.discountPercentage > 0 AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.discountPercentage > 0 AND p.deletedAt IS NULL AND p.active = true")
     Page<Product> findLightDiscountedProducts(Pageable pageable);
 
     // Оптимизированные запросы с EntityGraph
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.deletedAt IS NULL AND p.active = true")
     Page<Product> findActiveByStoreIdOptimized(@Param("storeId") Long storeId, Pageable pageable);
     
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.discountPercentage > 0 AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.discountPercentage > 0 AND p.deletedAt IS NULL AND p.active = true")
     Page<Product> findDiscountedProductsOptimized(Pageable pageable);
     
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.category.id = :categoryId AND p.deletedAt IS NULL AND p.active = true")
     Page<Product> findByCategoryIdOptimized(@Param("categoryId") Long categoryId, Pageable pageable);
 
-    Page<Product> findByStore(Store store, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.store = :store AND p.deletedAt IS NULL")
+    Page<Product> findByStore(@Param("store") Store store, Pageable pageable);
     
     List<Product> findByStoreId(Long storeId);
     
     // Add method for filtering by multiple store IDs
-    Page<Product> findByStoreIdIn(Set<Long> storeIds, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.store.id IN :storeIds AND p.deletedAt IS NULL")
+    Page<Product> findByStoreIdIn(@Param("storeIds") Set<Long> storeIds, Pageable pageable);
 
     @Query("SELECT COUNT(p), " +
            "SUM(CASE WHEN p.active = true AND p.status = 'AVAILABLE' AND COALESCE(p.stockQuantity, 0) > 0 THEN 1 ELSE 0 END), " +
@@ -58,7 +60,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
            "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
            "COALESCE(AVG(p.price), 0) " +
-           "FROM Product p")
+           "FROM Product p WHERE p.deletedAt IS NULL")
     Object[] getProductStats();
 
     @Query("SELECT COUNT(p), " +
@@ -67,10 +69,11 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
            "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
            "COALESCE(AVG(p.price), 0) " +
-           "FROM Product p WHERE p.store.id IN :storeIds")
+           "FROM Product p WHERE p.store.id IN :storeIds AND p.deletedAt IS NULL")
     Object[] getProductStatsByStoreIdIn(@Param("storeIds") Set<Long> storeIds);
     
-    Page<Product> findByCategory(Category category, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.category = :category AND p.deletedAt IS NULL")
+    Page<Product> findByCategory(@Param("category") Category category, Pageable pageable);
     
     List<Product> findByCategory(Category category);
     
@@ -87,7 +90,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.price BETWEEN :minPrice AND :maxPrice")
     List<Product> findByPriceRange(@Param("minPrice") Double minPrice, @Param("maxPrice") Double maxPrice);
 
-    Page<Product> findByStoreId(Long storeId, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.deletedAt IS NULL")
+    Page<Product> findByStoreId(@Param("storeId") Long storeId, Pageable pageable);
     Page<Product> findByCategoryId(Long categoryId, Pageable pageable);
     Page<Product> findByStatus(ProductStatus status, Pageable pageable);
     
@@ -97,10 +101,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     @Query("SELECT p FROM Product p WHERE p.name LIKE %:query% OR p.description LIKE %:query%")
     Page<Product> searchByNameOrDescription(@Param("query") String query, Pageable pageable);
     
-    @Query("SELECT p FROM Product p WHERE p.stockQuantity = 0 AND p.active = true")
+    @Query("SELECT p FROM Product p WHERE p.stockQuantity = 0 AND p.deletedAt IS NULL AND p.active = true")
     List<Product> findOutOfStockProducts();
     
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.store.id = :storeId")
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true AND p.store.id = :storeId")
     Page<Product> findActiveByStoreId(@Param("storeId") Long storeId, Pageable pageable);
 
     Page<Product> findByNameContainingOrDescriptionContaining(String name, String description, Pageable pageable);
@@ -117,7 +121,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByStoreIdAndNameContainingIgnoreCaseAndCategoryNameContainingIgnoreCaseAndStatus(Long storeId, String name, String categoryName, String status);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.status = 'AVAILABLE' " +
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
@@ -136,19 +140,20 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                  @Param("currentTime") String currentTime,
                                  Pageable pageable);
     
-    Page<Product> findByDiscountPercentageGreaterThan(Double discountPercentage, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.discountPercentage > :discountPercentage AND p.deletedAt IS NULL")
+    Page<Product> findByDiscountPercentageGreaterThan(@Param("discountPercentage") Double discountPercentage, Pageable pageable);
     
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p")
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL")
     Page<Product> findAllWithStoreAndCategory(Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.active = true ORDER BY p.createdAt DESC")
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true ORDER BY p.createdAt DESC")
     Page<Product> findAllActiveProducts(Pageable pageable);
     
     // Find all active products with status AVAILABLE (exclude OUT_OF_STOCK and expired)
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.active = true AND p.status = 'AVAILABLE' " +
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
@@ -164,7 +169,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
 
     // Find products by store with status AVAILABLE (exclude OUT_OF_STOCK and expired)
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true AND p.status = 'AVAILABLE' " +
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.deletedAt IS NULL AND p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +
@@ -180,7 +185,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.active = true " +
+    @Query("SELECT p FROM Product p WHERE p.store.id = :storeId AND p.deletedAt IS NULL AND p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
            "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
@@ -198,7 +203,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                                Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.active = true " +
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
            "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
@@ -215,7 +220,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                       Pageable pageable);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.active = true " +
+    @Query("SELECT p FROM Product p WHERE p.deletedAt IS NULL AND p.active = true " +
            "AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK') " +
            "AND (COALESCE(p.stockQuantity, 0) > 0 OR p.createdAt >= :catalogDayStart) " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
@@ -236,8 +241,10 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
                                         @Param("currentTime") String currentTime,
                                         Pageable pageable);
     
-    Page<Product> findByStockQuantityLessThanEqual(Integer threshold, Pageable pageable);
+    @Query("SELECT p FROM Product p WHERE p.stockQuantity <= :threshold AND p.deletedAt IS NULL")
+    Page<Product> findByStockQuantityLessThanEqual(@Param("threshold") Integer threshold, Pageable pageable);
     
+    @Query("SELECT p FROM Product p WHERE p.expiryDate IS NOT NULL AND p.deletedAt IS NULL")
     Page<Product> findByExpiryDateIsNotNull(Pageable pageable);
     
     List<Product> findByStoreAndActiveTrue(Store store);
@@ -273,7 +280,7 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdForUpdate(@Param("id") Long id);
 
     @EntityGraph(attributePaths = {"store", "category"})
-    @Query("SELECT p FROM Product p WHERE p.id IN :ids AND p.active = true AND p.status = 'AVAILABLE' " +
+    @Query("SELECT p FROM Product p WHERE p.id IN :ids AND p.deletedAt IS NULL AND p.active = true AND p.status = 'AVAILABLE' " +
            "AND COALESCE(p.stockQuantity, 0) > 0 " +
            "AND (p.expiryDate IS NULL OR p.expiryDate >= :expiryCutoff) " +
            "AND p.store.active = true AND p.store.status = 'ACTIVE' " +

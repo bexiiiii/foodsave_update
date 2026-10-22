@@ -19,6 +19,7 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
 @Table(name = "products")
+@org.hibernate.annotations.DynamicUpdate
 @Data
 @EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
@@ -97,6 +98,10 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     @Builder.Default
     private Boolean active = true;
+
+    // Keep the row and its relationships for order/notification history.
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @CreatedDate
     @Column(nullable = false, updatable = false)

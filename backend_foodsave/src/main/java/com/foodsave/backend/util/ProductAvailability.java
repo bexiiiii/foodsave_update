@@ -50,6 +50,7 @@ public final class ProductAvailability {
 
     static boolean isAvailable(Product product, LocalDateTime now) {
         if (product == null
+                || product.getDeletedAt() != null
                 || !Boolean.TRUE.equals(product.getActive())
                 || product.getStatus() != ProductStatus.AVAILABLE
                 || product.getStockQuantity() == null
