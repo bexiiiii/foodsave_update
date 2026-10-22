@@ -11,6 +11,7 @@ import ProductAvailabilityBadge from "../../components/ProductAvailabilityBadge"
 import { formatPrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
 import FavoriteToast from "../../components/FavoriteToast";
+import { subscribeToCatalogRefresh } from "../../lib/catalogRefresh";
 
 function BoxesContent() {
   const searchParams = useSearchParams();
@@ -32,23 +33,26 @@ function BoxesContent() {
     let isMounted = true;
     let loadingStarted = false;
 
-    const loadData = async () => {
-      if (!storeId || loadingStarted) {
+    const loadData = async (silent = false) => {
+      if (!storeId) {
         if (isMounted) {
           setIsLoading(false);
         }
         return;
       }
+      if (loadingStarted) return;
       loadingStarted = true;
 
       try {
         // Load store info
-        const storeData = await apiClient.getStoreById(Number(storeId));
-        if (isMounted) {
-          setStore(storeData);
-          setIsFavorite(!!storeData.isFavorite);
-          if (storeData.closingSoon) {
-            setShowClosingSoonBanner(true);
+        if (!silent) {
+          const storeData = await apiClient.getStoreById(Number(storeId));
+          if (isMounted) {
+            setStore(storeData);
+            setIsFavorite(!!storeData.isFavorite);
+            if (storeData.closingSoon) {
+              setShowClosingSoonBanner(true);
+            }
           }
         }
 
@@ -61,6 +65,7 @@ function BoxesContent() {
       } catch (error) {
         console.error('Failed to load data:', error);
       } finally {
+        loadingStarted = false;
         if (isMounted) {
           setIsLoading(false);
         }
@@ -68,9 +73,11 @@ function BoxesContent() {
     };
 
     loadData();
+    const unsubscribe = subscribeToCatalogRefresh(() => loadData(true));
 
     return () => {
       isMounted = false;
+      unsubscribe();
     };
   }, [storeId]);
 

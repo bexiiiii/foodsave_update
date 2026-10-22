@@ -1057,6 +1057,7 @@ export const safePaginationResponse = <T>(
 // Product visibility guard for mini app listings/details.
 export const isProductVisibleInMiniApp = (product: Product | null | undefined): boolean => {
   if (!product) return false;
+  if (!(product.stockQuantity > 0)) return false;
 
   if (product.active === false) return false;
 
@@ -1101,7 +1102,7 @@ export const getProductAvailability = (product: Product | null | undefined): Pro
 };
 
 export const isProductDisplayableInMiniApp = (product: Product | null | undefined): boolean => {
-  if (!product || product.active === false) return false;
+  if (!product || product.active === false || !(product.stockQuantity > 0)) return false;
   const status = String(product.status || '').toUpperCase();
   if (new Set(['EXPIRED', 'DISCONTINUED', 'HIDDEN', 'INACTIVE']).has(status)) return false;
   if (canReserveProduct(product)) return true;
@@ -1124,7 +1125,7 @@ export const isProductDisplayableInMiniApp = (product: Product | null | undefine
 };
 
 export const canReserveProduct = (product: Product | null | undefined): boolean =>
-  !!product && (typeof product.canReserve === 'boolean'
+  !!product && product.stockQuantity > 0 && (typeof product.canReserve === 'boolean'
     ? product.canReserve
     : getProductAvailability(product) === 'AVAILABLE');
 

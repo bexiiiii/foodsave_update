@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, canReserveProduct, isProductDisplayableInMiniApp, NotificationGroup, Product, Store } from "../../lib/api";
+import { subscribeToCatalogRefresh } from "../../lib/catalogRefresh";
 import ProductAvailabilityBadge from "../../components/ProductAvailabilityBadge";
 import { formatPrice, normalizePrice } from "../../lib/pricing";
 import BackButton from "../../components/BackButton";
@@ -194,13 +195,19 @@ function MarketsContent() {
   };
 
   useEffect(() => {
-    const loadStores = async () => {
+    let isMounted = true;
+    let pending = false;
+    const loadStores = async (silent = false) => {
+      if (pending) return;
+      pending = true;
       try {
-        setIsLoading(true);
+        if (!silent) setIsLoading(true);
         if (notificationGroupId) {
           const group = await apiClient.getNotificationGroup(Number(notificationGroupId));
+          if (!isMounted) return;
           setNotificationGroup(group);
-          await apiClient.markNotificationGroupOpened(Number(notificationGroupId));
+          if (!silent) await apiClient.markNotificationGroupOpened(Number(notificationGroupId));
+          if (!isMounted) return;
           const groupedStores = new Map<number, Store>();
           group.items.forEach((item) => {
             if (!groupedStores.has(item.partnerId)) {
@@ -233,7 +240,7 @@ function MarketsContent() {
             createdAt: "",
             updatedAt: "",
           })).filter(isProductDisplayableInMiniApp));
-          apiClient.trackEvent({
+          if (!silent) apiClient.trackEvent({
             eventType: "NOTIFICATION_DEEPLINK_OPENED",
             sessionId: sessionStorage.getItem("foodsaveSessionId") || undefined,
             source: "telegram_notification",
@@ -255,6 +262,7 @@ function MarketsContent() {
               maxFilterValue,
             ),
           ]);
+          if (!isMounted) return;
           setStores(storesResult.content);
           setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
           return;
@@ -270,12 +278,14 @@ function MarketsContent() {
               maxFilterValue,
             ),
           ]);
+          if (!isMounted) return;
           setStores(storesData);
           setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
           return;
         }
 
         const storesData = await apiClient.getActiveStores();
+        if (!isMounted) return;
         setProducts([]);
         setStores(
           categoryId
@@ -285,11 +295,19 @@ function MarketsContent() {
       } catch (error) {
         console.error('Failed to load stores:', error);
       } finally {
-        setIsLoading(false);
+        pending = false;
+        if (isMounted) setIsLoading(false);
       }
     };
 
     loadStores();
+    const unsubscribe = notificationGroupId || query || showAllProducts
+      ? subscribeToCatalogRefresh(() => loadStores(true))
+      : () => {};
+    return () => {
+      isMounted = false;
+      unsubscribe();
+    };
   }, [query, categoryId, notificationGroupId, showAllProducts, minFilterValue, maxFilterValue]);
 
   const formatOpeningHours = (store: Store) => {

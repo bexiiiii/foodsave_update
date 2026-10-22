@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef, type DependencyList } from 'react';
 import { apiClient, Product, Store, Category, PaginationResponse, safeArray } from '@/lib/api';
 import { debounce } from '@/lib/utils';
+import { CATALOG_REFRESH_INTERVAL, subscribeToCatalogRefresh } from '@/lib/catalogRefresh';
 
 // Hook for safe data fetching with error handling and caching
 export const useSafeQuery = <T>(
@@ -13,6 +14,7 @@ export const useSafeQuery = <T>(
     enabled?: boolean;
     refetchOnMount?: boolean;
     cacheTime?: number;
+    refreshInterval?: number;
   }
 ) => {
   const [data, setData] = useState<T>(defaultValue);
@@ -20,11 +22,14 @@ export const useSafeQuery = <T>(
   const [error, setError] = useState<string | null>(null);
   // Use ref to avoid lastFetch in useCallback deps (prevents infinite refetch loop)
   const lastFetchRef = useRef<number>(0);
+  const pendingQueryRef = useRef<(() => Promise<T>) | null>(null);
+  const latestQueryRef = useRef(queryFn);
+  latestQueryRef.current = queryFn;
 
-  const { enabled = true, refetchOnMount = false, cacheTime = 5 * 60 * 1000 } = options || {};
+  const { enabled = true, refetchOnMount = false, cacheTime = 5 * 60 * 1000, refreshInterval = 0 } = options || {};
 
-  const fetchData = useCallback(async (force = false) => {
-    if (!enabled) return;
+  const fetchData = useCallback(async (force = false, silent = false) => {
+    if (!enabled || pendingQueryRef.current === queryFn) return;
 
     const now = Date.now();
     const isCacheValid = now - lastFetchRef.current < cacheTime;
@@ -34,27 +39,36 @@ export const useSafeQuery = <T>(
       return;
     }
 
+    pendingQueryRef.current = queryFn;
     try {
-      setIsLoading(true);
+      if (!silent) setIsLoading(true);
       setError(null);
 
       const result = await queryFn();
+      if (refreshInterval && latestQueryRef.current !== queryFn) return;
       setData(result);
       lastFetchRef.current = now;
     } catch (err) {
+      if (refreshInterval && latestQueryRef.current !== queryFn) return;
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
       console.error('Query failed:', err);
     } finally {
-      setIsLoading(false);
+      if (pendingQueryRef.current === queryFn) pendingQueryRef.current = null;
+      if (!refreshInterval || latestQueryRef.current === queryFn) setIsLoading(false);
     }
-  }, [queryFn, enabled, cacheTime, refetchOnMount]); // lastFetch removed from deps
+  }, [queryFn, enabled, cacheTime, refetchOnMount, refreshInterval]); // lastFetch removed from deps
 
   useEffect(() => {
     fetchData();
   }, [fetchData, ...dependencies]);
 
   const refetch = useCallback(() => fetchData(true), [fetchData]);
+
+  useEffect(() => {
+    if (!enabled || !refreshInterval) return;
+    return subscribeToCatalogRefresh(() => fetchData(true, true), refreshInterval);
+  }, [enabled, refreshInterval, fetchData]);
 
   return { data, isLoading, error, refetch };
 };
@@ -106,7 +120,7 @@ export const useProducts = (page = 0, size = 20, storeId?: number) => {
     queryFn,
     defaultValue,
     [page, size, storeId],
-    { cacheTime: 30 * 1000, refetchOnMount: true } // Cache for 30 seconds, refetch on every mount
+    { cacheTime: 30 * 1000, refetchOnMount: true, refreshInterval: CATALOG_REFRESH_INTERVAL }
   );
 };
 
@@ -131,7 +145,7 @@ export const useFeaturedProducts = (page = 0, size = 20) => {
     queryFn,
     defaultValue,
     [page, size],
-    { cacheTime: 30 * 1000, refetchOnMount: true } // Cache for 30 seconds, refetch on every mount
+    { cacheTime: 30 * 1000, refetchOnMount: true, refreshInterval: CATALOG_REFRESH_INTERVAL }
   );
 };
 
@@ -154,6 +168,7 @@ export const useRecommendedProducts = (page = 0, size = 20) => {
   return useSafeQuery(queryFn, defaultValue, [page, size], {
     cacheTime: 60 * 1000,
     refetchOnMount: false,
+    refreshInterval: CATALOG_REFRESH_INTERVAL,
   });
 };
 
