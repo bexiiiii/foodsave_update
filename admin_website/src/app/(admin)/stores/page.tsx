@@ -315,7 +315,8 @@ export default function StoresPage() {
                 store => store.name.toLowerCase() === formData.name.toLowerCase() &&
                     (!selectedStore || store.id !== selectedStore.id)
             );
-            if (existingStoreByName) {
+            // Existing branches may share a name; unrelated edits must still save.
+            if (existingStoreByName && (!selectedStore || formData.name.toLowerCase() !== selectedStore.name.toLowerCase())) {
                 toast({
                     title: 'Ошибка',
                     description: 'Заведение с таким названием уже существует',
@@ -330,7 +331,8 @@ export default function StoresPage() {
                 store => store.phone === formData.phone &&
                     (!selectedStore || store.id !== selectedStore.id)
             );
-            if (existingStoreByPhone) {
+            // Keep the saved contact when editing address/hours, even if shared.
+            if (existingStoreByPhone && (!selectedStore || formData.phone !== selectedStore.phone)) {
                 toast({
                     title: 'Ошибка',
                     description: 'Заведение с таким номером телефона уже существует',
