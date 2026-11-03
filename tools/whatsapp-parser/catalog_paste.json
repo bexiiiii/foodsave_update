@@ -3,18 +3,19 @@
     "canonical": "Аргентина с говядиной",
     "aliases": [
       "сытный пирог аргентина",
-      "пирог говядина"
+      "пирог говядина",
+      "аргентина"
     ],
     "description": "Говядина долгого томления с картофелем, соусом бешамель.",
     "sizes": {
       "мини": {
         "price": 3300,
-        "image": "argentina_s_govyadinoi.jpg",
+        "image": "pate/argentina.png",
         "detail": "Диаметр 12 см, высота 4,5 см, вес 240 г, 1-2 чел."
       },
       "большой": {
         "price": 13000,
-        "image": "argentina_s_govyadinoi.jpg",
+        "image": "pate/argentina.png",
         "detail": "Диаметр 20 см, высота 6 см, вес 1400 г, 6-8 чел."
       }
     }
@@ -22,18 +23,19 @@
   {
     "canonical": "Фрикасе с курицей и грибами",
     "aliases": [
-      "фрикасе курица грибы"
+      "фрикасе курица грибы",
+      "фрикасе"
     ],
     "description": "Куриное филе с грибами под сливочно-сырным соусом.",
     "sizes": {
       "мини": {
         "price": 2900,
-        "image": "frikase_s_kuricei_i_gribami.jpg",
+        "image": "pate/fricasse.png",
         "detail": "Диаметр 12 см, высота 4,5 см, вес 280 г, 1-2 чел."
       },
       "большой": {
         "price": 12000,
-        "image": "frikase_s_kuricei_i_gribami.jpg",
+        "image": "pate/fricasse.png",
         "detail": "Диаметр 20 см, высота 6 см, вес 1400 г, 6-8 чел."
       }
     }
@@ -41,18 +43,19 @@
   {
     "canonical": "Скандинавский с лососем",
     "aliases": [
-      "скандинавский лосось"
+      "скандинавский лосось",
+      "скандинавский"
     ],
     "description": "Филе лосося со сметанным соусом, яйцами и зеленью.",
     "sizes": {
       "мини": {
         "price": 3700,
-        "image": "skandinavskii_s_lososem.jpg",
+        "image": "pate/scandinavian.png",
         "detail": "Диаметр 12 см, высота 4,5 см, вес 240 г, 1-2 чел."
       },
       "большой": {
         "price": 13000,
-        "image": "skandinavskii_s_lososem.jpg",
+        "image": "pate/scandinavian.png",
         "detail": "Диаметр 20 см, высота 6 см, вес 1200 г, 6-8 чел."
       }
     }
@@ -66,12 +69,12 @@
     "sizes": {
       "мини": {
         "price": 3100,
-        "image": "mishlen_s_syrom.jpg",
+        "image": "pate/catalog-p026.png",
         "detail": "Диаметр 12 см, высота 4,5 см, вес 260 г, 1-2 чел."
       },
       "большой": {
         "price": 8800,
-        "image": "mishlen_s_syrom.jpg",
+        "image": "pate/catalog-p026.png",
         "detail": "Диаметр 20 см, высота 6 см, вес 1300 г, 6-8 чел."
       }
     }
@@ -85,7 +88,7 @@
     "sizes": {
       "1шт": {
         "price": 5700,
-        "image": "myasnoi_pirog.jpg",
+        "image": "pate/catalog-p028.png",
         "detail": "Диаметр 23 см, высота 3 см, вес 850 г, 5-6 чел."
       }
     }
@@ -99,17 +102,17 @@
     "sizes": {
       "порция": {
         "price": 2900,
-        "image": "kish_s_semgoi.jpg",
+        "image": "pate/salmon-quiche.png",
         "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
       },
       "средний": {
         "price": 14000,
-        "image": "kish_s_semgoi.jpg",
+        "image": "pate/salmon-quiche.png",
         "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
       },
       "большой": {
         "price": 25000,
-        "image": "kish_s_semgoi.jpg",
+        "image": "pate/salmon-quiche.png",
         "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
       }
     }
@@ -123,17 +126,17 @@
     "sizes": {
       "порция": {
         "price": 2600,
-        "image": "kish_s_kuricei_i_gribami.jpg",
+        "image": "pate/catalog-p016.png",
         "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
       },
       "средний": {
         "price": 12000,
-        "image": "kish_s_kuricei_i_gribami.jpg",
+        "image": "pate/catalog-p016.png",
         "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
       },
       "большой": {
         "price": 22000,
-        "image": "kish_s_kuricei_i_gribami.jpg",
+        "image": "pate/catalog-p016.png",
         "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
       }
     }
@@ -147,17 +150,17 @@
     "sizes": {
       "порция": {
         "price": 2900,
-        "image": "kish_s_govyadinoi.jpg",
+        "image": "pate/catalog-p015.png",
         "detail": "Длина 5х10 см, высота 5 см, вес 230 г, 1-2 чел."
       },
       "средний": {
         "price": 13000,
-        "image": "kish_s_govyadinoi.jpg",
+        "image": "pate/catalog-p015.png",
         "detail": "Длина 25 см, высота 5 см, вес 1150 г, 6-8 чел. (по предзаказу)"
       },
       "большой": {
         "price": 24000,
-        "image": "kish_s_govyadinoi.jpg",
+        "image": "pate/catalog-p015.png",
         "detail": "Длина 50 см, высота 5 см, вес 2300 г, 12-15 чел. (по предзаказу)"
       }
     }
@@ -192,13 +195,124 @@
     "sizes": {
       "мини": {
         "price": 1600,
-        "image": "grushevyi_tart.jpg",
+        "image": "pate/pear-tart-mini.png",
         "detail": "Диаметр 10 см, вес 145 г."
       },
       "большой": {
         "price": 8600,
-        "image": "grushevyi_tart.jpg",
+        "image": "pate/pear-tart-large.png",
         "detail": "Диаметр 20 см, вес 740 г."
+      }
+    }
+  },
+  {
+    "canonical": "Бордо",
+    "aliases": [],
+    "description": "Солёная карамель, вишня, миндальные лепестки.",
+    "sizes": {
+      "мини": {
+        "price": 3000,
+        "image": "pate/bordeaux.png",
+        "detail": "Диаметр 9 см, высота 5 см, вес 300 г."
+      },
+      "большой": {
+        "price": 8400,
+        "image": "pate/bordeaux.png",
+        "detail": "Диаметр 18 см, высота 5 см, вес 1000 г."
+      }
+    }
+  },
+  {
+    "canonical": "Испанский чизкейк",
+    "aliases": [
+      "чизкейк испанский"
+    ],
+    "description": "Чизкейк с горелой корочкой и нежной сливочной текстурой.",
+    "sizes": {
+      "мини": {
+        "price": 3400,
+        "image": "pate/spanish-cheesecake.png",
+        "detail": "Диаметр 9 см, высота 5 см, вес 300 г."
+      },
+      "большой": {
+        "price": 11100,
+        "image": "pate/spanish-cheesecake.png",
+        "detail": "Диаметр 18 см, высота 5 см, вес 1000 г."
+      }
+    }
+  },
+  {
+    "canonical": "Версаль",
+    "aliases": [],
+    "description": "Шоколадный мусс со сливой и яблоками.",
+    "sizes": {
+      "мини": {
+        "price": 3000,
+        "image": "pate/versailles.png",
+        "detail": "Диаметр 9 см, высота 5 см, вес 320 г."
+      },
+      "большой": {
+        "price": 8400,
+        "image": "pate/versailles.png",
+        "detail": "Диаметр 18 см, высота 5 см, вес 1120 г."
+      }
+    }
+  },
+  {
+    "canonical": "Марсель",
+    "aliases": [],
+    "description": "Фламбированные яблоки с фисташковым пралине и орехами.",
+    "sizes": {
+      "мини": {
+        "price": 3200,
+        "image": "pate/marseille.png",
+        "detail": "Диаметр 9 см, высота 5 см, вес 320 г."
+      },
+      "большой": {
+        "price": 8800,
+        "image": "pate/marseille.png",
+        "detail": "Диаметр 18 см, высота 5 см, вес 1000 г."
+      }
+    }
+  },
+  {
+    "canonical": "Вишневый пирог",
+    "aliases": [
+      "пирог вишня",
+      "пирог вишневый",
+      "вишневый пирог"
+    ],
+    "description": "Песочное тесто с начинкой из вишневого конфи.",
+    "sizes": {
+      "мини": {
+        "price": 1900,
+        "image": "pate/cherry-pie-mini.jpg",
+        "detail": "Диаметр 9 см, высота 5 см, вес 220 г."
+      },
+      "большой": {
+        "price": 8700,
+        "image": "pate/cherry-pie-large.jpg",
+        "detail": "Диаметр 25 см, высота 2,5 см, вес 950 г."
+      }
+    }
+  },
+  {
+    "canonical": "Пирог с солёной карамелью",
+    "aliases": [
+      "миндаль соленая карамель",
+      "соленая карамель"
+    ],
+    "description": "Бисквит с солёной карамелью, творожно-сырным кремом, воздушной меренгой и миндалём.",
+    "sizes": {
+      "порция": {
+        "price": 2200,
+        "image": "pate/salted-caramel-pie.png",
+        "detail": "Длина 5 см, высота 7 см, вес 200 г."
+      },
+      "большой": {
+        "price": 21000,
+        "image": "pate/salted-caramel-pie.png",
+        "detail": "Длина 50 см, высота 7 см, вес 2000 г."
       }
     }
   },
@@ -232,12 +346,12 @@
     "sizes": {
       "мини": {
         "price": 2100,
-        "image": "yagodnyi_miks_tart.jpg",
+        "image": "pate/catalog-p064.png",
         "detail": "Диаметр 10 см, вес 170 г."
       },
       "большой": {
         "price": 12000,
-        "image": "yagodnyi_miks_tart.jpg",
+        "image": "pate/catalog-p064.png",
         "detail": "Диаметр 20 см, вес 880 г."
       }
     }
@@ -252,12 +366,12 @@
     "sizes": {
       "мини": {
         "price": 1800,
-        "image": "yabloko-fistashka_tart.jpg",
+        "image": "pate/catalog-p062.png",
         "detail": "Диаметр 10 см, вес 115 г."
       },
       "большой": {
         "price": 8600,
-        "image": "yabloko-fistashka_tart.jpg",
+        "image": "pate/catalog-p062.png",
         "detail": "Диаметр 20 см, вес 600 г."
       }
     }
@@ -272,12 +386,12 @@
     "sizes": {
       "мини": {
         "price": 2300,
-        "image": "fistashka-malina_tart.jpg",
+        "image": "pate/catalog-p051.png",
         "detail": "Диаметр 10 см, вес 145 г."
       },
       "большой": {
         "price": 12000,
-        "image": "fistashka-malina_tart.jpg",
+        "image": "pate/catalog-p051.png",
         "detail": "Диаметр 20 см, вес 730 г."
       }
     }
@@ -291,12 +405,12 @@
     "sizes": {
       "мини": {
         "price": 1600,
-        "image": "tvorozhnyi_tart.jpg",
+        "image": "pate/cottage-cheese-tart.png",
         "detail": "Диаметр 10 см, вес 140 г."
       },
       "большой": {
         "price": 8600,
-        "image": "tvorozhnyi_tart.jpg",
+        "image": "pate/cottage-cheese-tart.png",
         "detail": "Диаметр 20 см, вес 690 г."
       }
     }
@@ -312,12 +426,12 @@
     "sizes": {
       "мини": {
         "price": 1600,
-        "image": "limonnyi_tart.jpg",
+        "image": "pate/catalog-p022.png",
         "detail": "Диаметр 10 см, вес 120 г."
       },
       "большой": {
         "price": 8600,
-        "image": "limonnyi_tart.jpg",
+        "image": "pate/catalog-p022.png",
         "detail": "Диаметр 20 см, вес 680 г."
       }
     }
@@ -332,12 +446,12 @@
     "sizes": {
       "мини": {
         "price": 1600,
-        "image": "shokoladnyi_tart.jpg",
+        "image": "pate/catalog-p060.png",
         "detail": "Диаметр 10 см, вес 100 г."
       },
       "большой": {
         "price": 8600,
-        "image": "shokoladnyi_tart.jpg",
+        "image": "pate/catalog-p060.png",
         "detail": "Диаметр 20 см, вес 550 г."
       }
     }
@@ -351,12 +465,12 @@
     "sizes": {
       "мини": {
         "price": 2650,
-        "image": "klubnichnaya_galeta.jpg",
+        "image": "pate/catalog-p019.png",
         "detail": "Диаметр 10 см."
       },
       "большая": {
         "price": 5650,
-        "image": "klubnichnaya_galeta.jpg",
+        "image": "pate/catalog-p019.png",
         "detail": "Диаметр 18 см."
       }
     }
@@ -370,12 +484,12 @@
     "sizes": {
       "мини": {
         "price": 2650,
-        "image": "abrikosovaya_galeta.jpg",
+        "image": "pate/catalog-p001.png",
         "detail": "Диаметр 10 см."
       },
       "большая": {
         "price": 5650,
-        "image": "abrikosovaya_galeta.jpg",
+        "image": "pate/catalog-p001.png",
         "detail": "Диаметр 18 см."
       }
     }
@@ -434,12 +548,12 @@
     "sizes": {
       "порция": {
         "price": 2300,
-        "image": "fistashkovyi_pirog_s_malinoi.jpg",
+        "image": "pate/catalog-p052.png",
         "detail": "Длина 5 см, высота 7 см, вес 200 г, 1-2 чел."
       },
       "большой": {
         "price": 21000,
-        "image": "fistashkovyi_pirog_s_malinoi.jpg",
+        "image": "pate/catalog-p052.png",
         "detail": "Длина 50 см, высота 7 см, вес 2000 г, 15-20 чел."
       }
     }
@@ -447,18 +561,20 @@
   {
     "canonical": "Чизкейк с ягодами",
     "aliases": [
-      "чизкейк ягоды"
+      "чизкейк ягоды",
+      "чизкейк ягодный",
+      "чизкейк порция"
     ],
     "description": "Песочное тесто с творожно-сырной начинкой со свежими ягодами.",
     "sizes": {
       "порция": {
-        "price": 2700,
-        "image": "chizkeik_s_yagodami.jpg",
+        "price": 2800,
+        "image": "pate/berry-cheesecake.png",
         "detail": "Длина 5 см, высота 5 см, вес 240 г, 1-2 чел."
       },
       "большой": {
-        "price": 25000,
-        "image": "chizkeik_s_yagodami.jpg",
+        "price": 26000,
+        "image": "pate/berry-cheesecake.png",
         "detail": "Длина 50 см, высота 5 см, вес 2400 г, 12-15 чел."
       }
     }
@@ -472,12 +588,12 @@
     "sizes": {
       "порция": {
         "price": 2900,
-        "image": "merengovyi_rulet.jpg",
+        "image": "pate/catalog-p024.png",
         "detail": "Длина 5 см, высота 7 см, вес 170 г, 1-2 чел."
       },
       "большой": {
         "price": 24000,
-        "image": "merengovyi_rulet.jpg",
+        "image": "pate/catalog-p024.png",
         "detail": "Длина 50 см, высота 7 см, вес 2700 г, 15-20 чел."
       }
     }
@@ -513,7 +629,7 @@
     "sizes": {
       "1шт": {
         "price": 7500,
-        "image": "muraveinik.jpg",
+        "image": "pate/catalog-p027.png",
         "detail": "16 шт в наборе."
       }
     }
@@ -585,7 +701,7 @@
     "sizes": {
       "1шт": {
         "price": 9500,
-        "image": "chainyi_nabor_monro.jpg"
+        "image": "pate/catalog-p054.png"
       }
     }
   },
@@ -621,7 +737,7 @@
     "sizes": {
       "1шт": {
         "price": 850,
-        "image": "chiabatta.jpg"
+        "image": "pate/catalog-p057.png"
       }
     }
   },
@@ -634,7 +750,7 @@
     "sizes": {
       "1шт": {
         "price": 950,
-        "image": "tartin.jpg"
+        "image": "pate/catalog-p045.png"
       }
     }
   },
@@ -673,7 +789,7 @@
     "sizes": {
       "1шт": {
         "price": 1050,
-        "image": "pirozhnoe_kartoshka.jpg"
+        "image": "pate/catalog-p030.png"
       }
     }
   },
@@ -694,30 +810,32 @@
   {
     "canonical": "Профитроли",
     "aliases": [
-      "профитроль"
+      "профитроль",
+      "профитроли"
     ],
     "description": "Заварное тесто, сливочно-заварной крем с шоколадным ганашем, клубникой и голубикой.",
     "sizes": {
       "500г": {
         "price": 6400,
-        "image": "profitroli.jpg"
+        "image": "pate/profiteroles.png"
       },
       "1кг": {
         "price": 12700,
-        "image": "profitroli.jpg"
+        "image": "pate/profiteroles.png"
       }
     }
   },
   {
     "canonical": "Кольца творожные",
     "aliases": [
-      "творожные кольца"
+      "творожные кольца",
+      "кольцо творожное"
     ],
     "description": "Заварное тесто, творог, сахар. 1 шт.",
     "sizes": {
       "1шт": {
         "price": 1700,
-        "image": "kolca_tvorozhnye.jpg"
+        "image": "pate/cottage-cheese-rings.png"
       }
     }
   },
@@ -876,7 +994,77 @@
     "sizes": {
       "1шт": {
         "price": 1150,
-        "image": "sinnabon.jpg"
+        "image": "pate/catalog-p036.png"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон с клубникой",
+    "aliases": [
+      "синнабон клубника",
+      "синнабон с клубникой"
+    ],
+    "description": "Сдобная булочка с клубникой и сливочным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "pate/cinnamon-roll-strawberry.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон с маком",
+    "aliases": [
+      "синнабон маковый",
+      "синнабон с маком",
+      "синнабон маком"
+    ],
+    "description": "Сдобная булочка с маком и сливочным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "pate/cinnamon-roll-poppy.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон с корицей",
+    "aliases": [
+      "синнабон с корицей"
+    ],
+    "description": "Сдобная булочка с корицей и сливочным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "pate/cinnamon-roll-cinnamon.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон с орехом",
+    "aliases": [
+      "синнабон ореховый",
+      "синнабон с орехом"
+    ],
+    "description": "Сдобная булочка с орехом и сливочным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 1600,
+        "image": "pate/cinnamon-roll-walnut.jpg"
+      }
+    }
+  },
+  {
+    "canonical": "Синнабон с черникой",
+    "aliases": [
+      "синнабон черника",
+      "синнабон с черникой"
+    ],
+    "description": "Сдобная булочка с черникой и сливочным кремом.",
+    "sizes": {
+      "1шт": {
+        "price": 1900,
+        "image": "pate/cinnamon-roll-blueberry.jpg"
       }
     }
   },
@@ -913,7 +1101,7 @@
     "sizes": {
       "1шт": {
         "price": 1200,
-        "image": "sloika_tvorozhnaya.jpg"
+        "image": "pate/catalog-p041.png"
       }
     }
   },
@@ -953,13 +1141,14 @@
   {
     "canonical": "Улитка с шоколадом",
     "aliases": [
-      "шоколадная улитка"
+      "шоколадная улитка",
+      "улитка"
     ],
     "description": "Слоёное тесто с заварным кремом и каплями шоколада.",
     "sizes": {
       "1шт": {
         "price": 1450,
-        "image": "ulitka_s_shokoladom.jpg"
+        "image": "pate/catalog-p050.png"
       }
     }
   },
@@ -985,7 +1174,7 @@
     "sizes": {
       "1шт": {
         "price": 1850,
-        "image": "bananovye_rogaliki.jpg",
+        "image": "pate/catalog-p005.png",
         "detail": "250 г."
       }
     }
@@ -1062,7 +1251,7 @@
     "sizes": {
       "1шт": {
         "price": 1600,
-        "image": "sloika_ovoschnaya.jpg"
+        "image": "pate/catalog-p039.png"
       }
     }
   },
@@ -1073,7 +1262,7 @@
     "sizes": {
       "1шт": {
         "price": 1450,
-        "image": "sloika_derevenskaya.jpg"
+        "image": "pate/catalog-p038.png"
       }
     }
   },
@@ -1084,7 +1273,7 @@
     "sizes": {
       "1шт": {
         "price": 1600,
-        "image": "sloika_s_kolbaskoi.jpg"
+        "image": "pate/catalog-p040.png"
       }
     }
   },
@@ -1095,7 +1284,7 @@
     "sizes": {
       "1шт": {
         "price": 1600,
-        "image": "sloika_cherri.jpg"
+        "image": "pate/catalog-p042.png"
       }
     }
   },
@@ -1106,7 +1295,7 @@
     "sizes": {
       "1шт": {
         "price": 500,
-        "image": "pirozhok_s_kapustoi.jpg"
+        "image": "pate/catalog-p031.png"
       }
     }
   },
@@ -1117,7 +1306,7 @@
     "sizes": {
       "1шт": {
         "price": 500,
-        "image": "pirozhok_s_kartoshkoi.jpg"
+        "image": "pate/catalog-p032.png"
       }
     }
   },

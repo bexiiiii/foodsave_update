@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """Helpers for GREEN-API WhatsApp webhooks."""
 import json
+import hmac
+import os
 import threading
 import time
 import unicodedata
@@ -67,8 +69,8 @@ def extract_green_api_message(payload):
 
 def verify_webhook_token(headers, query_params, config):
     expected = ((config.get("green_api") or {}).get("webhook_token") or "").strip()
-    if not expected:
-        return True
+    if not expected or expected.lower() in {"change_me", "change_me_locally", "set_a_long_random_token"}:
+        return False
 
     candidates = [
         headers.get("Authorization", "").replace("Bearer ", "", 1).strip(),
@@ -76,7 +78,7 @@ def verify_webhook_token(headers, query_params, config):
         query_params.get("token", [""])[0].strip(),
         query_params.get("webhookUrlToken", [""])[0].strip(),
     ]
-    return expected in candidates
+    return any(hmac.compare_digest(candidate.encode("utf-8"), expected.encode("utf-8")) for candidate in candidates)
 
 
 def normalize_group_name(value):
@@ -95,18 +97,19 @@ def allowed_group_names(config):
 
 def allowed_group_chat_ids(config):
     green_cfg = config.get("green_api") or {}
-    return {str(chat_id).strip() for chat_id in green_cfg.get("allowed_group_chat_ids", []) if str(chat_id).strip()}
+    values = green_cfg.get("allowed_group_chat_ids", [])
+    if not isinstance(values, list):
+        return set()
+    return {str(chat_id).strip() for chat_id in values if str(chat_id).strip()}
 
 
 def group_defaults_for_message(config, chat_name):
-    """Resolve per-group defaults using the same normalization as the allowlist."""
+    """Resolve routing defaults by fixed WhatsApp group ID, never its mutable title."""
     green_cfg = config.get("green_api") or {}
-    defaults = green_cfg.get("group_defaults") or {}
-    normalized_chat_name = normalize_group_name(chat_name)
-    for configured_name, group_defaults in defaults.items():
-        if normalize_group_name(configured_name) == normalized_chat_name:
-            return group_defaults or {}
-    return {}
+    defaults = green_cfg.get("group_defaults_by_chat_id") or {}
+    chat_id = str(chat_name or "").strip()
+    value = defaults.get(chat_id)
+    return value if isinstance(value, dict) else {}
 
 
 def is_allowed_group_message(message, config):
@@ -121,10 +124,8 @@ def is_allowed_group_message(message, config):
     chat_ids = allowed_group_chat_ids(config)
     if chat_ids and chat_id in chat_ids:
         return True, "chatId allowed"
-
-    names = allowed_group_names(config)
-    if chat_name and chat_name in names:
-        return True, "chatName allowed"
+    if not chat_ids:
+        return False, "allowed group chat IDs are not configured"
 
     return False, f"group not allowed: {message.get('chatName') or chat_id}"
 
@@ -180,16 +181,19 @@ def build_publication_reply(parse_summary, upload_report, auto_upload):
     ok = upload_summary.get("ok", 0)
     skipped = upload_summary.get("skipped", 0)
     failed = upload_summary.get("failed", 0)
-    total = upload_summary.get("total", parse_summary.get("total", 0))
+    total = parse_summary.get("total", upload_summary.get("total", 0))
+    review = parse_summary.get("review", 0)
     lines = [
         "✅ Боксы обработаны.",
         f"Опубликовано: {ok} из {total}",
     ]
+    if review:
+        lines.append(f"На ручной проверке: {review}")
     if skipped:
-        lines.append(f"Пропущено на проверку: {skipped}")
+        lines.append(f"Не опубликовано: {skipped}")
     if failed:
         lines.append(f"Ошибки: {failed}")
-    if ok == total and total:
+    if ok == total and total and not review and not skipped and not failed:
         lines.append("Все боксы опубликованы.")
     return "\n".join(lines)
 
@@ -197,10 +201,41 @@ def build_publication_reply(parse_summary, upload_report, auto_upload):
 class WebhookStore:
     _claims = set()
     _claims_lock = threading.Lock()
+    _append_lock = threading.Lock()
+    RETENTION_SECONDS = 90 * 24 * 60 * 60
+
+    @staticmethod
+    def _safe_log_value(value, key=None):
+        private_keys = {
+            "text", "raw", "media", "downloadUrl", "caption", "rawLine", "rawLine_name",
+            "messageText", "message_text", "chatId", "senderName",
+        }
+        if key in private_keys:
+            return None
+        if key == "error":
+            return "processing error"
+        if isinstance(value, dict):
+            safe = {}
+            for child_key, child_value in value.items():
+                child = WebhookStore._safe_log_value(child_value, child_key)
+                if child is not None:
+                    safe[child_key] = child
+            return safe
+        if isinstance(value, list):
+            return [
+                child for entry in value
+                if (child := WebhookStore._safe_log_value(entry, key)) is not None
+            ]
+        if isinstance(value, str) and value.lower().startswith(("http://", "https://")):
+            return None
+        return value
 
     def __init__(self, path):
         self.path = Path(path)
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        if not self.path.exists():
+            self.path.touch(mode=0o600)
+        os.chmod(self.path, 0o600)
 
     def seen(self, id_message):
         if not id_message or not self.path.exists():
@@ -230,9 +265,50 @@ class WebhookStore:
                 self._claims.discard(key)
 
     def append(self, event):
-        record = {"receivedAt": int(time.time()), **event}
-        with self.path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        record = self._safe_log_value({**event, "receivedAt": int(time.time())})
+        with self._append_lock:
+            self._prune_expired_locked()
+            with self.path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+    def _prune_expired_locked(self):
+        if not self.path.exists():
+            return
+        cutoff = int(time.time()) - self.RETENTION_SECONDS
+        retained = []
+        try:
+            with self.path.open(encoding="utf-8") as stream:
+                for line in stream:
+                    try:
+                        event = json.loads(line)
+                        received_at = int(event.get("receivedAt", 0))
+                    except (ValueError, TypeError, json.JSONDecodeError):
+                        continue
+                    if received_at >= cutoff:
+                        retained.append(json.dumps(event, ensure_ascii=False) + "\n")
+            temp_path = self.path.with_name(self.path.name + ".tmp")
+            flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            descriptor = os.open(temp_path, flags, 0o600)
+            try:
+                with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
+                    stream.writelines(retained)
+                os.chmod(temp_path, 0o600)
+                os.replace(temp_path, self.path)
+            except Exception:
+                try:
+                    os.close(descriptor)
+                except OSError:
+                    pass
+                try:
+                    temp_path.unlink()
+                except OSError:
+                    pass
+                raise
+        except OSError:
+            # Preserve webhook handling if log pruning is blocked by filesystem permissions.
+            return
 
 
 def card_fingerprint(card):
@@ -262,3 +338,18 @@ def deduplicate_cards(cards):
         seen.add(fingerprint)
         unique_cards.append(card)
     return unique_cards, duplicate_cards
+
+
+def duplicate_card_indexes(cards):
+    """Return repeated positions without deleting them from the moderation record."""
+    seen = set()
+    duplicates = set()
+    for index, card in enumerate(cards):
+        if not isinstance(card, dict) or card.get("error"):
+            continue
+        fingerprint = card_fingerprint(card)
+        if fingerprint in seen:
+            duplicates.add(index)
+        else:
+            seen.add(fingerprint)
+    return duplicates

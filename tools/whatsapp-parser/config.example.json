@@ -1,13 +1,14 @@
 {
   "base_url": "https://foodsave.kz/api",
-  "email": "admin@foodsave.kz",
-  "password": "Admin@123456",
+  "email": "admin@example.invalid",
+  "password": "CHANGE_ME_LOCALLY",
   "category_name": "Кондитерские изделия",
   "images_dir": "./images",
   "create_endpoint": "/products",
   "green_api": {
-    "_comment": "webhook_token должен совпадать с webhookUrlToken в GREEN-API. auto_upload=false безопасно парсит и пишет лог, но не создаёт товары. true — сразу создаёт уверенные карточки в CRM.",
-    "webhook_token": "change-me",
+    "_comment": "Задай отдельные случайные токены для webhook_token и admin_api_token. Для вебхуков обязательны точные ID существующих WhatsApp-групп в allowed_group_chat_ids и group_defaults_by_chat_id; по названию чат не разрешается. Пустой токен отключает соответствующий API. auto_upload=false не создаёт товары; true публикует только уверенные позиции с точным фото.",
+    "webhook_token": "",
+    "admin_api_token": "",
     "id_instance": "",
     "api_token_instance": "",
     "api_url": "https://api.green-api.com",
@@ -19,10 +20,16 @@
       "Coffi Foodsave"
     ],
     "group_defaults": {
-      "Royalty FoodSave": {"store": "royalty", "category": "Кофейня"},
-      "Coffi Foodsave": {"store": "coffi", "category": "Кофейня"}
+      "Royalty FoodSave": {"store": "royalty", "category": "Кофейня", "catalog_scope": "royalty"},
+      "Foodsave Pate": {"catalog_scope": "pate"},
+      "Coffi Foodsave": {"store": "coffi", "category": "Кофейня", "catalog_scope": "coffi"}
     },
-    "allowed_group_chat_ids": []
+    "allowed_group_chat_ids": [],
+    "group_defaults_by_chat_id": {
+      "REPLACE_WITH_PATE_GROUP_ID@g.us": {"catalog_scope": "pate"},
+      "REPLACE_WITH_COFFI_GROUP_ID@g.us": {"store": "coffi", "category": "Кофейня", "catalog_scope": "coffi"},
+      "REPLACE_WITH_ROYALTY_GROUP_ID@g.us": {"store": "royalty", "category": "Кофейня", "catalog_scope": "royalty"}
+    }
   },
 
   "_comment_store_aliases": "ключ — как точку называют в WhatsApp-сообщениях (нормализованное, нижний регистр), значение — точная подстрока названия точки в /api/stores/active. Если оставить пустым {} — скрипт попробует сматчить автоматически по похожести строк.",

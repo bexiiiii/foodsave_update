@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, ClipboardCheck, LoaderCircle, RefreshCw, Send, TriangleAlert } from "lucide-react";
 import { toast } from "sonner";
+import ReviewQueue from "./ReviewQueue";
 import {
   WhatsAppParserEventsResponse,
   WhatsAppParserItem,
@@ -22,6 +23,7 @@ export default function WhatsAppParserPage() {
   const [message, setMessage] = useState("");
   const [source, setSource] = useState("");
   const [items, setItems] = useState<WhatsAppParserItem[]>([]);
+  const [queueVersion, setQueueVersion] = useState(0);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [events, setEvents] = useState<WhatsAppParserEventsResponse["events"]>([]);
   const [isLoadingEvents, setIsLoadingEvents] = useState(true);
@@ -55,6 +57,7 @@ export default function WhatsAppParserPage() {
       const result = await whatsappParserApi.parse(message, source || undefined);
       setItems(result.items);
       setSelected(new Set(result.items.map((item, index) => !item.error && !item.needsReview ? index : -1).filter(index => index >= 0)));
+      setQueueVersion((current) => current + 1);
       toast.success(`Разобрано позиций: ${result.summary.total}`);
     } catch {
       toast.error("Не удалось разобрать сообщение");
@@ -72,6 +75,8 @@ export default function WhatsAppParserPage() {
     try {
       const result = await whatsappParserApi.publish(selectedItems, true);
       toast.success(`Опубликовано: ${result.summary.ok}; на проверке: ${result.summary.skipped}`);
+      setItems([]);
+      setSelected(new Set());
       await loadEvents();
     } catch {
       toast.error("Не удалось опубликовать выбранные позиции");
@@ -98,6 +103,8 @@ export default function WhatsAppParserPage() {
           Обновить
         </button>
       </div>
+
+      <ReviewQueue key={queueVersion} />
 
       <section className="border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900">
         <div className="flex flex-col gap-3 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between dark:border-gray-800">

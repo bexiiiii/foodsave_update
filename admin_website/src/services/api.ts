@@ -40,7 +40,6 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers = config.headers || {};
         config.headers['Authorization'] = `Bearer ${token}`;
-        console.log('Request headers:', config.headers); // Debug log
     }
     return config;
 }, (error) => {
@@ -129,8 +128,6 @@ class ApiService {
                 ...options.headers,
                 ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             };
-
-            console.log('Request headers:', headers); // Debug log
 
             const response = await api({
                 url: endpoint,
@@ -245,7 +242,6 @@ class ApiService {
                 method: 'POST',
                 data,
             });
-            console.log('Login response:', response); // Debug log
             if (response && response.accessToken) {
                 this.setToken(response.accessToken);
             }
@@ -426,6 +422,8 @@ export const userApi = {
 };
 
 export interface WhatsAppParserItem {
+    reviewId?: string;
+    catalogScope?: "pate" | "coffi" | "royalty";
     name?: string;
     rawLine?: string;
     storeName?: string;
@@ -453,6 +451,21 @@ export interface WhatsAppParserEventsResponse {
     events: WhatsAppParserEvent[];
 }
 
+export interface WhatsAppParserReviewItem {
+    reviewId: string;
+    chatName?: string;
+    messageText?: string | null;
+    status: string;
+    item: WhatsAppParserItem;
+}
+
+export interface WhatsAppParserCatalogItem {
+    canonical: string;
+    aliases?: string[];
+    description?: string;
+    sizes?: Record<string, { price?: number; image?: string; detail?: string }>;
+}
+
 export const whatsappParserApi = {
     getEvents: () =>
         api.get<WhatsAppParserEventsResponse>('/admin/whatsapp-parser/events').then(response => response.data),
@@ -463,9 +476,39 @@ export const whatsappParserApi = {
         }).then(response => response.data),
     publish: (items: WhatsAppParserItem[], confirm: boolean) =>
         api.post<{ summary: { ok: number; skipped: number } }>('/admin/whatsapp-parser/publish', {
-            items,
+            reviewIds: items.map(item => item.reviewId).filter((id): id is string => Boolean(id)),
             confirm,
         }).then(response => response.data),
+    getReviewQueue: () =>
+        api.get<{ items: WhatsAppParserReviewItem[] }>('/admin/whatsapp-parser/review-queue').then(response => response.data),
+    getCatalog: () =>
+        api.get<{ items: WhatsAppParserCatalogItem[] }>('/admin/whatsapp-parser/catalog').then(response => response.data),
+    getImage: (path: string) =>
+        api.get<Blob>('/admin/whatsapp-parser/image', { params: { path }, responseType: 'blob' }).then(response => response.data),
+    editReviewItem: (reviewId: string, item: WhatsAppParserItem) =>
+        api.post('/admin/whatsapp-parser/review-queue/edit', { reviewId, item }).then(response => response.data),
+    publishReviewItem: async (reviewId: string, allowDuplicate = false) => {
+        try {
+            const response = await api.post<{ duplicatePublication?: boolean; duplicateReviewId?: string }>(
+                '/admin/whatsapp-parser/review-queue/publish', { reviewId, allowDuplicate },
+            );
+            return response.data;
+        } catch (error) {
+            if (axios.isAxiosError<{ duplicatePublication?: boolean; duplicateReviewId?: string }>(error)
+                && error.response?.status === 409 && error.response.data?.duplicatePublication) {
+                return error.response.data;
+            }
+            throw error;
+        }
+    },
+    rejectReviewItem: (reviewId: string) =>
+        api.post('/admin/whatsapp-parser/review-queue/reject', { reviewId }).then(response => response.data),
+    snoozeReviewItem: (reviewId: string) =>
+        api.post('/admin/whatsapp-parser/review-queue/snooze', { reviewId }).then(response => response.data),
+    reconcilePublishedReviewItem: (reviewId: string) =>
+        api.post('/admin/whatsapp-parser/review-queue/reconcile-published', { reviewId }).then(response => response.data),
+    reconcileUnpublishedReviewItem: (reviewId: string) =>
+        api.post('/admin/whatsapp-parser/review-queue/reconcile-not-published', { reviewId }).then(response => response.data),
 };
 
 // Order API

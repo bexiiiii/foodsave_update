@@ -54,7 +54,9 @@ SIZE_SYNONYMS = {
 }
 
 # слова, которые не должны мешать сопоставлению (порядок/наличие)
-STOPWORDS = {"тарт", "пирог", "с"}
+# Keep product-shape words: dropping "пирог"/"тарт" made distinct cherry
+# products indistinguishable to the fuzzy matcher.
+STOPWORDS = {"с"}
 
 STORE_WORDS = {
     "пате", "туран", "толе", "би", "достык", "ишим", "калдаякова",
@@ -124,11 +126,25 @@ def item_has_size(item, desired_size=None):
     return bool(labels & candidates)
 
 
-def best_match(name_raw, catalog, threshold=0.62, original_price=None, desired_size=None):
+def best_match(name_raw, catalog, threshold=0.70, original_price=None, desired_size=None):
     """catalog: список словарей {canonical, aliases:[...], sizes:{...}}"""
     prepared_name = apply_name_replacements(name_raw)
+    normalized_name = normalize(prepared_name)
+    product_name = " ".join(
+        token for token in normalized_name.split() if token not in SIZE_SYNONYMS
+    )
     raw_tokens = tokenset(prepared_name)
-    best, best_score = None, 0.0
+    exact_items = {
+        item.get("canonical")
+        for item in catalog
+        if normalized_name in {normalize(value) for value in [item.get("canonical", ""), *item.get("aliases", [])]}
+    }
+    exact_product_items = {
+        item.get("canonical")
+        for item in catalog
+        if product_name in {normalize(value) for value in [item.get("canonical", ""), *item.get("aliases", [])]}
+    } if product_name != normalized_name else set()
+    best, best_score, best_lexical_score = None, 0.0, 0.0
     ranked = []
     for item in catalog:
         item_best_score = 0.0
@@ -137,29 +153,66 @@ def best_match(name_raw, catalog, threshold=0.62, original_price=None, desired_s
             c_tokens = tokenset(c)
             if not c_tokens or not raw_tokens:
                 continue
+            exact_full_name = normalized_name == normalize(c) and len(exact_items) == 1
+            exact_sized_product = (
+                product_name == normalize(c)
+                and len(exact_product_items) == 1
+                and desired_size
+                and item_has_size(item, desired_size)
+                and size_price_match(item, original_price)
+            )
+            if len(raw_tokens) == 1 and not exact_full_name and not exact_sized_product:
+                # A lone generic word like "пирог" cannot identify one of the
+                # catalog products through fuzzy similarity or price alone.
+                continue
             inter = len(raw_tokens & c_tokens)
             union = len(raw_tokens | c_tokens)
             jacc = inter / union if union else 0
             ratio = SequenceMatcher(
                 None, " ".join(sorted(raw_tokens)), " ".join(sorted(c_tokens))
             ).ratio()
-            score = max(jacc, ratio)
-            if raw_tokens and raw_tokens <= c_tokens:
-                score = max(score, 0.82)
-            if size_price_match(item, original_price):
+            lexical_score = max(jacc, ratio)
+            # An exact name or alias is strong even when it has one word.
+            # A one-word subset such as "пирог" is too generic to identify a
+            # product and must not be rescued by its price.
+            if exact_full_name:
+                lexical_score = 1.0
+            elif (
+                product_name == normalize(c)
+                and len(exact_product_items) == 1
+                and (
+                    len(c_tokens) >= 2
+                    or (
+                        desired_size
+                        and item_has_size(item, desired_size)
+                        and size_price_match(item, original_price)
+                    )
+                )
+            ):
+                # A size suffix belongs to the variant, not the product name.
+                # For a one-word alias, require both catalog size and price to
+                # agree so generic names cannot be promoted by a fuzzy match.
+                lexical_score = 1.0
+            elif len(raw_tokens) >= 2 and raw_tokens <= c_tokens:
+                lexical_score = max(lexical_score, 0.82)
+            score = lexical_score
+            # Price/size may confirm a plausible name; they must never turn a
+            # weak lexical match into an unrelated product.
+            if lexical_score >= 0.72 and size_price_match(item, original_price):
                 score = min(1.0, score + 0.18)
-            if desired_size:
+            if lexical_score >= 0.72 and desired_size:
                 score = min(1.0, score + 0.12) if item_has_size(item, desired_size) else max(0.0, score - 0.25)
             if score > item_best_score:
                 item_best_score = score
-            if score > best_score:
+            if score > best_score or (score == best_score and lexical_score > best_lexical_score):
                 best_score, best = score, item
+                best_lexical_score = lexical_score
         if item_best_score:
             ranked.append((item_best_score, item))
     ranked = sorted(ranked, key=lambda x: x[0], reverse=True)
     if best_score >= threshold:
-        return best, best_score, ranked[:5]
-    return None, best_score, ranked[:5]
+        return best, best_score, ranked[:5], best_lexical_score
+    return None, best_score, ranked[:5], best_lexical_score
 
 
 def preprocess_line(line: str) -> str:
@@ -527,47 +580,109 @@ def partner_key(store):
     return None
 
 
-def find_partner_image(name, store, prefer_store=False):
+def find_partner_image(name, store, prefer_store=False, return_meta=False):
+    def result(path, fallback=False):
+        if return_meta:
+            return {"path": path, "isFallback": bool(path and fallback)}
+        return path
+
     partner = partner_key(store)
     image_dir = IMAGES_DIR / partner if partner else None
     if not image_dir or not image_dir.exists():
-        return None
+        return result(None)
 
     files = [path for path in image_dir.rglob("*") if path.is_file()]
     if not files:
-        return None
+        return result(None)
 
     target = store if prefer_store else name
     if prefer_store and "абая" in normalize(store or ""):
         target = "жаннур"
     target_tokens = tokenset(target or "")
     best_path, best_score = None, 0.0
+    exact_product_path = None
+    normalized_target = normalize(target or "")
     for path in files:
         stem = normalize(path.stem)
         stem_tokens = tokenset(stem)
         if not stem_tokens:
             continue
+        if not prefer_store and normalized_target and (
+            normalized_target == stem
+            or (len(target_tokens) >= 2 and normalized_target in stem)
+        ):
+            exact_product_path = path
+            break
         overlap = len(target_tokens & stem_tokens) / len(target_tokens | stem_tokens) if target_tokens else 0
         ratio = SequenceMatcher(None, normalize(target or ""), stem).ratio()
         score = max(overlap, ratio)
         if score > best_score:
             best_path, best_score = path, score
 
-    if best_path and best_score >= 0.52:
-        return str(best_path.relative_to(IMAGES_DIR))
+    if exact_product_path:
+        return result(str(exact_product_path.relative_to(IMAGES_DIR)), fallback=prefer_store)
+    if prefer_store and best_path and best_score >= 0.52:
+        return result(str(best_path.relative_to(IMAGES_DIR)), fallback=True)
 
-    fallback_words = ("витрина", "республика") if partner == "royalty" else ("витрина", "кофи")
+    if partner == "royalty":
+        normalized_store = normalize(store or "")
+        branch_aliases = {
+            "абая": "жаннур", "аружан": "аружан", "жаннур": "жаннур",
+            "республика": "республика", "сембинова": "сембинова",
+            "сыганак": "сыганак", "жиенкулова": "шары жиенкулова",
+        }
+        for alias, branch in branch_aliases.items():
+            if alias in normalized_store:
+                branch_path = next((path for path in files if branch in normalize(path.stem)), None)
+                if branch_path:
+                    return result(str(branch_path.relative_to(IMAGES_DIR)), fallback=True)
+        return result(None)
+
+    fallback_words = ("витрина", "кофи")
     fallback = next(
         (path for path in files if any(word in normalize(path.stem) for word in fallback_words)),
         None,
     )
-    return str(fallback.relative_to(IMAGES_DIR)) if fallback else None
+    return result(str(fallback.relative_to(IMAGES_DIR)) if fallback else None, fallback=True)
+
+
+def available_image_reference(image):
+    if not image:
+        return None
+    if isinstance(image, str) and image.startswith(("http://", "https://")):
+        return image
+    return image if (IMAGES_DIR / str(image)).is_file() else None
+
+
+def is_partner_showcase_image(image, store):
+    """Identify approved venue/branch photos that are useful defaults, not product matches."""
+    partner = partner_key(store)
+    if not partner or not isinstance(image, str) or image.startswith(("http://", "https://")):
+        return False
+    path = Path(image)
+    if path.parts[0].lower() != partner:
+        return False
+    stem = normalize(path.stem)
+    if partner == "coffi":
+        return "витрина" in stem or "кофи" in stem
+    if partner == "royalty":
+        return any(word in stem for word in (
+            "витрина", "республика", "жаннур", "аружан", "сембинова",
+            "сыганак", "жиенкулова", "фото с",
+        ))
+    return False
 
 
 def build_bundle_card(store, number, title, components, total, category_name=None, expiry_days=DEFAULT_EXPIRY_DAYS):
     original_price = round(total / (1 - DEFAULT_DISCOUNT_PCT / 100))
     expiry = (datetime.date.today() + datetime.timedelta(days=expiry_days)).isoformat() + "T21:00:00"
-    image = find_partner_image(title, store, prefer_store=True)
+    image_result = find_partner_image(title, store, prefer_store=True, return_meta=True)
+    image = available_image_reference(image_result["path"])
+    photo_is_fallback = bool(image and image_result["isFallback"])
+    photo_review_reason = (
+        "Используется общее фото заведения" if photo_is_fallback
+        else "Нет доступного фото позиции" if not image else ""
+    )
     clean_title = re.sub(r"[^\w\s&-]", "", title or "", flags=re.UNICODE).strip()
     clean_components = [re.sub(r"^[^\w]+", "", item).strip() for item in components]
     box_name = f"Бокс №{number}" + (f" — {clean_title}" if clean_title else "")
@@ -588,10 +703,13 @@ def build_bundle_card(store, number, title, components, total, category_name=Non
         "stockQuantity": 1,
         "categoryName": category_name or PARTNER_CATEGORY.get(partner_key(store), CATEGORY_NAME),
         "images": [image] if image else [],
+        "photoNeedsReview": photo_is_fallback or not bool(image),
+        "photoIsFallback": photo_is_fallback,
+        "photoReviewReason": photo_review_reason,
         "expiryDate": expiry,
         "status": STATUS,
-        "reviewReasons": [],
-        "needsReview": False,
+        "reviewReasons": [photo_review_reason] if photo_review_reason else [],
+        "needsReview": bool(photo_review_reason),
     }
 
 
@@ -643,9 +761,13 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
     price = parsed.get("price")
     size = parsed.get("size") or extract_size(name_raw)
     desired_size = size or ("порция" if parsed.get("qtyUnit") == "пор" else None)
-    match, score, ranked = best_match(name_raw, catalog, original_price=orig, desired_size=desired_size)
+    match, score, ranked, lexical_score = best_match(name_raw, catalog, original_price=orig, desired_size=desired_size)
     size_label, size_data = find_size_data(match, size, orig, parsed.get("qtyUnit"))
-    catalog_confirmed = bool(match and size_data and orig is not None and size_data.get("price") == orig)
+    lexical_tokens = tokenset(name_raw)
+    catalog_confirmed = bool(
+        match and len(lexical_tokens) >= 2 and lexical_score >= 0.80 and size_data
+        and orig is not None and size_data.get("price") == orig
+    )
 
     review_reasons = list(dict.fromkeys(block_reasons + parsed.get("reviewReasons", [])))
     if parsed.get("assumedFromCatalog"):
@@ -664,7 +786,8 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
     image = None
     description = ""
     if match:
-        image = size_data.get("image") if size_data else match.get("image")
+        if lexical_score >= 0.98 or catalog_confirmed or parsed.get("assumedFromCatalog"):
+            image = size_data.get("image") if size_data else match.get("image")
         description = match.get("description", "")
         detail = size_data.get("detail") if size_data else None
         if detail:
@@ -672,13 +795,25 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
 
     explicit_price_without_catalog = (
         match is None
+        and partner_key(store) is not None
         and price is not None
         and orig is not None
         and (not parsed.get("assumedDiscount") or parsed.get("trustedQuantityPriceFormat"))
     )
     if match is None and not explicit_price_without_catalog:
         review_reasons.append("нет товара в каталоге")
-    elif match and score < 0.75 and not catalog_confirmed:
+    if price is not None and orig is not None:
+        if price <= 0 or orig <= 0 or price > 1_000_000 or orig > 1_000_000:
+            review_reasons.append("цена вне допустимого диапазона")
+        elif price > orig:
+            review_reasons.append("цена предложения выше обычной цены")
+        elif header_discount is not None and abs(round((1 - price / orig) * 100) - header_discount) > 2:
+            review_reasons.append("процент скидки не совпадает с ценами")
+    if qty is not None and (qty <= 0 or qty > 1000):
+        review_reasons.append("количество вне допустимого диапазона")
+    if match and size_data and orig is not None and size_data.get("price") != orig:
+        review_reasons.append("обычная цена не совпадает с каталогом")
+    elif match and lexical_score < 0.90 and not catalog_confirmed and not parsed.get("assumedFromCatalog"):
         review_reasons.append("слабый матч")
     if match and match.get("sizes") and size_data is None and not catalog_confirmed:
         review_reasons.append("не выбран размер")
@@ -699,7 +834,21 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
 
     review_reasons = list(dict.fromkeys(review_reasons))
 
-    resolved_image = image or find_partner_image(name_raw, store)
+    exact_image = available_image_reference(image)
+    catalog_showcase_fallback = bool(exact_image and is_partner_showcase_image(exact_image, store))
+    partner_image = find_partner_image(name_raw, store, return_meta=True) if not exact_image else {"path": None, "isFallback": False}
+    resolved_image = exact_image or available_image_reference(partner_image["path"])
+    photo_is_fallback = bool(resolved_image and (
+        catalog_showcase_fallback or (not exact_image and partner_image["isFallback"])
+    ))
+    photo_review_reason = (
+        "Используется общее фото заведения" if photo_is_fallback
+        else "Нет доступного фото позиции" if not resolved_image
+        else ""
+    )
+    if photo_review_reason:
+        review_reasons.append(photo_review_reason)
+        review_reasons = list(dict.fromkeys(review_reasons))
     return {
         "storeName": store,
         "storeId": STORE_IDS.get(normalize(store)),
@@ -718,6 +867,11 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
         "stockQuantity": qty,
         "categoryName": category_name or PARTNER_CATEGORY.get(partner_key(store), CATEGORY_NAME),
         "images": [resolved_image] if resolved_image else [],
+        "photoNeedsReview": bool(photo_review_reason),
+        "photoIsFallback": photo_is_fallback,
+        "photoReviewReason": photo_review_reason,
+        "photoNeedsReview": not bool(resolved_image),
+        "photoReviewReason": "Нет точного фото товара" if not resolved_image else "",
         "expiryDate": expiry,
         "status": STATUS,
         "reviewReasons": review_reasons,
