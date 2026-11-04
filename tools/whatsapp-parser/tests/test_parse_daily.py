@@ -204,6 +204,26 @@ class ParseDailyHeavyInputTest(unittest.TestCase):
         self.assertTrue(all(item["needsReview"] for item in out))
         self.assertTrue(all(item["photoIsFallback"] for item in out))
 
+    def test_royalty_box_price_without_dash_keeps_two_components_in_one_box(self):
+        out = process(
+            "Добрый вечер\n"
+            "Сембинова 19/1\n\n"
+            "Бокс 1 2070 тг\n"
+            "Круассан с курицей 1 шт\n"
+            "Фит боул с семгой 1 шт",
+            self.catalog,
+            default_store="royalty",
+            default_category="Кофейня",
+        )
+
+        self.assertEqual(len(out), 1)
+        self.assertEqual(out[0]["name"], "Бокс №1")
+        self.assertEqual(out[0]["price"], 2070)
+        self.assertEqual(out[0]["originalPrice"], 4140)
+        self.assertEqual(out[0]["stockQuantity"], 1)
+        self.assertIn("Круассан с курицей 1 шт", out[0]["description"])
+        self.assertIn("Фит боул с семгой 1 шт", out[0]["description"])
+
     def test_coffi_quantity_price_format_uses_group_store(self):
         out = process(
             "Добрый вечер\n"

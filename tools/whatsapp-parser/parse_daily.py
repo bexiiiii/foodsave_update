@@ -674,7 +674,8 @@ def is_partner_showcase_image(image, store):
 
 
 def build_bundle_card(store, number, title, components, total, category_name=None, expiry_days=DEFAULT_EXPIRY_DAYS):
-    original_price = round(total / (1 - DEFAULT_DISCOUNT_PCT / 100))
+    discount_percentage = 50 if partner_key(store) == "royalty" else DEFAULT_DISCOUNT_PCT
+    original_price = round(total / (1 - discount_percentage / 100))
     expiry = (datetime.date.today() + datetime.timedelta(days=expiry_days)).isoformat() + "T21:00:00"
     image_result = find_partner_image(title, store, prefer_store=True, return_meta=True)
     image = available_image_reference(image_result["path"])
@@ -697,7 +698,7 @@ def build_bundle_card(store, number, title, components, total, category_name=Non
         "description": "Состав: " + "; ".join(clean_components),
         "price": total,
         "originalPrice": original_price,
-        "discountPercentage": DEFAULT_DISCOUNT_PCT,
+        "discountPercentage": discount_percentage,
         "assumedDiscount": True,
         "assumedFromCatalog": False,
         "stockQuantity": 1,
@@ -717,7 +718,9 @@ def parse_bundle_lines(store, lines, category_name=None, expiry_days=DEFAULT_EXP
     cards = []
     consumed = set()
     inline_price_re = re.compile(
-        r"бокс\s*№?\s*(\d+)\s*[—–-]\s*(\d[\d\s]*)\s*(?:₸|тг|т)?\s*$",
+        r"бокс\s*№?\s*(?P<number>\d+)\s*(?:"
+        r"[—–-]\s*(?P<delimited_price>\d[\d\s]*)\s*(?:₸|тг|т)?"
+        r"|(?P<bare_price>\d[\d\s]*)\s*(?:₸|тг|т))\s*$",
         re.IGNORECASE,
     )
     header_re = re.compile(r"бокс\s*№?\s*(\d+)\s*[—–-]\s*(.+)$", re.IGNORECASE)
@@ -726,13 +729,17 @@ def parse_bundle_lines(store, lines, category_name=None, expiry_days=DEFAULT_EXP
     while index < len(lines):
         inline_header = inline_price_re.search(lines[index])
         header = header_re.search(lines[index])
-        if not header:
+        if not header and not inline_header:
             index += 1
             continue
         start = index
-        number = header.group(1)
+        number = inline_header.group("number") if inline_header else header.group(1)
         title = "" if inline_header else header.group(2)
-        total = int(re.sub(r"\s+", "", inline_header.group(2))) if inline_header else None
+        price_text = (
+            inline_header.group("delimited_price") or inline_header.group("bare_price")
+            if inline_header else None
+        )
+        total = int(re.sub(r"\s+", "", price_text)) if price_text else None
         components = []
         index += 1
         while index < len(lines):
