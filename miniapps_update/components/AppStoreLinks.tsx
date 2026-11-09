@@ -9,45 +9,48 @@ const stores = [
 
 const cardStyles = `
   .fs-app-download {
-    max-width: 360px; margin: 36px auto 0;
+    max-width: 400px; margin: 32px auto 0; padding: 24px 20px 20px; box-sizing: border-box;
+    border-radius: 16px;
     font-family: Inter, system-ui, sans-serif;
   }
   .fs-app-download__brand {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
+    display: flex; align-items: center; gap: 14px;
   }
   .fs-app-download__brand-name {
-    margin: 0; color: #17241d; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.3px;
+    margin: 0; color: #17241d; font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -.4px;
   }
   .fs-app-download__eyebrow {
-    margin: 3px 0 0; color: #69736d; font-size: 12px; line-height: 18px;
+    margin: 4px 0 0; color: #727a75; font-size: 12px; line-height: 18px;
   }
   .fs-app-download__icon {
-    display: block; flex-shrink: 0; width: 48px; height: 48px;
-    border: 1px solid #e9ece9; border-radius: 12px;
+    display: block; flex-shrink: 0; width: 52px; height: 52px;
+    border: 1px solid #e9ece9; border-radius: 14px;
   }
   .fs-app-download__stores {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px; width: 100%; margin: 16px auto 0;
+    gap: 10px; width: 100%; margin: 24px auto 0;
   }
   .fs-app-download__link {
-    display: flex; align-items: center; justify-content: center; gap: 10px;
-    min-height: 62px; padding: 10px 12px; box-sizing: border-box;
-    border: 1px solid #e3e6e4; border-radius: 14px; background: #f3f4f3;
-    color: #282e2a; text-decoration: none; box-shadow: 0 1px 2px rgba(22, 35, 27, .04);
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    min-height: 64px; padding: 12px 8px; box-sizing: border-box;
+    border: 1px solid transparent; border-radius: 12px; background: #f3f4f3;
+    color: #282e2a; text-decoration: none;
   }
   .fs-app-download__store-icon { display: block; width: 24px; height: 28px; flex-shrink: 0; }
   .fs-app-download__store-caption { display: block; color: #69706b; font-size: 10px; line-height: 14px; }
-  .fs-app-download__store-name { display: block; font-size: 17px; line-height: 22px; font-weight: 550; letter-spacing: -.4px; white-space: nowrap; }
+  .fs-app-download__store-name { display: block; font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: -.4px; white-space: nowrap; }
   .fs-app-download__link:focus-visible { outline: 3px solid #4cad73; outline-offset: 4px; }
   .fs-app-download__link:active { background: #e9ece9; }
   @media (hover: hover) {
     .fs-app-download__link:hover { background: #eceeec; border-color: #d6dbd7; }
   }
   @media (max-width: 359px) {
-    .fs-app-download__stores { gap: 10px; }
-    .fs-app-download__link { gap: 8px; padding-inline: 8px; }
-    .fs-app-download__store-icon { width: 22px; height: 26px; }
-    .fs-app-download__store-name { font-size: 15px; }
+    .fs-app-download { padding: 20px 14px 14px; }
+    .fs-app-download__brand { gap: 12px; }
+    .fs-app-download__stores { gap: 8px; margin-top: 20px; }
+    .fs-app-download__link { gap: 6px; padding-inline: 6px; }
+    .fs-app-download__store-icon { width: 20px; height: 24px; }
+    .fs-app-download__store-name { font-size: 14px; }
   }
 `;
 
@@ -65,15 +68,15 @@ function openStore(event: MouseEvent<HTMLAnchorElement>) {
 
 export default function AppStoreLinks() {
   return (
-    <section className="fs-app-download" aria-label="FoodSave — App Store / Google Play">
+    <section className="fs-surface fs-app-download" aria-label="FoodSave — App Store / Google Play">
       <style>{cardStyles}</style>
       <div className="fs-app-download__brand">
         {/* Official FoodSave app icon from its App Store listing. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={48} height={48} loading="lazy" />
+        <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={52} height={52} loading="lazy" />
         <div>
           <h2 className="fs-app-download__brand-name">FoodSave</h2>
-          <p className="fs-app-download__eyebrow">Приложение для iOS и Android</p>
+          <p className="fs-app-download__eyebrow">Скачайте для iOS и Android</p>
         </div>
       </div>
       <div className="fs-app-download__stores">
