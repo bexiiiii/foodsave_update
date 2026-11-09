@@ -16,7 +16,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 @RequiredArgsConstructor
 public class CustomerCancellationNotificationService {
     public static final String TYPE = "ORDER_CANCELLED_BY_STAFF";
-    public static final String MESSAGE = "Ваш заказ отменили. Чтобы узнать почему напишите нам в поддержку";
+    public static final String MESSAGE = "К сожалению, ваш заказ отменён. Напишите в поддержку — поможем разобраться.";
+    public static final String SUPPORT_URL = "https://t.me/FoodSave_kz";
     private final NotificationRepository notifications;
     private final RealtimeEventService realtime;
 

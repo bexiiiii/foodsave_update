@@ -109,11 +109,17 @@ public class TelegramOrderNotificationService {
                     new TelegramBotService.TelegramMessagePayload(message, null, null, null));
         }
         if (customerChatId != null && customerNotificationsEnabled) {
+            boolean staffCancellation = CustomerCancellationNotificationService.shouldNotify(order, previous, current);
+            String customerMessage = staffCancellation
+                    ? "К сожалению, заказ <b>#" + html(resolveOrderNumber(order)) + "</b> отменён.\n\n"
+                            + "<a href=\"" + CustomerCancellationNotificationService.SUPPORT_URL
+                            + "\">Напишите в поддержку</a> — поможем разобраться."
+                    : message;
             telegramBotService.sendMessage(customerChatId,
-                    new TelegramBotService.TelegramMessagePayload(
-                            CustomerCancellationNotificationService.shouldNotify(order, previous, current)
-                                    ? CustomerCancellationNotificationService.MESSAGE : message, null, "Открыть заказ",
-                    telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
+                    new TelegramBotService.TelegramMessagePayload(customerMessage, null,
+                            staffCancellation ? "Написать в поддержку" : "Открыть заказ",
+                            staffCancellation ? CustomerCancellationNotificationService.SUPPORT_URL
+                                    : telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
         }
     }
 
