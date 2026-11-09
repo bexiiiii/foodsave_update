@@ -3,8 +3,25 @@
   min-width: 0;
 }
 
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 360px;
+  margin-bottom: 14px;
+}
+
+.appIcon {
+  display: block;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid #e7eae8;
+  border-radius: 10px;
+  background: #fff;
+}
+
 .title {
-  margin-bottom: 10px;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.5;
@@ -71,6 +88,11 @@
 }
 
 @media (max-width: 640px) {
+  .dark .brand {
+    justify-content: center;
+    margin-inline: auto;
+  }
+
   .dark .title {
     text-align: center;
   }

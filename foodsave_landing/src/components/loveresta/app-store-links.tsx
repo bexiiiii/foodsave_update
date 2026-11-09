@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import styles from './app-store-links.module.css';
 
 const stores = [
@@ -14,7 +15,10 @@ const stores = [
 export function AppStoreLinks({ dark = false }: { dark?: boolean }) {
   return (
     <div className={`${styles.downloads}${dark ? ` ${styles.dark}` : ''}`}>
-      <div className={styles.title}>Скачайте приложение FoodSave</div>
+      <div className={styles.brand}>
+        <Image className={styles.appIcon} src="/brand/foodsave-app-icon.jpg" alt="" width={40} height={40} unoptimized />
+        <span className={styles.title}>Скачайте приложение FoodSave</span>
+      </div>
       <div className={styles.links}>
         {stores.map((store) => (
           <a
