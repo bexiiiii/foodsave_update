@@ -32,16 +32,16 @@ const cardStyles = `
   .fs-app-download__link {
     display: flex; align-items: center; justify-content: center; gap: 10px;
     min-height: 62px; padding: 10px 12px; box-sizing: border-box;
-    border: 1px solid #e3e6e4; border-radius: 14px; background: #f3f4f3;
-    color: #282e2a; text-decoration: none; box-shadow: 0 1px 2px rgba(22, 35, 27, .04);
+    border: 1px solid #dcece1; border-radius: 14px; background: #edf7f0;
+    color: #24543b; text-decoration: none; box-shadow: 0 1px 2px rgba(22, 55, 35, .04);
   }
   .fs-app-download__store-icon { display: block; width: 24px; height: 28px; flex-shrink: 0; }
-  .fs-app-download__store-caption { display: block; color: #69706b; font-size: 10px; line-height: 14px; }
+  .fs-app-download__store-caption { display: block; color: #587763; font-size: 10px; line-height: 14px; }
   .fs-app-download__store-name { display: block; font-size: 17px; line-height: 22px; font-weight: 550; letter-spacing: -.4px; white-space: nowrap; }
   .fs-app-download__link:focus-visible { outline: 3px solid #4cad73; outline-offset: 4px; }
-  .fs-app-download__link:active { background: #e9ece9; }
+  .fs-app-download__link:active { background: #dcefe2; }
   @media (hover: hover) {
-    .fs-app-download__link:hover { background: #eceeec; border-color: #d6dbd7; }
+    .fs-app-download__link:hover { background: #e3f2e8; border-color: #c8dfd0; }
   }
   @media (max-width: 359px) {
     .fs-app-download__stores { gap: 10px; }
