@@ -3,8 +3,8 @@
 import type { MouseEvent } from "react";
 
 const stores = [
-  { name: "App Store", caption: "Загрузите в", href: "https://apps.apple.com/kz/app/foodsave/id6809133516" },
-  { name: "Google Play", caption: "Скачайте из", href: "https://play.google.com/store/apps/details?id=com.foodsave.kz" },
+  { name: "App Store", href: "https://apps.apple.com/kz/app/foodsave/id6809133516" },
+  { name: "Google Play", href: "https://play.google.com/store/apps/details?id=com.foodsave.kz" },
 ];
 
 const cardStyles = `
@@ -22,6 +22,9 @@ const cardStyles = `
   .fs-app-download__eyebrow {
     margin: 4px 0 0; color: #727a75; font-size: 12px; line-height: 18px;
   }
+  .fs-app-download__slogan {
+    margin: 6px 0 0; color: #43584a; font-size: 13px; line-height: 18px; font-weight: 500;
+  }
   .fs-app-download__icon {
     display: block; flex-shrink: 0; width: 52px; height: 52px;
     border: 1px solid #e9ece9; border-radius: 14px;
@@ -37,7 +40,6 @@ const cardStyles = `
     color: #282e2a; text-decoration: none;
   }
   .fs-app-download__store-icon { display: block; width: 24px; height: 28px; flex-shrink: 0; }
-  .fs-app-download__store-caption { display: block; color: #69706b; font-size: 10px; line-height: 14px; }
   .fs-app-download__store-name { display: block; font-size: 16px; line-height: 22px; font-weight: 600; letter-spacing: -.4px; white-space: nowrap; }
   .fs-app-download__link:focus-visible { outline: 3px solid #4cad73; outline-offset: 4px; }
   .fs-app-download__link:active { background: #e9ece9; }
@@ -76,6 +78,7 @@ export default function AppStoreLinks() {
         <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={52} height={52} loading="lazy" />
         <div>
           <h2 className="fs-app-download__brand-name">FoodSave</h2>
+          <p className="fs-app-download__slogan">Спасайте еду. Экономьте.</p>
           <p className="fs-app-download__eyebrow">Скачайте для iOS и Android</p>
         </div>
       </div>
@@ -104,10 +107,7 @@ export default function AppStoreLinks() {
                 <path d="m2 24.2 11.2-11.2 3.1 2.9L2 24.2Z" fill="#EA4335" />
               </svg>
             )}
-            <span>
-              <span className="fs-app-download__store-caption">{store.caption}</span>
-              <span className="fs-app-download__store-name">{store.name}</span>
-            </span>
+            <span className="fs-app-download__store-name">{store.name}</span>
           </a>
         ))}
       </div>
