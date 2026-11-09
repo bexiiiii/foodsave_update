@@ -177,11 +177,11 @@ export default function ProfilePage() {
           </button>
         </div>
         <AppStoreLinks />
-        <section aria-label="Поддержка проекта" style={{ maxWidth: 360, margin: '24px auto 0', paddingTop: 20, borderTop: '1px solid #e9ece9', textAlign: 'center' }}>
+        <section aria-label="Поддержка проекта" style={{ maxWidth: 360, margin: '48px auto 0', textAlign: 'center' }}>
           <img
             src="/nu-impact-foundation.png"
             alt="NU Impact Foundation"
-            style={{ display: 'block', width: 160, height: 'auto', margin: '0 auto' }}
+            style={{ display: 'block', width: 144, height: 'auto', margin: '0 auto' }}
           />
           <p style={{ margin: '10px auto 0', maxWidth: 280, fontSize: 12, lineHeight: '18px', color: '#747b76' }}>
             Проект реализуется при поддержке<br />NU Impact Foundation

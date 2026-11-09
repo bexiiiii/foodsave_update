@@ -9,7 +9,7 @@ const stores = [
 
 const cardStyles = `
   .fs-app-download {
-    max-width: 360px; margin: 24px auto 0; padding-top: 24px; border-top: 1px solid #e9ece9;
+    max-width: 360px; margin: 36px auto 0;
     font-family: Inter, system-ui, sans-serif;
   }
   .fs-app-download__brand {
