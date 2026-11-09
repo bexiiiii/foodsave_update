@@ -1,5 +1,6 @@
 "use client";
 
+import ProductContents from "../components/ProductContents";
 import { FormEvent, useEffect, useState } from "react";
 import {
   ChevronRight,
@@ -372,6 +373,7 @@ export default function HomePage() {
             <ProductAvailabilityBadge product={product} />
           </div>
           <h3 className="mt-3 truncate text-base font-bold text-black font-inter">{safeString(product.name)}</h3>
+          <ProductContents description={product.description} />
           <p className="mt-1 truncate text-sm text-black/50 font-inter">
             {safeString(product.storeName) || "FoodSave"}{distanceLabel ? ` • ${distanceLabel}` : ""}
           </p>

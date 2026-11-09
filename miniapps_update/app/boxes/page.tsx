@@ -1,5 +1,6 @@
 "use client";
 
+import ProductContents from "../../components/ProductContents";
 import { useEffect, useState, Suspense } from "react";
 import { Clock, Star, Timer } from "lucide-react";
 import ClosingSoonBadge, { formatMinutesUntilClose } from "../../components/ClosingSoonBadge";
@@ -176,6 +177,7 @@ function BoxesContent() {
 
         <div className="mt-2">
           <p className="text-sm font-medium text-black font-inter line-clamp-2">{product.name}</p>
+          <ProductContents description={product.description} />
           <div className="flex items-center gap-2 mt-1">
             {product.discountPercentage && product.discountPercentage > 0 ? (
               <>

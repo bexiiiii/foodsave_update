@@ -1,5 +1,6 @@
 "use client";
 
+import ProductContents from "../../components/ProductContents";
 import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft, ChevronDown, Clock, SlidersHorizontal, Star, X } from "lucide-react";
@@ -536,6 +537,7 @@ function MarketsContent() {
             <ProductAvailabilityBadge product={product} />
           </div>
           <h3 className="mt-2 truncate text-sm font-bold text-black font-inter">{product.name}</h3>
+          <ProductContents description={product.description} />
           <p className="mt-1 truncate text-xs text-black/50 font-inter">{product.storeName || "FoodSave"}</p>
           {product.closingSoon && (
             <div className="mt-1">
