@@ -73,7 +73,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif', paddingBottom: 'calc(104px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
@@ -177,15 +177,15 @@ export default function ProfilePage() {
           </button>
         </div>
         <AppStoreLinks />
-        <section className="mt-8 border-t border-black/[0.06] pt-6 text-center" aria-label="Поддержка проекта">
-          <p className="text-sm leading-5 text-black/55">
-            Проект реализуется при поддержке NU Impact Foundation
-          </p>
+        <section aria-label="Поддержка проекта" style={{ maxWidth: 360, margin: '24px auto 0', paddingTop: 20, borderTop: '1px solid #e9ece9', textAlign: 'center' }}>
           <img
             src="/nu-impact-foundation.png"
             alt="NU Impact Foundation"
-            className="mx-auto mt-3 h-auto w-[190px] object-contain"
+            style={{ display: 'block', width: 160, height: 'auto', margin: '0 auto' }}
           />
+          <p style={{ margin: '10px auto 0', maxWidth: 280, fontSize: 12, lineHeight: '18px', color: '#747b76' }}>
+            Проект реализуется при поддержке<br />NU Impact Foundation
+          </p>
         </section>
       </div>
       <BottomNav active="profile" />

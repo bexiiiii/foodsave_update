@@ -9,11 +9,11 @@ const stores = [
 
 const cardStyles = `
   .fs-app-download {
-    margin-top: 28px; padding-top: 24px; border-top: 1px solid #e9ece9;
+    max-width: 360px; margin: 24px auto 0; padding-top: 24px; border-top: 1px solid #e9ece9;
     font-family: Inter, system-ui, sans-serif;
   }
   .fs-app-download__brand {
-    display: flex; align-items: center; justify-content: center; gap: 14px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
   }
   .fs-app-download__brand-name {
     margin: 0; color: #17241d; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.3px;
@@ -27,21 +27,21 @@ const cardStyles = `
   }
   .fs-app-download__stores {
     display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px; width: 100%; max-width: 360px; margin: 18px auto 0;
+    gap: 12px; width: 100%; margin: 16px auto 0;
   }
   .fs-app-download__link {
     display: flex; align-items: center; justify-content: center; gap: 10px;
     min-height: 62px; padding: 10px 12px; box-sizing: border-box;
-    border: 1px solid #dcece1; border-radius: 14px; background: #edf7f0;
-    color: #24543b; text-decoration: none; box-shadow: 0 1px 2px rgba(22, 55, 35, .04);
+    border: 1px solid #e3e6e4; border-radius: 14px; background: #f3f4f3;
+    color: #282e2a; text-decoration: none; box-shadow: 0 1px 2px rgba(22, 35, 27, .04);
   }
   .fs-app-download__store-icon { display: block; width: 24px; height: 28px; flex-shrink: 0; }
-  .fs-app-download__store-caption { display: block; color: #587763; font-size: 10px; line-height: 14px; }
+  .fs-app-download__store-caption { display: block; color: #69706b; font-size: 10px; line-height: 14px; }
   .fs-app-download__store-name { display: block; font-size: 17px; line-height: 22px; font-weight: 550; letter-spacing: -.4px; white-space: nowrap; }
   .fs-app-download__link:focus-visible { outline: 3px solid #4cad73; outline-offset: 4px; }
-  .fs-app-download__link:active { background: #dcefe2; }
+  .fs-app-download__link:active { background: #e9ece9; }
   @media (hover: hover) {
-    .fs-app-download__link:hover { background: #e3f2e8; border-color: #c8dfd0; }
+    .fs-app-download__link:hover { background: #eceeec; border-color: #d6dbd7; }
   }
   @media (max-width: 359px) {
     .fs-app-download__stores { gap: 10px; }
