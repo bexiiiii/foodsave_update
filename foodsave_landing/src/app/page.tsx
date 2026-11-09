@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { AppStoreLinks } from '@/components/loveresta/app-store-links';
 
 import { RecommendedOffersGallery } from '@/components/loveresta/recommended-offers-gallery';
 import { VenueCarousel } from '@/components/loveresta/venue-carousel';
@@ -335,6 +336,7 @@ export default async function HomePage() {
               заведения продают излишки, пользователи экономят, еда не
               пропадает.
             </p>
+            <AppStoreLinks />
           </div>
         </section>
 

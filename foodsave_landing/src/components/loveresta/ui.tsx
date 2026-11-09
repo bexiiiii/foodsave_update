@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { AppStoreLinks } from '@/components/loveresta/app-store-links';
 import Link from 'next/link';
 import type { ComponentProps } from 'react';
 import {
@@ -993,6 +994,7 @@ export function SiteFooter() {
   return (
     <footer className="loveresta-footer">
       <div className="loveresta-footer__surface">
+        <AppStoreLinks />
         <div className="loveresta-footer__top">
           <div className="loveresta-footer__company">
             <Link className="loveresta-brand" href="/">
