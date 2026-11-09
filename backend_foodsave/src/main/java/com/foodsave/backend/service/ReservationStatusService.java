@@ -34,6 +34,9 @@ public class ReservationStatusService {
     private final SecurityUtil securityUtil;
     private final ProductEventService productEventService;
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private CustomerCancellationNotificationService customerCancellationNotifications;
+
     @Transactional
     public Order changeStatus(Long orderId, OrderStatusUpdateRequest request) {
         Order order = orderRepository.findById(orderId)
@@ -67,6 +70,7 @@ public class ReservationStatusService {
         Order saved = orderRepository.save(order);
         saveHistory(saved, previous, request);
         trackStatusEvent(saved, next);
+        customerCancellationNotifications.record(saved, previous, next);
         return saved;
     }
 

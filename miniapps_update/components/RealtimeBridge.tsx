@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { getAuthToken } from "../lib/api";
+import CustomerCancellationNotice from "./CustomerNotifications";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://foodsave.kz/api";
 
@@ -47,5 +48,5 @@ export default function RealtimeBridge() {
     return () => controller.abort();
   }, []);
 
-  return null;
+  return <CustomerCancellationNotice />;
 }

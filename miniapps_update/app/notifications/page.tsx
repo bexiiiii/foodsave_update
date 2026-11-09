@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { BellOff } from "lucide-react";
+import { NotificationsInbox } from "../../components/CustomerNotifications";
 import BottomNav from "../../components/BottomNav";
 import BackButton from "../../components/BackButton";
 
@@ -22,15 +22,7 @@ export default function NotificationsPage() {
         <div className="w-10" />
       </header>
 
-      <main className="flex min-h-[65vh] flex-col items-center justify-center px-8 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-[#EDF7F0] text-[#4CAD73] shadow-[0_8px_24px_rgba(76,173,115,0.10)]">
-          <BellOff className="h-7 w-7" strokeWidth={1.8} />
-        </div>
-        <h2 className="mt-5 text-lg font-bold text-black">Уведомлений пока нет</h2>
-        <p className="mt-2 max-w-[280px] text-sm font-medium leading-relaxed text-black/45">
-          Здесь появятся важные сообщения о ваших заказах и предложениях FoodSave.
-        </p>
-      </main>
+      <NotificationsInbox />
 
       <BottomNav active="home" />
     </div>

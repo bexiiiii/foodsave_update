@@ -110,7 +110,9 @@ public class TelegramOrderNotificationService {
         }
         if (customerChatId != null && customerNotificationsEnabled) {
             telegramBotService.sendMessage(customerChatId,
-                    new TelegramBotService.TelegramMessagePayload(message, null, "Открыть заказ",
+                    new TelegramBotService.TelegramMessagePayload(
+                            CustomerCancellationNotificationService.shouldNotify(order, previous, current)
+                                    ? CustomerCancellationNotificationService.MESSAGE : message, null, "Открыть заказ",
                     telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
         }
     }
