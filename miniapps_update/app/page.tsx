@@ -567,9 +567,20 @@ export default function HomePage() {
         </section>
 
         <a
-          href="https://t.me/FoodSave_kz"
+          href="https://partner.foodsave.kz/register"
           target="_blank"
           rel="noopener noreferrer"
+          onClick={(event) => {
+            const telegram = window.Telegram?.WebApp;
+            if (telegram?.openLink) {
+              try {
+                telegram.openLink(event.currentTarget.href);
+                event.preventDefault();
+              } catch {
+                // Keep the normal browser link as a fallback.
+              }
+            }
+          }}
           className="mt-8 flex items-center justify-between gap-4 rounded-2xl bg-[#4CAD73] px-4 py-3.5 text-white shadow-[0_8px_24px_rgba(76,173,115,0.20)] active:scale-[0.99] transition-transform md:mt-10 md:px-6 md:py-5"
         >
           <div className="min-w-0">
