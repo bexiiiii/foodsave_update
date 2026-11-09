@@ -3,71 +3,45 @@
 import type { MouseEvent } from "react";
 
 const stores = [
-  { name: "App Store", href: "https://apps.apple.com/kz/app/foodsave/id6809133516", badge: "/brand/app-store-badge-ru.svg", width: 126, height: 42 },
-  { name: "Google Play", href: "https://play.google.com/store/apps/details?id=com.foodsave.kz", badge: "/brand/google-play-badge-ru.png", width: 143, height: 55.34 },
+  { name: "App Store", href: "https://apps.apple.com/kz/app/foodsave/id6809133516", badge: "/brand/app-store-badge-ru.svg", width: 138, height: 46.13 },
+  { name: "Google Play", href: "https://play.google.com/store/apps/details?id=com.foodsave.kz", badge: "/brand/google-play-badge-ru.png", width: 157, height: 60.76 },
 ];
 
 const cardStyles = `
   .fs-app-download {
-    margin-top: 28px; overflow: hidden; border: 1px solid #dce8df;
-    border-radius: 26px; background: #f4f8f1;
-    box-shadow: 0 10px 28px -22px rgba(14, 55, 36, .3);
+    margin-top: 28px; padding-top: 24px; border-top: 1px solid #e9ece9;
     font-family: Inter, system-ui, sans-serif;
   }
-  .fs-app-download__story {
-    position: relative; isolation: isolate; padding: 24px; overflow: hidden;
-    background: #164b35; color: #fff;
-  }
-  .fs-app-download__story::after {
-    content: ""; position: absolute; z-index: -1; width: 210px; height: 270px;
-    right: -116px; top: -60px; border: 1px solid rgba(185, 222, 167, .14);
-    border-radius: 50%; transform: rotate(-28deg); pointer-events: none;
-    box-shadow: 0 0 0 24px rgba(185, 222, 167, .035), 0 0 0 48px rgba(185, 222, 167, .025);
-  }
   .fs-app-download__brand {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; margin-bottom: 20px;
+    display: flex; align-items: center; gap: 14px;
   }
   .fs-app-download__brand-name {
-    display: block; font-size: 20px; line-height: 25px; font-weight: 650; letter-spacing: -.65px;
+    margin: 0; color: #17241d; font-size: 18px; line-height: 24px; font-weight: 600; letter-spacing: -.3px;
   }
   .fs-app-download__eyebrow {
-    display: block; margin-top: 3px; color: #bcd7c6; font-size: 11px; line-height: 16px; letter-spacing: .1px;
+    margin: 3px 0 0; color: #69736d; font-size: 12px; line-height: 18px;
   }
   .fs-app-download__icon {
-    display: block; flex-shrink: 0; width: 56px; height: 56px;
-    border-radius: 17px; box-shadow: 0 6px 16px rgba(3, 24, 13, .14);
-  }
-  .fs-app-download__title {
-    margin: 0; font-size: clamp(25px, 7vw, 30px); line-height: 1.1;
-    font-weight: 650; letter-spacing: -1px; text-wrap: balance;
-  }
-  .fs-app-download__title span { color: #c7e7ad; }
-  .fs-app-download__description {
-    max-width: 270px; margin: 12px 0 0; font-size: 13px; line-height: 19px; color: #d2e3d8;
+    display: block; flex-shrink: 0; width: 48px; height: 48px;
+    border: 1px solid #e9ece9; border-radius: 12px;
   }
   .fs-app-download__stores {
-    display: flex; flex-wrap: wrap; align-items: center; justify-content: center;
-    gap: 2px 12px; padding: 12px 18px;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 4px 16px; margin-top: 16px;
   }
   .fs-app-download__link {
-    display: flex; align-items: center; justify-content: center; min-height: 56px;
-    border-radius: 9px; text-decoration: none; transition: transform 160ms ease, opacity 160ms ease;
+    display: flex; align-items: center; justify-content: center; min-height: 62px;
+    border-radius: 8px; text-decoration: none;
   }
   .fs-app-download__link:focus-visible { outline: 3px solid #4cad73; outline-offset: 4px; }
-  .fs-app-download__link:active { transform: scale(.97); }
-  @media (hover: hover) {
-    .fs-app-download__link:hover { transform: translateY(-2px); opacity: .86; }
+  .fs-app-download__link:active { opacity: .75; }
+  @media (max-width: 359px) {
+    .fs-app-download__stores { gap: 4px 12px; }
+    .fs-app-download__link[data-store="App Store"] img { max-width: 126px; }
+    .fs-app-download__link[data-store="Google Play"] img { max-width: 143px; }
   }
-  @media (min-width: 640px) {
-    .fs-app-download { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
-    .fs-app-download__story { padding: 28px 32px; }
-    .fs-app-download__brand { max-width: 330px; }
-    .fs-app-download__stores { flex-direction: column; gap: 6px; padding: 24px 32px; }
-    .fs-app-download__title { font-size: 32px; }
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .fs-app-download__link { transition: none; }
+  @media (min-width: 720px) {
+    .fs-app-download { display: flex; align-items: center; justify-content: space-between; gap: 24px; }
+    .fs-app-download__stores { margin-top: 0; flex-shrink: 0; }
   }
 `;
 
@@ -87,24 +61,21 @@ export default function AppStoreLinks() {
   return (
     <section className="fs-app-download" aria-label="FoodSave — App Store / Google Play">
       <style>{cardStyles}</style>
-      <div className="fs-app-download__story">
-        <div className="fs-app-download__brand">
-          <div>
-            <span className="fs-app-download__brand-name">FoodSave</span>
-            <span className="fs-app-download__eyebrow">Приложение для iOS и Android</span>
-          </div>
-          {/* Official FoodSave app icon from its App Store listing. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={56} height={56} loading="lazy" />
+      <div className="fs-app-download__brand">
+        {/* Official FoodSave app icon from its App Store listing. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={48} height={48} loading="lazy" />
+        <div>
+          <h2 className="fs-app-download__brand-name">FoodSave</h2>
+          <p className="fs-app-download__eyebrow">Приложение для iOS и Android</p>
         </div>
-        <h2 className="fs-app-download__title">Вкусная еда.<br /><span>Всегда под рукой.</span></h2>
-        <p className="fs-app-download__description">Любимые боксы и новые находки —<br />в приложении FoodSave.</p>
       </div>
       <div className="fs-app-download__stores">
         {stores.map((store) => (
           <a
             key={store.name}
             className="fs-app-download__link"
+            data-store={store.name}
             href={store.href}
             target="_blank"
             rel="noopener noreferrer"

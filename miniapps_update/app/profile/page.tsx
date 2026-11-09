@@ -176,10 +176,17 @@ export default function ProfilePage() {
             </span>
           </button>
         </div>
-      </div>
-
-      <div className="px-4">
         <AppStoreLinks />
+        <section className="mt-8 border-t border-black/[0.06] pt-6 text-center" aria-label="Поддержка проекта">
+          <p className="text-sm leading-5 text-black/55">
+            Проект реализуется при поддержке NU Impact Foundation
+          </p>
+          <img
+            src="/nu-impact-foundation.png"
+            alt="NU Impact Foundation"
+            className="mx-auto mt-3 h-auto w-[190px] object-contain"
+          />
+        </section>
       </div>
       <BottomNav active="profile" />
     </div>
