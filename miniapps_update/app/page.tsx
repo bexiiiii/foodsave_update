@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
+import AppStoreLinks from "../components/AppStoreLinks";
 import ClosingSoonBadge from "../components/ClosingSoonBadge";
 import FavoriteToast from "../components/FavoriteToast";
 import { useTranslation } from "../hooks/useTranslation";
@@ -591,6 +592,7 @@ export default function HomePage() {
           </div>
           <ChevronRight className="h-5 w-5 shrink-0 text-white/80" />
         </a>
+        <AppStoreLinks />
       </main>
 
       <BottomNav active="home" />

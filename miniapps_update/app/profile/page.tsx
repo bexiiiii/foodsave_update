@@ -5,6 +5,7 @@ import { Check, ChevronRight, Loader2, User } from "lucide-react";
 import Link from "next/link";
 import BackButton from "../../components/BackButton";
 import BottomNav from "../../components/BottomNav";
+import AppStoreLinks from "../../components/AppStoreLinks";
 import { useAuth } from "../../hooks/useAuth";
 import { useTelegram } from "../../hooks/useTelegram";
 import { apiClient, NotificationSettings } from "../../lib/api";
@@ -177,6 +178,9 @@ export default function ProfilePage() {
         </div>
       </div>
 
+      <div className="px-4">
+        <AppStoreLinks />
+      </div>
       <BottomNav active="profile" />
     </div>
   );
