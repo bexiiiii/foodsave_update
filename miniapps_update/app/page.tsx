@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
 import AppStoreLinks from "../components/AppStoreLinks";
+import AppDownloadBanner from "../components/AppDownloadBanner";
 import ClosingSoonBadge from "../components/ClosingSoonBadge";
 import FavoriteToast from "../components/FavoriteToast";
 import { useTranslation } from "../hooks/useTranslation";
@@ -443,6 +444,8 @@ export default function HomePage() {
           </div>
         )}
       </header>
+
+      <AppDownloadBanner />
 
       <section className="mx-auto mt-5 w-full max-w-7xl bg-white py-3 md:mt-7 md:px-8 xl:px-10">
         <div className="overflow-x-auto px-5 pb-2 [scrollbar-width:none] md:px-0 [&::-webkit-scrollbar]:hidden">
