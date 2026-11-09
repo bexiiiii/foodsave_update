@@ -66,7 +66,10 @@ function useCustomerNotifications() {
 }
 
 const styles = `
-.fs-customer-notice { position: fixed; z-index: 100; top: calc(env(safe-area-inset-top, 0px) + var(--tg-safe-area-top, 0px) + 12px); left: 16px; right: 16px; max-width: 400px; margin: 0 auto; padding: 20px; border-radius: 16px; color: #17241d; font-family: Inter, system-ui, sans-serif; box-sizing: border-box; }
+.fs-customer-notice { position: fixed; z-index: 100; --fs-notice-clearance: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-top, 0px)); top: calc(var(--fs-notice-clearance) + 12px); max-height: calc(100dvh - var(--fs-notice-clearance) - 24px); overflow-y: auto; left: 16px; right: 16px; max-width: 400px; margin: 0 auto; padding: 20px; border-radius: 16px; color: #17241d; font-family: Inter, system-ui, sans-serif; box-sizing: border-box; }
+/* Fixed notices do not inherit the page's padding below Telegram controls. */
+html[data-tg-fullscreen="true"] .fs-customer-notice { --fs-notice-clearance: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-top, 0px), 76px); }
+html[data-tg-webapp="true"][data-tg-platform="ios"] .fs-customer-notice { --fs-notice-clearance: max(env(safe-area-inset-top, 0px), var(--tg-content-safe-area-inset-top, 0px), var(--tg-safe-area-top, 0px), 88px); }
 .fs-customer-notice h2, .fs-notification h2 { margin: 0 36px 8px 0; font-size: 16px; line-height: 22px; font-weight: 600; }
 .fs-customer-notice p, .fs-notification p { margin: 0; font-size: 14px; line-height: 21px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .fs-notification-close { position: absolute; right: 8px; top: 8px; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border: 0; background: transparent; color: #66736b; cursor: pointer; }

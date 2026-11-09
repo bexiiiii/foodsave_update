@@ -85,13 +85,14 @@ class CustomerCancellationNotificationServiceTest {
     @Test void customerReceivesRequestedTextWhileStaffKeepsStatusDetails() {
         var bot = mock(TelegramBotService.class); var orders = mock(OrderRepository.class); var settings = mock(NotificationSettingsRepository.class);
         order.setId(8L); order.setStatus(OrderStatus.CANCELLED); when(orders.findById(8L)).thenReturn(Optional.of(order));
+        when(bot.resolveButtonUrl("/orders/8")).thenReturn("https://miniapp.foodsave.kz/orders/8");
         var telegram = new TelegramOrderNotificationService(bot, orders, settings);
         ReflectionTestUtils.setField(telegram, "recipientChatIds", "999");
         telegram.notifyStatusChanged(order, OrderStatus.CREATED, OrderStatus.CANCELLED);
-        verify(bot).sendMessage(eq(555L), argThat(p -> p.text().contains("#123456")
+        verify(bot).sendMessageWithoutLinkPreview(eq(555L), argThat(p -> p.text().contains("#123456")
                 && p.text().contains("<a href=\"https://t.me/FoodSave_kz\">Напишите в поддержку</a>")
-                && p.buttonText().equals("Написать в поддержку")
-                && p.buttonUrl().equals(CustomerCancellationNotificationService.SUPPORT_URL)));
+                && p.buttonText().equals("Открыть заказ")
+                && p.buttonUrl().equals("https://miniapp.foodsave.kz/orders/8")));
         verify(bot).sendManagerMessage(eq(999L), argThat(p -> p.text().contains("Статус:")));
     }
     @Test void supportButtonIsOrdinaryTelegramLinkNotMiniApp() {
@@ -110,6 +111,7 @@ class CustomerCancellationNotificationServiceTest {
         assertEquals("https://t.me/FoodSave_kz", button.get("url"));
         assertFalse(button.containsKey("web_app"));
         assertEquals("HTML", payload.getValue().get("parse_mode"));
+        assertFalse(payload.getValue().containsKey("link_preview_options"));
     }
     @Test void otherStatusUpdatesKeepOpenOrderButton() {
         var bot = mock(TelegramBotService.class); var orders = mock(OrderRepository.class); var settings = mock(NotificationSettingsRepository.class);
@@ -121,6 +123,33 @@ class CustomerCancellationNotificationServiceTest {
         telegram.notifyStatusChanged(order, OrderStatus.CREATED, OrderStatus.CANCELLED);
         verify(bot).sendMessage(eq(555L), argThat(p -> p.buttonText().equals("Открыть заказ")
                 && p.buttonUrl().equals("https://miniapp.foodsave.kz/orders/8") && p.text().contains("Статус:")));
+    }
+    @Test void cancellationKeepsSupportInTextWithoutPreviewAndOpensExactOrder() {
+        var rest = mock(org.springframework.web.client.RestTemplate.class);
+        var bot = new TelegramBotService(new org.springframework.boot.web.client.RestTemplateBuilder());
+        ReflectionTestUtils.setField(bot, "restTemplate", rest);
+        ReflectionTestUtils.setField(bot, "botToken", "test-only");
+        ReflectionTestUtils.setField(bot, "miniAppBaseUrl", "https://miniapp.foodsave.kz");
+        when(rest.postForEntity(anyString(), any(), eq(String.class)))
+                .thenReturn(org.springframework.http.ResponseEntity.ok("{\"ok\":true}"));
+        var orders = mock(OrderRepository.class);
+        var settings = mock(NotificationSettingsRepository.class);
+        order.setId(8L); order.setStatus(OrderStatus.CANCELLED);
+        when(orders.findById(8L)).thenReturn(Optional.of(order));
+        var telegram = new TelegramOrderNotificationService(bot, orders, settings);
+        ReflectionTestUtils.setField(telegram, "recipientChatIds", "");
+        telegram.notifyStatusChanged(order, OrderStatus.CREATED, OrderStatus.CANCELLED);
+        var payload = ArgumentCaptor.forClass(Map.class);
+        verify(rest).postForEntity(eq("https://api.telegram.org/bottest-only/sendMessage"), payload.capture(), eq(String.class));
+        assertEquals(Map.of("is_disabled", true), payload.getValue().get("link_preview_options"));
+        assertTrue(((String) payload.getValue().get("text")).contains("<a href=\"https://t.me/FoodSave_kz\">Напишите в поддержку</a>"));
+        Map markup = (Map) payload.getValue().get("reply_markup");
+        List rows = (List) markup.get("inline_keyboard");
+        assertEquals(1, rows.size()); assertEquals(1, ((List) rows.get(0)).size());
+        Map button = (Map) ((List) rows.get(0)).get(0);
+        assertEquals("Открыть заказ", button.get("text"));
+        assertEquals(Map.of("url", "https://miniapp.foodsave.kz/orders/8"), button.get("web_app"));
+        assertFalse(button.containsKey("url"));
     }
     @Test void missingCustomerDoesNotCreateNotification() {
         order.setUser(null); service.record(order, OrderStatus.CREATED, OrderStatus.CANCELLED); verifyNoInteractions(repository, realtime);

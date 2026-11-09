@@ -115,11 +115,13 @@ public class TelegramOrderNotificationService {
                             + "<a href=\"" + CustomerCancellationNotificationService.SUPPORT_URL
                             + "\">Напишите в поддержку</a> — поможем разобраться."
                     : message;
-            telegramBotService.sendMessage(customerChatId,
-                    new TelegramBotService.TelegramMessagePayload(customerMessage, null,
-                            staffCancellation ? "Написать в поддержку" : "Открыть заказ",
-                            staffCancellation ? CustomerCancellationNotificationService.SUPPORT_URL
-                                    : telegramBotService.resolveButtonUrl("/orders/" + order.getId())));
+            var payload = new TelegramBotService.TelegramMessagePayload(customerMessage, null,
+                    "Открыть заказ", telegramBotService.resolveButtonUrl("/orders/" + order.getId()));
+            if (staffCancellation) {
+                telegramBotService.sendMessageWithoutLinkPreview(customerChatId, payload);
+            } else {
+                telegramBotService.sendMessage(customerChatId, payload);
+            }
         }
     }
 

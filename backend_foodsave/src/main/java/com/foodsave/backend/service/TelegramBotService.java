@@ -52,7 +52,15 @@ public class TelegramBotService {
         return sendMessageWithToken(resolveManagerBotToken(), chatId, message);
     }
 
+    public boolean sendMessageWithoutLinkPreview(Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithToken(botToken, chatId, message, true);
+    }
+
     public boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithToken(token, chatId, message, false);
+    }
+
+    private boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message, boolean disableLinkPreview) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram bot token is not configured");
             return false;
@@ -79,6 +87,9 @@ public class TelegramBotService {
             payload.put("caption", message.text());
         } else {
             payload.put("text", message.text());
+            if (disableLinkPreview) {
+                payload.put("link_preview_options", Map.of("is_disabled", true));
+            }
         }
 
         if (message.buttonText() != null && message.buttonUrl() != null) {
