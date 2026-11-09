@@ -52,7 +52,7 @@ test('iPhone, iPad desktop mode and Telegram iOS select App Store', () => {
     const links = elements(mount(config).render(), 'a');
     assert.equal(links.length, 1);
     assert.equal(links[0].props.href, 'https://apps.apple.com/kz/app/foodsave/id6809133516');
-    assert.equal(links[0].props.children, 'Скачать');
+    assert.equal(elements(links[0], 'span')[0].props.children, 'App Store');
   }
 });
 
