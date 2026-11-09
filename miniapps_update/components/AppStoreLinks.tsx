@@ -19,9 +19,6 @@ const cardStyles = `
   .fs-app-download__brand-name {
     margin: 0; color: #17241d; font-size: 20px; line-height: 26px; font-weight: 600; letter-spacing: -.4px;
   }
-  .fs-app-download__eyebrow {
-    margin: 4px 0 0; color: #727a75; font-size: 12px; line-height: 18px;
-  }
   .fs-app-download__slogan {
     margin: 6px 0 0; color: #43584a; font-size: 13px; line-height: 18px; font-weight: 500;
   }
@@ -78,8 +75,7 @@ export default function AppStoreLinks() {
         <img className="fs-app-download__icon" src="/brand/foodsave-app-icon.jpg" alt="" width={52} height={52} loading="lazy" />
         <div>
           <h2 className="fs-app-download__brand-name">FoodSave</h2>
-          <p className="fs-app-download__slogan">Спасайте еду. Экономьте.</p>
-          <p className="fs-app-download__eyebrow">Скачайте для iOS и Android</p>
+          <p className="fs-app-download__slogan">Спасайте еду и экономьте</p>
         </div>
       </div>
       <div className="fs-app-download__stores">
