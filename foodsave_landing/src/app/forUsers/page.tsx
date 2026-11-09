@@ -36,14 +36,14 @@ export const metadata: Metadata = {
 
 export default function ForUsersPage() {
   return (
-    <PageShell ctaHref="/forbussines" ctaLabel="Стать партнером">
+    <PageShell ctaHref="https://partner.foodsave.kz/register" ctaLabel="Стать партнером">
       <main className="loveresta-main">
         <MarketingHero
           description="С нами пользователи получают еду почти по себестоимости, а заведения — избавляются от излишков с пользой. Меньше списаний, больше экономии, еда не пропадает."
           eyebrow="Пользователям"
           primaryHref="/"
           primaryLabel="Найти еду рядом"
-          secondaryHref="/forbussines"
+          secondaryHref="https://partner.foodsave.kz/register"
           secondaryLabel="Стать партнером"
           sideCopy="Мы — команда разработчиков, дизайнеров и бывших рестораторов. Однажды мы увидели, сколько хорошей еды уходит в мусор просто потому, что её не успели продать вовремя."
           sideTitle="Почему мы создали FOODSAVE"

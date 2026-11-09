@@ -48,6 +48,7 @@ declare global {
           }
         ) => void) => void;
         openTelegramLink?: (url: string) => void;
+        openLink?: (url: string) => void;
         LocationManager?: {
           isInited: boolean;
           isLocationAvailable: boolean;

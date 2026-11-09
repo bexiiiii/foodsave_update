@@ -10,15 +10,15 @@ import {
 } from '@/components/loveresta/ui';
 
 export default function ForBusinessPage() {
-  const partnerWhatsappHref = 'https://wa.me/77074403678';
+  const partnerRegistrationHref = 'https://partner.foodsave.kz/register';
 
   return (
-    <PageShell ctaHref={partnerWhatsappHref} ctaLabel="Стать партнёром">
+    <PageShell ctaHref={partnerRegistrationHref} ctaLabel="Стать партнёром">
       <main className="loveresta-main">
         <MarketingHero
           description="С нами пользователи получают еду почти по себестоимости, а заведения — избавляются от излишков с пользой. Подключите заведение и начните продавать сегодня."
           eyebrow="Бизнесу"
-          primaryHref={partnerWhatsappHref}
+          primaryHref={partnerRegistrationHref}
           primaryLabel="Стать партнером"
           secondaryHref="/"
           secondaryLabel="Смотреть каталог"
@@ -35,7 +35,7 @@ export default function ForBusinessPage() {
         <BusinessBenefitsSection />
         <BusinessCalculatorSection />
         <BusinessFaqSection />
-        <BusinessFinalBanner ctaHref={partnerWhatsappHref} />
+        <BusinessFinalBanner ctaHref={partnerRegistrationHref} />
       </main>
     </PageShell>
   );

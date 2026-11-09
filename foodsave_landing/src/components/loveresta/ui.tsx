@@ -89,7 +89,7 @@ function InstagramIcon(props: ComponentProps<'svg'>) {
 }
 
 export function SiteHeader({
-  ctaHref = '/forbussines',
+  ctaHref = 'https://partner.foodsave.kz/register',
   ctaLabel = 'Стать партнером',
 }: {
   ctaHref?: string;
@@ -543,7 +543,7 @@ export function BusinessFaqSection() {
   );
 }
 
-export function BusinessFinalBanner({ ctaHref = '/register' }: { ctaHref?: string }) {
+export function BusinessFinalBanner({ ctaHref = 'https://partner.foodsave.kz/register' }: { ctaHref?: string }) {
   return (
     <section className="loveresta-container loveresta-section">
       <article className="loveresta-business-banner">
@@ -634,7 +634,7 @@ export function AuthPage({
   forgotPassword?: boolean;
 }) {
   return (
-    <PageShell ctaHref="/forbussines" ctaLabel="Стать партнером">
+    <PageShell ctaHref="https://partner.foodsave.kz/register" ctaLabel="Стать партнером">
       <main className="loveresta-main">
         <section className="loveresta-container loveresta-auth-shell">
           <div className="loveresta-auth-card">

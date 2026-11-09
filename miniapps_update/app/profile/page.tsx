@@ -148,6 +148,26 @@ export default function ProfilePage() {
             <span className="text-base font-medium text-black font-inter">Поддержка</span>
             <ChevronRight className="w-5 h-5 text-black" />
           </button>
+          <a
+            href="https://partner.foodsave.kz/register"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => {
+              const telegram = window.Telegram?.WebApp;
+              if (telegram?.openLink) {
+                try {
+                  telegram.openLink(event.currentTarget.href);
+                  event.preventDefault();
+                } catch {
+                  // Keep the normal browser link as a fallback.
+                }
+              }
+            }}
+            className="flex w-full items-center justify-between border-t border-black/[0.06] px-5 py-4 text-left transition-colors active:bg-[#F7FAF8]"
+          >
+            <span className="text-base font-medium text-black font-inter">Стать партнёром</span>
+            <ChevronRight className="w-5 h-5 text-black" />
+          </a>
           <button type="button" onClick={togglePromotions} className="flex w-full items-center justify-between border-t border-black/[0.06] px-5 py-4 text-left active:bg-[#F7FAF8]">
             <span className="text-base font-medium text-black font-inter">Уведомления о новых боксах</span>
             <span className={`h-6 w-11 rounded-full p-1 transition-colors ${settings?.promotions ? "bg-[#4CAD73]" : "bg-gray-300"}`}>

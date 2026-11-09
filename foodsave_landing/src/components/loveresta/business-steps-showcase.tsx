@@ -185,7 +185,7 @@ export function BusinessStepsShowcase({ steps }: { steps: BusinessStep[] }) {
             То, что вы списываете — не потери. Это нереализованный доход. Сервис уже
             подготовлен под сеть точек и единый кабинет.
           </p>
-          <Link className="loveresta-business-showcase__cta" href="/register">
+          <Link className="loveresta-business-showcase__cta" href="https://partner.foodsave.kz/register">
             Разместить за одну минуту
           </Link>
         </div>
