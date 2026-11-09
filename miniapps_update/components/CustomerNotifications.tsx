@@ -83,7 +83,21 @@ const styles = `
 .fs-notification-empty { text-align: center; padding: 64px 12px; color: #66736b; font-size: 14px; line-height: 22px; }
 `;
 
-function SupportLink() { return <a className="fs-notification-support" href={supportUrl} target="_blank" rel="noopener noreferrer" onClick={event => { try { const tg = window.Telegram?.WebApp; if (tg?.openTelegramLink) { tg.openTelegramLink(supportUrl); event.preventDefault(); } } catch { /* Native link remains available. */ } }}>Написать в поддержку</a>; }
+function SupportLink() {
+  return <a className="fs-notification-support" href={supportUrl} target="_blank" rel="noopener noreferrer" onClick={event => {
+    const tg = window.Telegram?.WebApp;
+    // The SDK is also loaded in normal browsers, where its bridge is inactive.
+    if (!tg?.initData || !tg.openTelegramLink) return;
+    try {
+      tg.openTelegramLink(supportUrl);
+    } catch {
+      return; // Keep the normal link when Telegram cannot handle the request.
+    }
+    event.preventDefault();
+    // Since Telegram 7.0 opening a chat leaves the Mini App over it.
+    try { tg.close?.(); } catch { /* The chat-opening request was already sent. */ }
+  }}>Написать в поддержку</a>;
+}
 
 export default function CustomerCancellationNotice() {
   const { items, error, pending, markRead } = useCustomerNotifications();
