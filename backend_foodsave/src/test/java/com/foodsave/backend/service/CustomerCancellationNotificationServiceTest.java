@@ -89,7 +89,7 @@ class CustomerCancellationNotificationServiceTest {
         var telegram = new TelegramOrderNotificationService(bot, orders, settings);
         ReflectionTestUtils.setField(telegram, "recipientChatIds", "999");
         telegram.notifyStatusChanged(order, OrderStatus.CREATED, OrderStatus.CANCELLED);
-        verify(bot).sendMessageWithoutLinkPreview(eq(555L), argThat(p -> p.text().contains("#123456")
+        verify(bot).sendMessage(eq(555L), argThat(p -> p.text().contains("#123456")
                 && p.text().contains("<a href=\"https://t.me/FoodSave_kz\">Напишите в поддержку</a>")
                 && p.buttonText().equals("Открыть заказ")
                 && p.buttonUrl().equals("https://miniapp.foodsave.kz/orders/8")));
@@ -124,7 +124,7 @@ class CustomerCancellationNotificationServiceTest {
         verify(bot).sendMessage(eq(555L), argThat(p -> p.buttonText().equals("Открыть заказ")
                 && p.buttonUrl().equals("https://miniapp.foodsave.kz/orders/8") && p.text().contains("Статус:")));
     }
-    @Test void cancellationKeepsSupportInTextWithoutPreviewAndOpensExactOrder() {
+    @Test void cancellationAllowsSupportPreviewAndOpensExactOrder() {
         var rest = mock(org.springframework.web.client.RestTemplate.class);
         var bot = new TelegramBotService(new org.springframework.boot.web.client.RestTemplateBuilder());
         ReflectionTestUtils.setField(bot, "restTemplate", rest);
@@ -141,7 +141,7 @@ class CustomerCancellationNotificationServiceTest {
         telegram.notifyStatusChanged(order, OrderStatus.CREATED, OrderStatus.CANCELLED);
         var payload = ArgumentCaptor.forClass(Map.class);
         verify(rest).postForEntity(eq("https://api.telegram.org/bottest-only/sendMessage"), payload.capture(), eq(String.class));
-        assertEquals(Map.of("is_disabled", true), payload.getValue().get("link_preview_options"));
+        assertFalse(payload.getValue().containsKey("link_preview_options"));
         assertTrue(((String) payload.getValue().get("text")).contains("<a href=\"https://t.me/FoodSave_kz\">Напишите в поддержку</a>"));
         Map markup = (Map) payload.getValue().get("reply_markup");
         List rows = (List) markup.get("inline_keyboard");

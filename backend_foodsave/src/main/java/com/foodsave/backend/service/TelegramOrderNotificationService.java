@@ -117,11 +117,7 @@ public class TelegramOrderNotificationService {
                     : message;
             var payload = new TelegramBotService.TelegramMessagePayload(customerMessage, null,
                     "Открыть заказ", telegramBotService.resolveButtonUrl("/orders/" + order.getId()));
-            if (staffCancellation) {
-                telegramBotService.sendMessageWithoutLinkPreview(customerChatId, payload);
-            } else {
-                telegramBotService.sendMessage(customerChatId, payload);
-            }
+            telegramBotService.sendMessage(customerChatId, payload);
         }
     }
 
