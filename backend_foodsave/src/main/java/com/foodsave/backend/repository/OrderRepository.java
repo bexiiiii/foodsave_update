@@ -187,7 +187,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o")
     long count();
 
-    @Query("SELECT SUM(o.total) FROM Order o")
+    @Query("SELECT SUM(o.total) FROM Order o WHERE o.total BETWEEN 0 AND 1000000")
     BigDecimal sumTotal();
 
     @Query("SELECT COUNT(o) FROM Order o WHERE o.store = :store")
@@ -236,7 +236,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT COUNT(o) FROM Order o WHERE o.store.id IN :storeIds")
     long countByStoreIdIn(@Param("storeIds") List<Long> storeIds);
     
-    @Query("SELECT SUM(o.total) FROM Order o WHERE o.store.id IN :storeIds")
+    @Query("SELECT SUM(o.total) FROM Order o WHERE o.store.id IN :storeIds AND o.total BETWEEN 0 AND 1000000")
     BigDecimal sumTotalByStoreIdIn(@Param("storeIds") List<Long> storeIds);
     
     @Query("SELECT o FROM Order o WHERE o.store.id IN :storeIds AND o.createdAt BETWEEN :startDate AND :endDate")

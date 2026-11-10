@@ -35,9 +35,11 @@ public class ProductDTO {
     private String description;
     
     @Positive(message = "Price must be greater than 0")
+    @jakarta.validation.constraints.DecimalMax(value = "1000000", message = "Цена выше 1 000 000 ₸: проверьте, не указан ли номер телефона")
     private BigDecimal price;
     
     @Positive(message = "Original price must be greater than 0")
+    @jakarta.validation.constraints.DecimalMax(value = "1000000", message = "Исходная цена выше 1 000 000 ₸: проверьте исходное сообщение")
     private BigDecimal originalPrice;
     
     @PositiveOrZero(message = "Discount percentage must be 0 or greater")

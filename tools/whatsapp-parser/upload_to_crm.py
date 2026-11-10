@@ -17,6 +17,7 @@
 result.json — то, что выводит parse_daily.py (можно просто перенаправить >result.json)
 """
 import argparse
+from price_safety import price_error
 import json
 import os
 import sys
@@ -216,6 +217,10 @@ def main():
             continue
         if card.get("price") is None or card.get("originalPrice") is None:
             report.append({**card, "result": "skipped", "reason": "нет цены/originalPrice — нужна ручная правка"})
+            skipped += 1
+            continue
+        if price_error(card):
+            report.append({**card, "result": "skipped", "reason": price_error(card)})
             skipped += 1
             continue
         if card.get("needsReview") and not args.force:

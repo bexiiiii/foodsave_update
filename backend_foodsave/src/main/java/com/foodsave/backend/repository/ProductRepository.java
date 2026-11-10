@@ -58,8 +58,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "SUM(CASE WHEN p.active = true AND p.status = 'AVAILABLE' AND COALESCE(p.stockQuantity, 0) > 0 THEN 1 ELSE 0 END), " +
            "SUM(CASE WHEN p.status = 'OUT_OF_STOCK' OR COALESCE(p.stockQuantity, 0) <= 0 THEN 1 ELSE 0 END), " +
            "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
-           "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
-           "COALESCE(AVG(p.price), 0) " +
+           "COALESCE(SUM(CASE WHEN p.price BETWEEN 0 AND 1000000 AND p.originalPrice BETWEEN 0 AND 1000000 THEN p.price * COALESCE(p.stockQuantity, 0) ELSE 0 END), 0), " +
+           "COALESCE(AVG(CASE WHEN p.price BETWEEN 0 AND 1000000 AND p.originalPrice BETWEEN 0 AND 1000000 THEN p.price ELSE NULL END), 0) " +
            "FROM Product p WHERE p.deletedAt IS NULL")
     Object[] getProductStats();
 
@@ -67,8 +67,8 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
            "SUM(CASE WHEN p.active = true AND p.status = 'AVAILABLE' AND COALESCE(p.stockQuantity, 0) > 0 THEN 1 ELSE 0 END), " +
            "SUM(CASE WHEN p.status = 'OUT_OF_STOCK' OR COALESCE(p.stockQuantity, 0) <= 0 THEN 1 ELSE 0 END), " +
            "SUM(CASE WHEN COALESCE(p.stockQuantity, 0) > 0 AND p.stockQuantity < 10 THEN 1 ELSE 0 END), " +
-           "COALESCE(SUM(p.price * COALESCE(p.stockQuantity, 0)), 0), " +
-           "COALESCE(AVG(p.price), 0) " +
+           "COALESCE(SUM(CASE WHEN p.price BETWEEN 0 AND 1000000 AND p.originalPrice BETWEEN 0 AND 1000000 THEN p.price * COALESCE(p.stockQuantity, 0) ELSE 0 END), 0), " +
+           "COALESCE(AVG(CASE WHEN p.price BETWEEN 0 AND 1000000 AND p.originalPrice BETWEEN 0 AND 1000000 THEN p.price ELSE NULL END), 0) " +
            "FROM Product p WHERE p.store.id IN :storeIds AND p.deletedAt IS NULL")
     Object[] getProductStatsByStoreIdIn(@Param("storeIds") Set<Long> storeIds);
     

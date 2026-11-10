@@ -337,9 +337,11 @@ export default function AnalyticsPage() {
   const cancelledRate = orderStats && orderStats.totalOrders > 0
     ? (orderStats.cancelledOrders / orderStats.totalOrders) * 100
     : 0;
-  const averageOrderValue = totalSalesStats.totalOrders > 0
-    ? totalSalesStats.totalRevenue / totalSalesStats.totalOrders
-    : numberValue(analyticsData.totalRevenue || analyticsData.revenue) / Math.max(numberValue(analyticsData.totalOrders), 1);
+  // Keep anomalous historical totals visible in details, but out of monetary averages.
+  const pricedOrders = dailySalesOrderDetails.filter(order => order.orderTotal != null && Number.isFinite(Number(order.orderTotal)) && Number(order.orderTotal) >= 0 && Number(order.orderTotal) <= 1000000);
+  const averageOrderValue = pricedOrders.length
+    ? pricedOrders.reduce((sum, order) => sum + Number(order.orderTotal), 0) / pricedOrders.length
+    : 0;
 
   const handleRangeChange = (range: string) => {
     const next = getRangeDates(range);
@@ -539,7 +541,7 @@ export default function AnalyticsPage() {
             <MetricCard
               title="Общий доход"
               value={formatCurrency(numberValue(analyticsData.totalRevenue || analyticsData.revenue))}
-              subtitle="По доступным заведениям"
+              subtitle="Без сумм свыше 1 млн ₸"
               icon={TrendingUpIcon}
               color="bg-green-600"
             />
@@ -552,7 +554,7 @@ export default function AnalyticsPage() {
             <MetricCard
               title="Средний чек"
               value={formatCurrency(averageOrderValue)}
-              subtitle="По текущему отчету"
+              subtitle="Без сумм свыше 1 млн ₸"
               icon={CreditCardIcon}
               color="bg-indigo-600"
             />

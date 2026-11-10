@@ -633,7 +633,7 @@ export default function ProductsPage() {
                     <CardContent className="p-6">
                         <div className="flex items-center">
                             <div className="flex-1" style={{ minWidth: 0 }}>
-                                <p className="text-sm font-medium text-gray-600">Общая стоимость</p>
+                                <p className="text-sm font-medium text-gray-600">Стоимость без цен свыше 1 млн ₸</p>
                                 <p className="text-2xl font-bold text-purple-600" style={{ overflowWrap: 'anywhere', fontSize: 'clamp(14px, 1.2vw, 20px)' }}>
                                     {stats ? formatCurrency(stats.totalValue) : '—'}
                                 </p>

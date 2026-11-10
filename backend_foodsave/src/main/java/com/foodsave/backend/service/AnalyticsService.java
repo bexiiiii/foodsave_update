@@ -121,15 +121,15 @@ public class AnalyticsService {
                         .collect(Collectors.toList());
                 
                 BigDecimal totalRevenue = dayOrders.stream()
-                        .map(Order::getTotal)
+                        .map(ReportMoney::total)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
                 BigDecimal completedRevenue = completedOrders.stream()
-                        .map(Order::getTotal)
+                        .map(ReportMoney::total)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
                 BigDecimal canceledRevenue = canceledOrders.stream()
-                        .map(Order::getTotal)
+                        .map(ReportMoney::total)
                         .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
                 result.add(AnalyticsDTO.DailySalesAnalytics.builder()
@@ -221,7 +221,7 @@ public class AnalyticsService {
                 
                 BigDecimal todayRevenue = todayOrders.stream()
                     .filter(order -> isSuccessfulOrderStatus(order.getStatus()))
-                    .map(Order::getTotal)
+                    .map(ReportMoney::total)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
                 
                 data.put("todayOrders", todayOrders.size());
@@ -381,6 +381,7 @@ public class AnalyticsService {
     }
 
     private List<Map<String, Object>> buildTopProducts(List<Order> orders) {
+        orders = ReportMoney.validOrders(orders);
         Map<Long, Aggregate> aggregates = new HashMap<>();
         for (Order order : orders) {
             if (order.getItems() == null) continue;
@@ -400,6 +401,7 @@ public class AnalyticsService {
     }
 
     private List<Map<String, Object>> buildTopStores(List<Order> orders) {
+        orders = ReportMoney.validOrders(orders);
         Map<Long, Aggregate> aggregates = new HashMap<>();
         for (Order order : orders) {
             if (order.getStore() == null || order.getStore().getId() == null) continue;
@@ -422,6 +424,7 @@ public class AnalyticsService {
     }
 
     private List<Map<String, Object>> buildTopCategories(List<Order> orders) {
+        orders = ReportMoney.validOrders(orders);
         Map<String, Aggregate> aggregates = new HashMap<>();
         for (Order order : orders) {
             if (order.getItems() == null) continue;
@@ -474,7 +477,7 @@ public class AnalyticsService {
 
     private BigDecimal sumOrderTotals(List<Order> orders) {
         return orders.stream()
-                .map(order -> order.getTotal() != null ? order.getTotal() : BigDecimal.ZERO)
+                .map(ReportMoney::total)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 

@@ -14,6 +14,7 @@ catalog.json — мастер-каталог (пример: catalog_paste.json),
 строим из PDF/реального меню и потом только дополняем.
 """
 import re
+from price_safety import safe_item_parser, safe_card_parser
 import json
 import sys
 import datetime
@@ -364,6 +365,7 @@ def parse_slash_variants(raw: str):
     ]
 
 
+@safe_item_parser
 def parse_item_line(line: str, header_discount=None):
     raw = preprocess_line(line).rstrip(".")
     if not raw or "%" in raw:
@@ -727,6 +729,7 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
     }
 
 
+@safe_card_parser
 def process(raw_text: str, catalog: list, expiry_days=DEFAULT_EXPIRY_DAYS, default_store=None, default_category=None):
     results = []
     for block in parse_lines(raw_text, default_store=default_store):

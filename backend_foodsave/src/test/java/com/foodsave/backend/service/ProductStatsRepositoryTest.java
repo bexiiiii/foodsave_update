@@ -36,6 +36,7 @@ class ProductStatsRepositoryTest {
 
     @Autowired EntityManager em;
     @Autowired ProductRepository products;
+    @Autowired com.foodsave.backend.repository.OrderRepository orders;
 
     @Test void emptyCatalogueHasZeroCounts() {
         var dto = ProductStatsMapping.fromAggregate(products.getProductStats());
@@ -59,6 +60,36 @@ class ProductStatsRepositoryTest {
         var scoped = ProductStatsMapping.fromAggregate(products.getProductStatsByStoreIdIn(Set.of(first.getId())));
         assertEquals(2, scoped.getTotalProducts()); assertEquals(1, scoped.getActiveProducts());
         assertEquals(0, new BigDecimal("300").compareTo(scoped.getTotalValue()));
+    }
+
+    @Test void suspectPricesStayCountedButDoNotInflateValue() {
+        User user = new User(); user.setFirstName("Price"); user.setLastName("Test"); user.setEmail("price@example.test"); user.setPassword("not-a-login"); user.setRole(UserRole.STORE_OWNER); em.persist(user);
+        Store store = store(user, "Test"); Category category = new Category(); category.setName("Test"); em.persist(category);
+        product(store, category, "Good", ProductStatus.AVAILABLE, true, 2, false);
+        product(store, category, "Bad", ProductStatus.AVAILABLE, true, 1, false);
+        em.flush();
+        em.createQuery("UPDATE Product p SET p.price = 77074403678.40, p.originalPrice = 96343004598 WHERE p.name = 'Bad'").executeUpdate();
+        var stats = ProductStatsMapping.fromAggregate(products.getProductStats());
+        assertEquals(2, stats.getTotalProducts());
+        assertEquals(0, new BigDecimal("200").compareTo(stats.getTotalValue()));
+        var scoped = ProductStatsMapping.fromAggregate(products.getProductStatsByStoreIdIn(Set.of(store.getId())));
+        assertEquals(0, new BigDecimal("200").compareTo(scoped.getTotalValue()));
+    }
+
+    @Test void orderRevenueQueriesIgnoreSuspiciousTotalsAndKeepCounts() {
+        User user = new User(); user.setFirstName("Revenue"); user.setLastName("Test"); user.setEmail("revenue@example.test"); user.setPassword("not-a-login"); user.setRole(UserRole.STORE_OWNER); em.persist(user);
+        Store first = store(user, "First"), second = store(user, "Second");
+        for (int index = 0; index < 3; index++) {
+            Order order = new Order(); order.setUser(user); order.setStore(index == 2 ? second : first);
+            order.setContactPhone("000000000"); order.setOrderNumber("price-test-" + index);
+            order.setPaymentMethod(PaymentMethod.values()[0]);
+            order.setTotal(new BigDecimal(index == 1 ? "77074403678.40" : "2500"));
+            em.persist(order);
+        }
+        em.flush();
+        assertEquals(3, orders.count());
+        assertEquals(0, new BigDecimal("5000").compareTo(orders.sumTotal()));
+        assertEquals(0, new BigDecimal("2500").compareTo(orders.sumTotalByStoreIdIn(java.util.List.of(first.getId()))));
     }
 
     Store store(User owner, String name) {

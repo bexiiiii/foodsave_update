@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Local web UI for parsing Pâté WhatsApp messages."""
 import json
+from price_safety import price_error
 import mimetypes
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -391,6 +392,8 @@ def upload_one_card(card, client, cfg, categories, stores, store_aliases, images
         return {"result": "skipped", "name": label, "reason": "не распознана строка"}
     if card.get("price") is None or card.get("originalPrice") is None:
         return {"result": "skipped", "name": label, "reason": "нет цены/originalPrice"}
+    if price_error(card):
+        return {"result": "skipped", "name": label, "reason": price_error(card)}
     if card.get("needsReview") and not force:
         return {"result": "skipped", "name": label, "reason": "needsReview=true"}
     store_id = card.get("storeId")
