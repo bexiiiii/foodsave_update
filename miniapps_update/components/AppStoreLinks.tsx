@@ -1,6 +1,7 @@
 "use client";
 
 import type { MouseEvent } from "react";
+import { getDownloadPlatform } from "./AppDownloadBanner";
 
 const stores = [
   { name: "App Store", href: "https://apps.apple.com/kz/app/foodsave/id6809133516" },
@@ -27,11 +28,13 @@ const cardStyles = `
     border: 1px solid #e9ece9; border-radius: 14px;
   }
   .fs-app-download__stores {
-    display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex; flex-wrap: wrap;
     gap: 10px; width: 100%; margin: 24px auto 0;
   }
+  .fs-app-download__stores[data-platform="ios"] [data-store="Google Play"],
+  .fs-app-download__stores[data-platform="android"] [data-store="App Store"] { display: none; }
   .fs-app-download__link {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
+    display: flex; flex: 1 1 0; min-width: max-content; align-items: center; justify-content: center; gap: 8px;
     min-height: 64px; padding: 12px 8px; box-sizing: border-box;
     border: 1px solid transparent; border-radius: 12px; background: #f3f4f3;
     color: #282e2a; text-decoration: none;
@@ -53,6 +56,14 @@ const cardStyles = `
   }
 `;
 
+function setStorePlatform(container: HTMLDivElement | null) {
+  if (container) {
+    container.dataset.platform = getDownloadPlatform(
+      navigator.userAgent, navigator.platform, navigator.maxTouchPoints, window.Telegram?.WebApp?.platform,
+    );
+  }
+}
+
 function openStore(event: MouseEvent<HTMLAnchorElement>) {
   const telegram = window.Telegram?.WebApp;
   if (telegram?.openLink) {
@@ -67,7 +78,7 @@ function openStore(event: MouseEvent<HTMLAnchorElement>) {
 
 export default function AppStoreLinks() {
   return (
-    <section className="fs-surface fs-app-download" aria-label="FoodSave — App Store / Google Play">
+    <section className="fs-surface fs-app-download" aria-label="Скачать приложение FoodSave">
       <style>{cardStyles}</style>
       <div className="fs-app-download__brand">
         {/* Official FoodSave app icon from its App Store listing. */}
@@ -78,7 +89,7 @@ export default function AppStoreLinks() {
           <p className="fs-app-download__slogan">Спасайте еду и экономьте</p>
         </div>
       </div>
-      <div className="fs-app-download__stores">
+      <div className="fs-app-download__stores" ref={setStorePlatform}>
         {stores.map((store) => (
           <a
             key={store.name}
