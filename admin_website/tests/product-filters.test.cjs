@@ -14,11 +14,11 @@ let fetchNode;
 function visit(n) { if (ts.isVariableDeclaration(n) && n.name.getText(ast) === 'fetchProducts') fetchNode = n.initializer; ts.forEachChild(n, visit); }
 visit(ast);
 function fixture() {
- const pending = [], state = { products: [], pages: 0, loading: false, page: 0, errors: 0 };
+ const pending = [], state = { products: [], pages: 0, loading: false, page: 0, errors: 0, statsLoads: 0 };
  const ctx = { productsRequest: {current: 0}, searchQuery: '  круассан  ', filterStore: '31', filterCategory: '7', filterStatus: 'AVAILABLE', currentPage: 0,
   ProductService: { filterProducts: (...args) => new Promise((resolve, reject) => pending.push({args, resolve, reject})) },
   setLoading: x => state.loading=x, setProducts: x => state.products=x, setTotalPages:x=>state.pages=x, setCurrentPage:x=>state.page=x,
-  toast:{error:()=>state.errors++},console:{error:()=>{}} };
+  fetchStats:async()=>{state.statsLoads++;}, toast:{error:()=>state.errors++},console:{error:()=>{}} };
  const run = vm.runInNewContext(compile(`(${fetchNode.getText(ast)})`), ctx);
  return {pending, state, ctx, run};
 }
@@ -33,6 +33,12 @@ test('late response cannot replace the latest filter results',async()=>{
  f.pending[1].resolve({content:[{id:2}],totalPages:3});await second;
  f.pending[0].resolve({content:[{id:1}],totalPages:999});await first;
  assert.equal(f.state.products[0].id,2);assert.equal(f.state.pages,3);assert.equal(f.state.loading,false);
+ assert.equal(f.state.statsLoads,1);
+});
+test('refresh after a catalogue change also reloads statistics',async()=>{
+ const f=fixture();let load=f.run();f.pending[0].resolve({content:[{id:1}],totalPages:1});await load;
+ load=f.run();f.pending[1].resolve({content:[],totalPages:0});await load;
+ assert.equal(f.state.statsLoads,2);assert.equal(f.state.products.length,0);
 });
 test('late error cannot clear newer successful results',async()=>{
  const f=fixture(),first=f.run(),second=f.run();

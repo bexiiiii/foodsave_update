@@ -155,18 +155,7 @@ public class ProductService {
     }
 
     private ProductStatsDTO toProductStats(Object[] values) {
-        if (values == null || values.length < 6) {
-            return new ProductStatsDTO(0, 0, 0, 0, BigDecimal.ZERO, 0.0);
-        }
-        return new ProductStatsDTO(
-                ((Number) values[0]).longValue(),
-                ((Number) values[1]).longValue(),
-                ((Number) values[2]).longValue(),
-                ((Number) values[3]).longValue(),
-                values[4] instanceof BigDecimal
-                        ? (BigDecimal) values[4]
-                        : BigDecimal.valueOf(((Number) values[4]).doubleValue()),
-                ((Number) values[5]).doubleValue());
+        return ProductStatsMapping.fromAggregate(values);
     }
 
     private Set<Long> getAccessibleStoreIds() {

@@ -140,6 +140,7 @@ export default function ProductsPage() {
             }
             setProducts(response.content);
             setTotalPages(response.totalPages);
+            await fetchStats();
         } catch (error) {
             if (request !== productsRequest.current) return;
             setProducts([]);
@@ -196,7 +197,6 @@ export default function ProductsPage() {
         setMounted(true);
         fetchStores();
         fetchCategories();
-        fetchStats();
     }, []); // Загружаем stores и categories только 1 раз
 
     useEffect(() => {
@@ -581,7 +581,7 @@ export default function ProductsPage() {
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-600">Всего товаров</p>
                                 <p className="text-2xl font-bold text-gray-900">
-                                    {stats?.totalProducts || 0}
+                                    {stats?.totalProducts ?? '—'}
                                 </p>
                             </div>
                             <div className="p-3 bg-blue-100 rounded-full">
@@ -599,7 +599,7 @@ export default function ProductsPage() {
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-600">Активные товары</p>
                                 <p className="text-2xl font-bold text-green-600">
-                                    {stats?.activeProducts || 0}
+                                    {stats?.activeProducts ?? '—'}
                                 </p>
                             </div>
                             <div className="p-3 bg-green-100 rounded-full">
@@ -617,7 +617,7 @@ export default function ProductsPage() {
                             <div className="flex-1">
                                 <p className="text-sm font-medium text-gray-600">Нет в наличии</p>
                                 <p className="text-2xl font-bold text-red-600">
-                                    {stats?.outOfStockProducts || 0}
+                                    {stats?.outOfStockProducts ?? '—'}
                                 </p>
                             </div>
                             <div className="p-3 bg-red-100 rounded-full">
@@ -632,10 +632,10 @@ export default function ProductsPage() {
                 <Card>
                     <CardContent className="p-6">
                         <div className="flex items-center">
-                            <div className="flex-1">
+                            <div className="flex-1" style={{ minWidth: 0 }}>
                                 <p className="text-sm font-medium text-gray-600">Общая стоимость</p>
-                                <p className="text-2xl font-bold text-purple-600">
-                                    {stats?.totalValue ? formatCurrency(stats.totalValue) : formatCurrency(0)}
+                                <p className="text-2xl font-bold text-purple-600" style={{ overflowWrap: 'anywhere', fontSize: 'clamp(14px, 1.2vw, 20px)' }}>
+                                    {stats ? formatCurrency(stats.totalValue) : '—'}
                                 </p>
                             </div>
                             <div className="p-3 bg-purple-100 rounded-full">
