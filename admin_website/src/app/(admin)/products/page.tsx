@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -109,6 +109,7 @@ export default function ProductsPage() {
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [currentPage, setCurrentPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
+    const productsRequest = useRef(0);
     const [errors, setErrors] = useState<ValidationError[]>([]);
 
     const { isOpen, openModal, closeModal } = useModal();
@@ -126,26 +127,27 @@ export default function ProductsPage() {
     };
 
     const fetchProducts = async () => {
+        const request = ++productsRequest.current;
         try {
-            console.log('Fetching products...');
             setLoading(true);
-            let response: PageableResponse<ProductDTO>;
-
-            if (searchQuery.trim()) {
-                response = await ProductService.searchProducts(searchQuery, currentPage);
-            } else {
-                response = await ProductService.getAllProducts(currentPage);
+            const response = await ProductService.filterProducts({
+                query: searchQuery, store: filterStore, category: filterCategory, status: filterStatus,
+            }, currentPage);
+            if (request !== productsRequest.current) return;
+            if (currentPage > 0 && currentPage >= response.totalPages) {
+                setCurrentPage(Math.max(0, response.totalPages - 1));
+                return;
             }
-
-            console.log('Products response:', response);
             setProducts(response.content);
             setTotalPages(response.totalPages);
-            await fetchStats();
         } catch (error) {
+            if (request !== productsRequest.current) return;
+            setProducts([]);
+            setTotalPages(0);
             console.error('Failed to fetch products:', error);
             toast.error('Не удалось загрузить товары');
         } finally {
-            setLoading(false);
+            if (request === productsRequest.current) setLoading(false);
         }
     };
 
@@ -194,12 +196,13 @@ export default function ProductsPage() {
         setMounted(true);
         fetchStores();
         fetchCategories();
+        fetchStats();
     }, []); // Загружаем stores и categories только 1 раз
 
     useEffect(() => {
-        if (mounted) {
-            fetchProducts();
-        }
+        if (!mounted) return;
+        const timer = setTimeout(() => { void fetchProducts(); }, searchQuery.trim() ? 250 : 0);
+        return () => { clearTimeout(timer); productsRequest.current += 1; };
     }, [currentPage, filterStore, filterCategory, filterStatus, searchQuery, mounted]);
 
     useEffect(() => {
@@ -551,17 +554,7 @@ export default function ProductsPage() {
     const isVisibleInMiniApp = (product: ProductDTO) =>
         product.active !== false && product.status === 'AVAILABLE' && (product.stockQuantity ?? 0) > 0;
 
-    const filteredProducts = products.filter(product => {
-        const matchesSearch = !searchQuery ||
-            product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            product.description?.toLowerCase().includes(searchQuery.toLowerCase());
-
-        const matchesStore = !filterStore || filterStore === 'all' || product.storeId.toString() === filterStore;
-        const matchesCategory = !filterCategory || filterCategory === 'all' || product.categoryId.toString() === filterCategory;
-        const matchesStatus = !filterStatus || filterStatus === 'all' || product.status === filterStatus;
-
-        return matchesSearch && matchesStore && matchesCategory && matchesStatus;
-    });
+    const filteredProducts = products;
 
     const formatDate = (dateString?: string) => {
         if (!dateString) return 'N/A';
@@ -676,14 +669,14 @@ export default function ProductsPage() {
                                     type="text"
                                     placeholder="Поиск товаров..."
                                     value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onChange={(e) => { setCurrentPage(0); setSearchQuery(e.target.value); }}
                                     className="w-full"
                                 />
                             </div>
 
                             <select
                                 value={filterStore}
-                                onChange={(e) => setFilterStore(e.target.value)}
+                                onChange={(e) => { setCurrentPage(0); setFilterStore(e.target.value); }}
                                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
                                 <option value="all">Все заведения</option>
@@ -696,7 +689,7 @@ export default function ProductsPage() {
 
                             <select
                                 value={filterCategory}
-                                onChange={(e) => setFilterCategory(e.target.value)}
+                                onChange={(e) => { setCurrentPage(0); setFilterCategory(e.target.value); }}
                                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
                                 <option value="all">Все категории</option>
@@ -709,7 +702,7 @@ export default function ProductsPage() {
 
                             <select
                                 value={filterStatus}
-                                onChange={(e) => setFilterStatus(e.target.value)}
+                                onChange={(e) => { setCurrentPage(0); setFilterStatus(e.target.value); }}
                                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
                                 <option value="all">Все статусы</option>

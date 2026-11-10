@@ -1,9 +1,15 @@
 import { api } from './api';
 import { ProductDTO, ProductCreateRequest, ProductUpdateRequest, ProductStats } from '@/types/product';
 import { PageableResponse } from '@/types/api';
+import { adminProductFilterUrl, AdminProductFilters } from '@/utils/adminProductFilters';
 
 export class ProductService {
   private static readonly ENDPOINT = '/products';
+
+  static async filterProducts(filters: AdminProductFilters, page = 0, size = 20): Promise<PageableResponse<ProductDTO>> {
+    const response = await api.get(adminProductFilterUrl(filters, page, size));
+    return response.data;
+  }
 
   static async getAllProducts(page = 0, size = 20): Promise<PageableResponse<ProductDTO>> {
     try {
