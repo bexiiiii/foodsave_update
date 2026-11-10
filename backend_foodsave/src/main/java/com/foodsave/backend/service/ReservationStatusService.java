@@ -120,11 +120,13 @@ public class ReservationStatusService {
                     .orElseThrow(() -> new EntityNotFoundException("Product not found"));
             // Cancelling a reservation must not reopen an offer withdrawn by staff.
             if (product.getDeletedAt() != null || !Boolean.TRUE.equals(product.getActive())
-                    || product.getStatus() != ProductStatus.AVAILABLE) {
+                    || (product.getStatus() != ProductStatus.AVAILABLE
+                        && product.getStatus() != ProductStatus.OUT_OF_STOCK)) {
                 continue;
             }
             int currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
             product.setStockQuantity(currentStock + quantity);
+            product.setStatus(ProductStatus.AVAILABLE);
             productRepository.save(product);
         }
     }

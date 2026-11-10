@@ -633,6 +633,8 @@ public class ProductService {
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
         authorizationService.requireCanManageStore(product.getStore().getId());
         product.setStatus(status);
+        // A manual withdrawal must remain distinct from stock exhausted by reservations.
+        if (status != null) product.setActive(status == ProductStatus.AVAILABLE);
         return convertToDTO(productRepository.save(product));
     }
 
@@ -875,6 +877,11 @@ public class ProductService {
         product.setExpiryDate(dto.getExpiryDate());
         product.setStatus(dto.getStatus());
         product.setActive(dto.getActive());
+        // Explicit staff status takes precedence over automatic stock-based availability.
+        if (dto.getStatus() != null && dto.getStatus() != ProductStatus.AVAILABLE) {
+            product.setStatus(dto.getStatus());
+            product.setActive(false);
+        }
     }
 
     private List<ProductGalleryImageDTO> resolveGalleryImages(Product product, List<String> images) {

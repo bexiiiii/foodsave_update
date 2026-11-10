@@ -227,7 +227,7 @@ export default function ProductsPage() {
                 [name]: nextValue
             };
 
-            if (name === 'stockQuantity') {
+            if (name === 'stockQuantity' && (prev.status === 'AVAILABLE' || prev.status === 'OUT_OF_STOCK')) {
                 const stockQuantity = Number(nextValue) || 0;
                 nextFormData.status = stockQuantity > 0 ? 'AVAILABLE' : 'OUT_OF_STOCK';
                 nextFormData.active = stockQuantity > 0;
@@ -458,7 +458,7 @@ export default function ProductsPage() {
                 images: imageUrls,
                 galleryImages,
                 expiryDate: formatExpiryDateForApi(formData.expiryDate),
-                status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
+                status: formData.status,
                 active: formData.active,
             };
 
@@ -497,7 +497,7 @@ export default function ProductsPage() {
                     images: imageUrls,
                     galleryImages,
                     expiryDate: formatExpiryDateForApi(formData.expiryDate),
-                    status: formData.stockQuantity > 0 ? formData.status : 'OUT_OF_STOCK',
+                    status: formData.status,
                     active: formData.active,
                 };
                 await ProductService.createProduct(createData);

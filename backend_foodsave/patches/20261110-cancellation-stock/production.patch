@@ -1,6 +1,6 @@
 --- a/src/main/java/com/foodsave/backend/service/ReservationStatusService.java
 +++ b/src/main/java/com/foodsave/backend/service/ReservationStatusService.java
-@@ -229,10 +229,12 @@
+@@ -229,10 +229,13 @@
              int reserved = valueOrZero(product.getReservedQuantity());
              int available = valueOrZero(product.getAvailableQuantity(), product.getStockQuantity());
              product.setReservedQuantity(Math.max(0, reserved - quantity));
@@ -9,11 +9,12 @@
 -            if (!Boolean.FALSE.equals(product.getActive()) && product.getStatus() == com.foodsave.backend.domain.enums.ProductStatus.OUT_OF_STOCK) {
 -                product.setStatus(com.foodsave.backend.domain.enums.ProductStatus.AVAILABLE);
 +            // Release the reservation without reopening an offer withdrawn by staff.
-+            // Booking itself changes quantities, not the explicitly managed product status.
++            // Manual withdrawal disables the offer; automatic reservation exhaustion keeps it active.
 +            if (product.getDeletedAt() == null && Boolean.TRUE.equals(product.getActive())
-+                    && product.getStatus() == ProductStatus.AVAILABLE) {
++                    && (product.getStatus() == ProductStatus.AVAILABLE || product.getStatus() == ProductStatus.OUT_OF_STOCK)) {
 +                product.setAvailableQuantity(available + quantity);
 +                product.setStockQuantity(available + quantity);
++                product.setStatus(ProductStatus.AVAILABLE);
              }
              productRepository.save(product);
          }
