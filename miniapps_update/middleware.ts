@@ -73,7 +73,9 @@ export function middleware(request: NextRequest) {
   const response = NextResponse.next();
   
   response.headers.set('X-Content-Type-Options', 'nosniff');
-  response.headers.set('X-Frame-Options', 'SAMEORIGIN');
+  // Telegram Web hosts Mini Apps in a cross-origin iframe. Allow that exact
+  // origin while continuing to reject embedding by unrelated websites.
+  response.headers.set('Content-Security-Policy', "frame-ancestors 'self' https://web.telegram.org");
   response.headers.set('X-XSS-Protection', '1; mode=block');
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
   response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
