@@ -391,7 +391,7 @@ export default function ProductDetailsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white pb-24" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="fs-page-reading fs-page-detail min-h-screen bg-white pb-24" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <div className="px-4 pt-4">
           <div className="animate-pulse">
             <div className="h-8 bg-gray-200 rounded mb-4"></div>
@@ -423,7 +423,7 @@ export default function ProductDetailsPage() {
 
   if (!product || !isProductDisplayableInMiniApp(product)) {
     return (
-      <div className="min-h-screen bg-white pb-24 flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="fs-page-reading fs-page-detail min-h-screen bg-white pb-24 flex items-center justify-center" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <p className="px-6 text-center text-black/50 font-inter">{t("boxNoLongerAvailable")}</p>
       </div>
     );
@@ -455,7 +455,7 @@ export default function ProductDetailsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-36" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="fs-page-reading fs-page-detail min-h-screen bg-white pb-36" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
@@ -725,7 +725,7 @@ export default function ProductDetailsPage() {
       )}
 
       {/* Bottom Actions */}
-      <div className="fixed bottom-0 left-0 right-0 px-4 pb-6 bg-white border-t border-gray-100 safe-area-inset-bottom">
+      <div className="fs-reservation-bar fixed bottom-0 left-0 right-0 px-4 pb-6 bg-white border-t border-gray-100 safe-area-inset-bottom">
         {/* Row 1: quantity + reserve */}
         {canReserve ? <div className="flex gap-3 pt-4">
           {/* Quantity Selector */}

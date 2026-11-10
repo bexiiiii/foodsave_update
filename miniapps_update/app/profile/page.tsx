@@ -73,7 +73,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif', paddingBottom: 'calc(104px + env(safe-area-inset-bottom, 0px))' }}>
+    <div className="fs-page-reading min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif', paddingBottom: 'calc(104px + env(safe-area-inset-bottom, 0px))' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">

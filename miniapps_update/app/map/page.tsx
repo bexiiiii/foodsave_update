@@ -272,7 +272,7 @@ export default function MapPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div className="fs-page-wide min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
           <BackButton fallback="/" />
@@ -281,7 +281,7 @@ export default function MapPage() {
       </header>
 
       <main className="px-4 pt-4">
-        <div className="relative h-[calc(100vh-170px)] min-h-[520px] overflow-hidden rounded-3xl border border-gray-100 bg-gray-100">
+        <div className="fs-map-canvas relative h-[calc(100vh-170px)] min-h-[520px] overflow-hidden rounded-3xl border border-gray-100 bg-gray-100">
           <div ref={mapContainerRef} className="h-full w-full" />
 
           {isLoading && (

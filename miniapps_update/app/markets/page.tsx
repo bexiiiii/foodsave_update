@@ -507,7 +507,7 @@ function MarketsContent() {
     return (
       <Link key={product.id} href={`/details/${product.id}`} className="min-w-0">
         <article>
-          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100">
+          <div className="fs-product-photo relative h-36 overflow-hidden rounded-2xl bg-gray-100">
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
@@ -559,7 +559,7 @@ function MarketsContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="fs-page-wide min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
@@ -818,7 +818,7 @@ function MarketsContent() {
                     {filteredProducts.length} из {products.length}
                   </span>
                 </div>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="fs-catalog-grid grid grid-cols-2 gap-4">
                   {filteredProducts.map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
@@ -851,7 +851,7 @@ function MarketsContent() {
 
 function MarketsLoading() {
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="fs-page-wide min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
           <Link href="/" className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center">

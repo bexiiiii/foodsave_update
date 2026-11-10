@@ -186,7 +186,7 @@ export default function OrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div className="fs-page-reading min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
           <BackButton />

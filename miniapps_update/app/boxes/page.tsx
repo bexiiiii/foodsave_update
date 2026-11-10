@@ -208,7 +208,7 @@ function BoxesContent() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="fs-page-wide min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
@@ -247,7 +247,7 @@ function BoxesContent() {
       {/* Products Grid */}
       <div className="px-4 mt-6">
         {isLoading ? (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="fs-catalog-grid grid grid-cols-2 gap-4">
             {[1, 2, 3, 4, 5, 6].map((i) => (
               <div key={i} className="animate-pulse">
                 <div className="bg-gray-200 rounded-2xl aspect-square"></div>
@@ -259,7 +259,7 @@ function BoxesContent() {
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="fs-catalog-grid grid grid-cols-2 gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
@@ -359,7 +359,7 @@ function BoxesContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="fs-page-wide min-h-screen bg-white pb-20" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       {/* Header */}
       <div className="px-4 pt-4 pb-4 border-b border-gray-100">
         <div className="flex items-center gap-4">
@@ -370,7 +370,7 @@ function LoadingFallback() {
       
       {/* Loading skeleton */}
       <div className="px-4 mt-6">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="fs-catalog-grid grid grid-cols-2 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
             <div key={i} className="animate-pulse">
               <div className="bg-gray-200 rounded-2xl aspect-square"></div>

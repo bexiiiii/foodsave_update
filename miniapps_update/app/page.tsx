@@ -337,7 +337,7 @@ export default function HomePage() {
     return (
       <Link href={`/details/${product.id}`} className="min-w-0">
         <article>
-          <div className="relative h-36 overflow-hidden rounded-2xl bg-gray-100 md:h-48 xl:h-52">
+          <div className="fs-product-photo relative h-36 overflow-hidden rounded-2xl bg-gray-100 md:h-48 xl:h-52">
             {product.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -397,8 +397,8 @@ export default function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-white pb-24 md:pb-32" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-      <header className="mx-auto w-full max-w-7xl px-4 pt-3 md:px-8 md:pt-6 xl:px-10">
+    <div className="fs-page-wide min-h-screen bg-white pb-24 md:pb-32" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+      <header className="fs-home-header mx-auto w-full max-w-7xl px-4 pt-3 md:px-8 md:pt-6 xl:px-10">
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -425,7 +425,7 @@ export default function HomePage() {
 
         <form
           onSubmit={handleSearch}
-          className="mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)] md:mt-6 md:h-14 md:max-w-3xl"
+          className="fs-home-search mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)] md:mt-6 md:h-14 md:max-w-3xl"
         >
           <button type="submit" className="flex h-7 w-7 items-center justify-center" aria-label={t("search")}>
             <svg className="h-5 w-5 text-black/35" viewBox="0 0 24 24" fill="none" stroke="currentColor">
@@ -489,7 +489,7 @@ export default function HomePage() {
       </section>
 
       <main className="mx-auto w-full max-w-7xl px-4 pt-5 md:px-8 md:pt-8 xl:px-10">
-        <div className="relative h-36 overflow-hidden rounded-3xl bg-[#f5f7f4] shadow-[0_8px_24px_rgba(20,45,24,0.08)] md:h-64 lg:h-72">
+        <div className="fs-map-preview relative h-36 overflow-hidden rounded-3xl bg-[#f5f7f4] shadow-[0_8px_24px_rgba(20,45,24,0.08)] md:h-64 lg:h-72">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/map/map.png" alt="" className="absolute inset-0 h-full w-full object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/15 via-transparent to-white/10" />
@@ -543,7 +543,7 @@ export default function HomePage() {
           </div>
 
           {productsLoading ? (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
+            <div className="fs-catalog-grid grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-6 xl:grid-cols-4">
               {[1, 2, 3, 4].map((item) => (
                 <div key={item} className="animate-pulse">
                   <div className="h-36 rounded-2xl bg-gray-100 md:h-48 xl:h-52" />
@@ -565,7 +565,7 @@ export default function HomePage() {
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-x-6 md:gap-y-8 xl:grid-cols-4">
+            <div className="fs-catalog-grid grid grid-cols-2 gap-4 md:grid-cols-3 md:gap-x-6 md:gap-y-8 xl:grid-cols-4">
               {featuredProducts.map((product) => (
                 <FeaturedProductCard key={product.id} product={product} />
               ))}

@@ -15,7 +15,7 @@ export default function NotificationsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+    <div className="fs-page-reading min-h-screen bg-white pb-24" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
       <header className="flex items-center justify-between border-b border-gray-100 px-4 pb-4 pt-4">
         <BackButton fallback="/" />
         <h1 className="text-xl font-bold text-black">Уведомления</h1>
