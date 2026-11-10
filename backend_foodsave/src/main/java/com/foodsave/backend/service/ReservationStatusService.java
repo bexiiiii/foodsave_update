@@ -2,6 +2,7 @@ package com.foodsave.backend.service;
 
 import com.foodsave.backend.domain.enums.OrderStatus;
 import com.foodsave.backend.domain.enums.ProductEventType;
+import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.domain.enums.ReservationActorType;
 import com.foodsave.backend.domain.enums.ReservationCancellationReason;
 import com.foodsave.backend.dto.OrderStatusUpdateRequest;
@@ -117,6 +118,11 @@ public class ReservationStatusService {
             int quantity = item.getQuantity() != null && item.getQuantity() > 0 ? item.getQuantity() : 1;
             Product product = productRepository.findByIdForUpdate(item.getProduct().getId())
                     .orElseThrow(() -> new EntityNotFoundException("Product not found"));
+            // Cancelling a reservation must not reopen an offer withdrawn by staff.
+            if (product.getDeletedAt() != null || !Boolean.TRUE.equals(product.getActive())
+                    || product.getStatus() != ProductStatus.AVAILABLE) {
+                continue;
+            }
             int currentStock = product.getStockQuantity() != null ? product.getStockQuantity() : 0;
             product.setStockQuantity(currentStock + quantity);
             productRepository.save(product);
