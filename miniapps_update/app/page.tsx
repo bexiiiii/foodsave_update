@@ -1,5 +1,6 @@
 "use client";
 
+import { groupCatalogCategories } from "../lib/catalogCategories";
 import ProductContents from "../components/ProductContents";
 import { FormEvent, useEffect, useState } from "react";
 import {
@@ -145,7 +146,7 @@ export default function HomePage() {
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
-  const categories = safeArray(categoriesResponse).filter((category: Category) => category.active);
+  const categories = groupCatalogCategories(safeArray(categoriesResponse).filter((category: Category) => category.active));
   const featuredProducts = rankProductsForRecommendations(safeArray(featuredProductsResponse?.content)
     .filter((product: Product) => isProductDisplayableInMiniApp(product))
     .map((product) => ({
@@ -467,7 +468,7 @@ export default function HomePage() {
                   return (
                     <Link
                       key={category.id}
-                      href={`/markets?view=products&categoryId=${category.id}`}
+                      href={`/markets?view=products&categoryId=${category.categoryIds.join(",")}`}
                       className="flex w-[80px] shrink-0 snap-start flex-col items-center gap-1 md:w-[96px]"
                     >
                       {/* eslint-disable-next-line @next/next/no-img-element */}

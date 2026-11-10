@@ -1,0 +1,9 @@
+# One strawberry category in Mini App navigation
+
+The API contains both «Клубника в шоколаде» (4) and «Клубника» (8), which share the same translated label and illustration. Group these aliases in the home navigation while retaining every backend category ID. The grouped link uses `categoryId=4,8`; the catalogue accepts either ID. Single-category links retain their previous behavior. No category or product records are deleted.
+
+Validation: four regression tests for alias grouping, order/ID preservation, exact filter matching, selector options and empty input. The original and patched production filter predicates were compared on synthetic products: single-category and unfiltered results remain identical; the grouped selection includes both strawberry IDs. Live Chrome Telegram Web shows seven category buttons with one strawberry button, its destination opens successfully, and another category displays available products. No strawberry products were available during the live check, so both-ID coverage was verified with synthetic data.
+
+Production release: `/home/deploy/foodsave-category-group-20261110`, image `foodsave-miniapp:category-group-final-20261110`, digest `sha256:ea2c7755214e64cbcb1db34835394987a11914085cebbccb56b1fc8bfd088501`. Production contains newer catalogue code than this checkout, so a guarded AST patch applies only the equivalent grouping/filter changes to the existing home and markets bundles, preserving other code and old assets. Matching source edits and helper are retained on the server. Backend, admin and other services are unchanged. Previous working container is retained as `foodsave-miniapp-before-category-group-final-20261110`.
+
+An earlier candidate failed when opening the grouped category and was rolled back. The final candidate resolves the selected category from its React state binding rather than an inner filter callback; the live transition was verified after deploying that correction.

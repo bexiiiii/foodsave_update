@@ -1,5 +1,6 @@
 "use client";
 
+import { includeSelectedCategoryGroup, matchesCatalogCategory } from "../../lib/catalogCategories";
 import ProductContents from "../../components/ProductContents";
 import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
@@ -338,20 +339,20 @@ function MarketsContent() {
       return map;
     }, new Map<string, string>()))
   ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
-  const productCategoryOptions = Array.from(
+  const productCategoryOptions = includeSelectedCategoryGroup(Array.from(
     products.reduce((map, product) => {
       if (product.categoryId && product.categoryName) {
         map.set(String(product.categoryId), product.categoryName);
       }
       return map;
     }, new Map<string, string>())
-  ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru"));
+  ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru")), selectedProductCategoryId, t("categoryStrawberry"));
   const filteredProducts = sortProducts(products.filter((product) => {
     const price = getProductPrice(product);
     if (minFilterValue !== undefined && price < minFilterValue) return false;
     if (maxFilterValue !== undefined && price > maxFilterValue) return false;
     if (selectedProductStoreId && String(product.storeId) !== selectedProductStoreId) return false;
-    if (selectedProductCategoryId && String(product.categoryId) !== selectedProductCategoryId) return false;
+    if (!matchesCatalogCategory(selectedProductCategoryId, product.categoryId)) return false;
     if (favoritesOnly && !product.isFavorite) return false;
     if (discountOnly && getProductDiscount(product) <= 0) return false;
     return true;
