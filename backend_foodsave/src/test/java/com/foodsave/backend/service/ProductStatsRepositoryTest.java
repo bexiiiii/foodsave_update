@@ -56,10 +56,27 @@ class ProductStatsRepositoryTest {
         var all = ProductStatsMapping.fromAggregate(products.getProductStats());
         assertEquals(3, all.getTotalProducts()); assertEquals(1, all.getActiveProducts());
         assertEquals(1, all.getOutOfStockProducts()); assertEquals(2, all.getLowStockProducts());
-        assertEquals(0, new BigDecimal("500").compareTo(all.getTotalValue()));
+        assertEquals(0, new BigDecimal("300").compareTo(all.getTotalValue()));
         var scoped = ProductStatsMapping.fromAggregate(products.getProductStatsByStoreIdIn(Set.of(first.getId())));
         assertEquals(2, scoped.getTotalProducts()); assertEquals(1, scoped.getActiveProducts());
         assertEquals(0, new BigDecimal("300").compareTo(scoped.getTotalValue()));
+    }
+
+    @Test void expiredAndClosedStockDoesNotCountAsAvailableInventory() {
+        User user = new User(); user.setFirstName("Inventory"); user.setLastName("Test"); user.setEmail("inventory@example.test"); user.setPassword("not-a-login"); user.setRole(UserRole.STORE_OWNER); em.persist(user);
+        Store open = store(user, "Open"), closed = store(user, "Closed"); closed.setActive(false);
+        Category category = new Category(); category.setName("Inventory"); em.persist(category);
+        product(open, category, "Current", ProductStatus.AVAILABLE, true, 2, false);
+        product(open, category, "Expired", ProductStatus.AVAILABLE, true, 100, false);
+        product(closed, category, "Closed store", ProductStatus.AVAILABLE, true, 100, false);
+        em.flush();
+        em.createQuery("UPDATE Product p SET p.expiryDate = :expiry WHERE p.name = 'Expired'")
+            .setParameter("expiry", LocalDateTime.now().minusDays(2)).executeUpdate();
+        var all = ProductStatsMapping.fromAggregate(products.getProductStats());
+        assertEquals(3, all.getTotalProducts()); assertEquals(1, all.getActiveProducts());
+        assertEquals(0, new BigDecimal("200").compareTo(all.getTotalValue()));
+        var scoped = ProductStatsMapping.fromAggregate(products.getProductStatsByStoreIdIn(Set.of(open.getId())));
+        assertEquals(0, new BigDecimal("200").compareTo(scoped.getTotalValue()));
     }
 
     @Test void suspectPricesStayCountedButDoNotInflateValue() {

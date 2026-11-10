@@ -484,6 +484,8 @@ export const orderApi = {
 };
 
 export const analyticsApi = {
+    getIssuedPeriod: (params: { startDate: string; endDate: string; storeId?: number }) =>
+        api.get<AnalyticsData & { averageOrderValue: number }>(`${API_ENDPOINTS.ANALYTICS.BASE}/issued-period`, { params }).then(response => response.data),
     getGeneral: () => api.get<{ data: AnalyticsData }>(API_ENDPOINTS.ANALYTICS.BASE).then(response => response.data.data),
     getDailySales: (params: { startDate: string; endDate: string; storeId?: number }) =>
         api.get<DailySalesAnalytics[]>(`${API_ENDPOINTS.ANALYTICS.BASE}/daily-sales`, { params }).then(response => response.data),

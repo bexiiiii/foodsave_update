@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as XLSX from "xlsx";
 import {
   ActivityIcon,
@@ -158,6 +158,7 @@ type CategoryRow = {
 };
 
 export default function AnalyticsPage() {
+  const periodRequest = useRef(0);
   const initialRange = getRangeDates("30d");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -215,17 +216,9 @@ export default function AnalyticsPage() {
     if (showRefreshing) setRefreshing(true);
     try {
       const response = await analyticsApi.getGeneral();
-      setAnalyticsData({
-        ...defaultAnalyticsData,
-        ...response,
-        salesByDay: response.salesByDay || [],
-        salesByMonth: response.salesByMonth || [],
-        topProducts: response.topProducts || [],
-        topStores: response.topStores || [],
-        topCategories: response.topCategories || [],
-        orderStatusDistribution: response.orderStatusDistribution || [],
-        paymentMethodDistribution: response.paymentMethodDistribution || [],
-      });
+      setAnalyticsData(previous => ({ ...previous,
+        totalUsers: response.totalUsers, totalStores: response.totalStores, totalProducts: response.totalProducts,
+      }));
 
       if (hasPermission(Permission.ANALYTICS_READ)) {
         setOrderStats(await orderApi.getStats());
@@ -239,7 +232,6 @@ export default function AnalyticsPage() {
         description: "Не удалось загрузить аналитику",
         variant: "destructive",
       });
-      setAnalyticsData(defaultAnalyticsData);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -257,15 +249,21 @@ export default function AnalyticsPage() {
       storeId: resolveStoreParam(override?.nextStoreId || selectedStoreId),
     };
 
+    const request = ++periodRequest.current;
     setSalesLoading(true);
     try {
-      const [summary, details] = await Promise.all([
+      const [summary, details, period] = await Promise.all([
         analyticsApi.getDailySales(params),
         analyticsApi.getDailySalesOrderDetails(params),
+        analyticsApi.getIssuedPeriod(params),
       ]);
+      if (request !== periodRequest.current) return;
+      setAnalyticsData(previous => ({ ...previous, ...period }));
       setDailySalesAnalytics(summary);
       setDailySalesOrderDetails(details);
     } catch (error) {
+      if (request !== periodRequest.current) return;
+      setAnalyticsData(previous => ({ ...previous, totalRevenue: 0, totalOrders: 0, topProducts: [], topStores: [], topCategories: [], salesByMonth: [] }));
       console.error("Error fetching daily sales analytics:", error);
       toast({
         title: "Ошибка",
@@ -273,7 +271,7 @@ export default function AnalyticsPage() {
         variant: "destructive",
       });
     } finally {
-      setSalesLoading(false);
+      if (request === periodRequest.current) setSalesLoading(false);
     }
   }, [endDate, resolveStoreParam, selectedStoreId, startDate, toast]);
 
@@ -337,10 +335,8 @@ export default function AnalyticsPage() {
   const cancelledRate = orderStats && orderStats.totalOrders > 0
     ? (orderStats.cancelledOrders / orderStats.totalOrders) * 100
     : 0;
-  // Keep anomalous historical totals visible in details, but out of monetary averages.
-  const pricedOrders = dailySalesOrderDetails.filter(order => order.orderTotal != null && Number.isFinite(Number(order.orderTotal)) && Number(order.orderTotal) >= 0 && Number(order.orderTotal) <= 1000000);
-  const averageOrderValue = pricedOrders.length
-    ? pricedOrders.reduce((sum, order) => sum + Number(order.orderTotal), 0) / pricedOrders.length
+  const averageOrderValue = numberValue(analyticsData.totalOrders) > 0
+    ? numberValue(analyticsData.totalRevenue) / numberValue(analyticsData.totalOrders)
     : 0;
 
   const handleRangeChange = (range: string) => {
@@ -429,7 +425,7 @@ export default function AnalyticsPage() {
     ];
 
     const summaryRows = [
-      ["Дата", "Заведение", "Всего заказов", "Завершенные", "Отмененные", "Общий доход", "Доход завершенных", "Убыток отмененных"],
+      ["Дата", "Заведение", "Всего заказов", "Завершенные", "Отмененные", "Сумма всех броней", "Сумма выданных", "Сумма отменённых"],
       ...dailySalesAnalytics.map((item) => [
         formatDate(item.date),
         item.storeName,
@@ -447,7 +443,7 @@ export default function AnalyticsPage() {
       ["Всего заказов", totalSalesStats.totalOrders],
       ["Завершенные", totalSalesStats.completedOrders],
       ["Отмененные", totalSalesStats.canceledOrders],
-      ["Общий доход", totalSalesStats.totalRevenue],
+      ["Сумма всех броней", totalSalesStats.totalRevenue],
       ["Дата экспорта", new Date().toLocaleString("ru-KZ")],
     ];
 
@@ -503,7 +499,7 @@ export default function AnalyticsPage() {
                 Аналитика
               </h1>
               <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                Реальные продажи, заказы, заведения и грантовый отчет по каждой позиции бокса.
+                Оборот заведений по выданным заказам. Это не комиссия FoodSave и не подтверждение оплаты.
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -539,14 +535,14 @@ export default function AnalyticsPage() {
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
             <MetricCard
-              title="Общий доход"
-              value={formatCurrency(numberValue(analyticsData.totalRevenue || analyticsData.revenue))}
-              subtitle="Без сумм свыше 1 млн ₸"
+              title="Оборот выданных заказов"
+              value={formatCurrency(numberValue(analyticsData.totalRevenue))}
+              subtitle="За выбранный период · не доход FoodSave"
               icon={TrendingUpIcon}
               color="bg-green-600"
             />
             <MetricCard
-              title="Всего заказов"
+              title="Выдано заказов"
               value={numberValue(analyticsData.totalOrders).toLocaleString("ru-KZ")}
               icon={ShoppingCartIcon}
               color="bg-blue-600"
@@ -554,7 +550,7 @@ export default function AnalyticsPage() {
             <MetricCard
               title="Средний чек"
               value={formatCurrency(averageOrderValue)}
-              subtitle="Без сумм свыше 1 млн ₸"
+              subtitle="Только выданные за выбранный период"
               icon={CreditCardIcon}
               color="bg-indigo-600"
             />
@@ -575,7 +571,7 @@ export default function AnalyticsPage() {
           {orderStats && (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
               <OrderStatsCard
-                title="Статистика заказов"
+                title="Статистика заказов за всё время"
                 totalOrders={orderStats.totalOrders}
                 successfulOrders={orderStats.successfulOrders}
                 failedOrders={orderStats.failedOrders}
@@ -603,7 +599,7 @@ export default function AnalyticsPage() {
             <AdminOnly>
               <section className="space-y-3">
                 <h2 className="text-lg font-semibold text-gray-950 dark:text-white">
-                  Эффективность заведений
+                  Эффективность заведений за всё время
                 </h2>
                 <StoreOrderStatsTable />
               </section>
@@ -615,7 +611,7 @@ export default function AnalyticsPage() {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   <TrendingUpIcon className="h-5 w-5 text-blue-600" />
-                  Динамика продаж
+                  Оборот выданных заказов
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -810,7 +806,8 @@ export default function AnalyticsPage() {
                 color="bg-blue-600"
               />
               <MetricCard
-                title="Доход в отчете"
+                title="Сумма всех броней"
+                subtitle="Включая отменённые и незавершённые"
                 value={formatCurrency(totalSalesStats.totalRevenue)}
                 icon={TrendingUpIcon}
                 color="bg-green-600"
