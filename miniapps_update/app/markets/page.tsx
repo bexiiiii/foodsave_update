@@ -4,7 +4,7 @@ import { includeSelectedCategoryGroup, matchesCatalogCategory } from "../../lib/
 import ProductContents from "../../components/ProductContents";
 import { Suspense, useEffect, useState } from "react";
 import type { ReactNode } from "react";
-import { ArrowLeft, ChevronDown, Clock, SlidersHorizontal, Star, X } from "lucide-react";
+import { ArrowLeft, ChevronDown, Clock, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useTelegram } from "../../hooks/useTelegram";
@@ -71,6 +71,16 @@ function MarketsContent() {
   const notificationGroupId = searchParams.get("notificationGroupId")?.trim() || "";
   const view = searchParams.get("view")?.trim() || "";
   const showAllProducts = view === "products" || categoryId !== "";
+  const showSearch = !notificationGroupId && !showAllProducts;
+  const submitSearch = (value: string) => {
+    const nextQuery = value.trim();
+    if (nextQuery === query) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (nextQuery) params.set("query", nextQuery);
+    else params.delete("query");
+    const suffix = params.toString();
+    router.replace(suffix ? `/markets?${suffix}` : "/markets", { scroll: false });
+  };
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
@@ -565,9 +575,35 @@ function MarketsContent() {
         <div className="flex items-center gap-4">
           <BackButton fallback="/" />
           <h1 className="text-xl font-bold text-black font-inter">
-            {notificationGroup ? "Подборка FoodSave" : query ? `Поиск: ${query}` : showAllProducts ? "Боксы" : "Заведения"}
+            {notificationGroupId ? "Подборка FoodSave" : showAllProducts ? "Боксы" : t("search")}
           </h1>
         </div>
+        {showSearch && (
+          <form
+            key={query}
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitSearch(String(new FormData(event.currentTarget).get("query") || ""));
+            }}
+            className="mt-4 flex min-h-12 items-center gap-2 rounded-xl border border-black/[0.07] bg-white px-3 shadow-sm focus-within:border-[#4CAD73] md:max-w-3xl"
+          >
+            <Search aria-hidden="true" className="h-5 w-5 shrink-0 text-black/45" />
+            <input
+              name="query"
+              type="search"
+              enterKeyHint="search"
+              aria-label={t("searchPlaceholder")}
+              placeholder={t("searchPlaceholder")}
+              defaultValue={query}
+              onChange={(event) => { if (!event.currentTarget.value) submitSearch(""); }}
+              className="min-w-0 flex-1 bg-transparent py-3 text-base text-black outline-none placeholder:text-black/45"
+            />
+            <button type="submit" className="min-h-11 shrink-0 px-2 text-sm font-semibold text-[#267348]">
+              {t("searchSubmit")}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Markets List */}
@@ -776,7 +812,7 @@ function MarketsContent() {
 
             {stores.length > 0 && query && (
               <div className="flex items-baseline justify-between gap-3 pt-1">
-                <h2 className="text-lg font-bold text-black font-inter">Заведения</h2>
+                <h2 className="text-lg font-bold text-black font-inter">{t("searchStores")}</h2>
                 <span className="text-xs font-medium text-black/45 font-inter">
                   {filteredStores.length} из {stores.length}
                 </span>
@@ -813,7 +849,7 @@ function MarketsContent() {
             {products.length > 0 && (
               <>
                 <div className="flex items-baseline justify-between gap-3 pt-3">
-                  <h2 className="text-lg font-bold text-black font-inter">Боксы</h2>
+                  <h2 className="text-lg font-bold text-black font-inter">{t("searchBoxes")}</h2>
                   <span className="text-xs font-medium text-black/45 font-inter">
                     {filteredProducts.length} из {products.length}
                   </span>
@@ -834,7 +870,7 @@ function MarketsContent() {
             {stores.length === 0 && products.length === 0 && (
               <div className="text-center py-12">
                 <p className="text-black/50 font-inter">
-                  {query ? "По вашему запросу ничего не найдено" : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
+                  {query ? t("searchEmpty") : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
                 </p>
               </div>
             )}
