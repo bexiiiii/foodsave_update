@@ -153,12 +153,11 @@ export const useRecommendedProducts = (page = 0, size = 20, userId?: number) => 
   const queryFn = useCallback(() => {
     // Keep the home feed usable during rolling deployments where a cached
     // client bundle can briefly lag behind the hook bundle.
-    const getRecommendations = apiClient.getRecommendedProducts;
-    if (typeof getRecommendations === 'function') {
-      return getRecommendations.call(apiClient, page, size);
+    const getCatalog = apiClient.getAllProducts;
+    if (typeof getCatalog === 'function') {
+      return getCatalog.call(apiClient, page, size);
     }
-
-    return apiClient.getFeaturedProducts(page, size);
+    return apiClient.getRecommendedProducts(page, size);
   // A sign-in starts a new request even if the guest request is still pending.
   }, [page, size, userId]);
 
