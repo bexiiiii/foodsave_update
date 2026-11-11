@@ -18,7 +18,6 @@ import {
   canShowDecisionHelpPrompt,
   getPersonalizationSessionId,
   markDecisionHelpPromptShown,
-  recordProductReservation,
   recordProductView,
   shouldCheckDecisionHelpServer,
   shouldShowDecisionHelpPrompt,
@@ -255,7 +254,6 @@ export default function ProductDetailsPage() {
       };
 
       const order = await apiClient.createReservation(reservationData);
-      recordProductReservation(product);
       setShowDecisionHelpPrompt(false);
 
       setProduct((prev) => {

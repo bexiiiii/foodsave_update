@@ -2,7 +2,7 @@
 
 import { groupCatalogCategories } from "../lib/catalogCategories";
 import ProductContents from "../components/ProductContents";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import {
   ChevronRight,
   LocateFixed,
@@ -27,7 +27,7 @@ import { safeString } from "../lib/utils";
 import { safeArray } from "../lib/api";
 import { apiClient, canReserveProduct, Category, Product, isProductDisplayableInMiniApp } from "../lib/api";
 import ProductAvailabilityBadge from "../components/ProductAvailabilityBadge";
-import { rankProductsForRecommendations, seedRecommendationsFromOrders } from "../lib/personalization";
+import { rankProductsForRecommendations, type RecommendationHistory } from "../lib/personalization";
 import { formatPrice, normalizePrice } from "../lib/pricing";
 import { isLocationFresh, readSavedLocation, requestCurrentLocation, UserLocation } from "../lib/location";
 
@@ -136,27 +136,25 @@ export default function HomePage() {
   const {
     data: featuredProductsResponse,
     isLoading: productsLoading,
-    refetch: refetchRecommendations,
-  } = useRecommendedProducts(0, 100);
+  } = useRecommendedProducts(0, 100, user?.id);
   const [favoriteOverrides, setFavoriteOverrides] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ title: string; itemName: string } | null>(null);
   const [togglingProductId, setTogglingProductId] = useState<number | null>(null);
-  const [recommendationVersion, setRecommendationVersion] = useState(0);
+  const [history, setHistory] = useState<(RecommendationHistory & { userId: number }) | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "ready" | "denied" | "unsupported">("idle");
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
   const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
   const categories = groupCatalogCategories(safeArray(categoriesResponse).filter((category: Category) => category.active));
-  const featuredProducts = rankProductsForRecommendations(safeArray(featuredProductsResponse?.content)
+  const featuredProducts = useMemo(() => rankProductsForRecommendations(safeArray(featuredProductsResponse?.content)
     .filter((product: Product) => isProductDisplayableInMiniApp(product))
     .map((product) => ({
       ...product,
       isFavorite: favoriteOverrides[product.id] ?? product.isFavorite,
-    })), (product) => {
-      void recommendationVersion;
-      return getLocationRecommendationBoost(userLocation, product);
-    });
+    })), product => getLocationRecommendationBoost(userLocation, product),
+    { ...(history?.userId === user?.id ? history : null), telegramId: user?.telegramUserId, favoriteOverrides }
+  ), [featuredProductsResponse, favoriteOverrides, userLocation, history, user?.id, user?.telegramUserId]);
 
   const toggleProductFavorite = async (product: Product) => {
     if (togglingProductId === product.id) return;
@@ -193,27 +191,18 @@ export default function HomePage() {
     if (authLoading || !user) return;
 
     let isMounted = true;
-    apiClient.getMyOrders()
-      .then((orders) => {
-        if (!isMounted) return;
-        if (seedRecommendationsFromOrders(orders)) {
-          setRecommendationVersion((version) => version + 1);
-        }
-      })
-      .catch(() => {
-        // Recommendations still work from local views/favorites when order history is unavailable.
+    Promise.allSettled([apiClient.getMyOrders(), apiClient.getFavorites()]).then(([orders, favorites]) => {
+      if (isMounted) setHistory({
+        userId: user.id,
+        orders: orders.status === "fulfilled" ? orders.value : [],
+        favorites: favorites.status === "fulfilled" ? favorites.value : undefined,
       });
+    });
 
     return () => {
       isMounted = false;
     };
   }, [authLoading, user]);
-
-  useEffect(() => {
-    if (authLoading || !user?.id) return;
-
-    void refetchRecommendations();
-  }, [authLoading, user?.id, refetchRecommendations]);
 
   useEffect(() => {
     if (

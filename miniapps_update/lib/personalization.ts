@@ -1,20 +1,12 @@
-import type { Order, Product } from "./api";
-import { normalizePrice } from "./pricing";
+import { canReserveProduct, type FavoritesResponse, type Order, type Product } from "./api";
 
-type ProductInteraction = {
-  id: number;
-  name?: string;
-  storeId?: number;
-  storeName?: string;
-  categoryName?: string;
+
+type ViewedBox = Pick<Product, "id" | "name" | "description" | "storeId" | "categoryName"> & {
   views: number;
-  reservations: number;
-  favorites: number;
-  lastViewedAt?: number;
-  lastReservedAt?: number;
+  lastViewedAt: number;
 };
 
-const INTERACTIONS_KEY = "foodsave_product_interactions_v1";
+const INTERACTIONS_KEY = "foodsave_box_views_v2";
 const RECENT_VIEWS_KEY = "foodsave_recent_product_views_v1";
 const HELP_DISMISSED_KEY = "foodsave_decision_help_dismissed_at_v1";
 const HELP_SHOWN_SESSION_KEY = "foodsave_decision_help_shown_v2";
@@ -55,217 +47,125 @@ const writeJson = (key: string, value: unknown) => {
   }
 };
 
-const getProductPrice = (product: Product) =>
-  normalizePrice(product.price || product.discountedPrice || product.originalPrice || 0);
-
-const getProductDiscount = (product: Product) => {
-  const price = getProductPrice(product);
-  const originalPrice = normalizePrice(product.originalPrice || price);
-  return originalPrice > price
-    ? Math.round((1 - price / originalPrice) * 100)
-    : product.discountPercentage || 0;
-};
-
-const readInteractions = () =>
-  readJson<Record<string, ProductInteraction>>(INTERACTIONS_KEY, {});
-
-const writeInteractions = (interactions: Record<string, ProductInteraction>) => {
-  const trimmed = Object.fromEntries(
-    Object.entries(interactions)
-      .sort(([, a], [, b]) => (b.lastViewedAt || b.lastReservedAt || 0) - (a.lastViewedAt || a.lastReservedAt || 0))
-      .slice(0, MAX_INTERACTIONS)
-  );
-  writeJson(INTERACTIONS_KEY, trimmed);
-};
+// Telegram's ID only namespaces local browsing history. Orders and favorites
+// come from the authenticated API. Never attribute the old shared key to a user.
+const telegramUserId = () => isBrowser() ? window.Telegram?.WebApp?.initDataUnsafe?.user?.id : undefined;
+const readViews = (id?: string | number) =>
+  id ? readJson<ViewedBox[]>(`${INTERACTIONS_KEY}:${id}`, []) : [];
+const recentViewsKey = () => `${RECENT_VIEWS_KEY}:${telegramUserId() ?? "guest"}`;
 
 export const recordProductView = (product: Product) => {
   if (!product?.id) return false;
   const now = Date.now();
-  const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+  const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(recentViewsKey(), [])
     .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
-  const lastSameProductView = [...recentViews].reverse().find((item) => item.productId === product.id);
-  if (lastSameProductView && now - lastSameProductView.viewedAt < SAME_PRODUCT_VIEW_COOLDOWN_MS) return false;
-  const interactions = readInteractions();
-  const current = interactions[String(product.id)] || {
-    id: product.id,
-    views: 0,
-    reservations: 0,
-    favorites: 0,
-  };
+  if (recentViews.some(item => item.productId === product.id && now - item.viewedAt < SAME_PRODUCT_VIEW_COOLDOWN_MS)) return false;
 
-  interactions[String(product.id)] = {
-    ...current,
-    name: product.name,
-    storeId: product.storeId,
-    storeName: product.storeName,
-    categoryName: product.categoryName,
-    views: current.views + 1,
-    favorites: product.isFavorite ? Math.max(current.favorites, 1) : current.favorites,
-    lastViewedAt: now,
-  };
-  writeInteractions(interactions);
+  const id = telegramUserId();
+  if (id) {
+    const views = readViews(id);
+    const previous = views.find(item => item.id === product.id);
+    const item: ViewedBox = {
+      id: product.id, name: product.name, description: product.description, storeId: product.storeId, categoryName: product.categoryName,
+      views: (previous?.views ?? 0) + 1, lastViewedAt: now,
+    };
+    writeJson(`${INTERACTIONS_KEY}:${id}`, [item, ...views.filter(view => view.id !== product.id)].slice(0, MAX_INTERACTIONS));
+  }
 
   const nextRecentViews = recentViews
     .concat({ productId: product.id, viewedAt: now })
     .slice(-20);
-  writeJson(RECENT_VIEWS_KEY, nextRecentViews);
+  writeJson(recentViewsKey(), nextRecentViews);
   return true;
 };
 
-export const recordProductReservation = (product: Product) => {
-  if (!product?.id) return;
-  const now = Date.now();
-  const interactions = readInteractions();
-  const current = interactions[String(product.id)] || {
-    id: product.id,
-    views: 0,
-    reservations: 0,
-    favorites: 0,
-  };
+const genericWords = new Set(["бокс", "набор", "порция", "штуки", "вместо", "состав", "комплект", "входит", "бокса", "подарок", "штук", "доставка", "порции", "box", "foodsave"]);
+const dishWords = (name: string, description?: string) => new Set(
+  ([name, description].join(" ").toLowerCase().replace(/ё/g, "е").match(/[a-zа-яәғқңөұүһі]+/gu) ?? [])
+    .filter(word => word.length >= 3 && !genericWords.has(word))
+);
 
-  interactions[String(product.id)] = {
-    ...current,
-    name: product.name,
-    storeId: product.storeId,
-    storeName: product.storeName,
-    categoryName: product.categoryName,
-    reservations: current.reservations + 1,
-    favorites: product.isFavorite ? Math.max(current.favorites, 1) : current.favorites,
-    lastReservedAt: now,
-  };
-  writeInteractions(interactions);
-};
-
-export const seedRecommendationsFromOrders = (orders: Order[]) => {
-  if (!Array.isArray(orders) || orders.length === 0) return false;
-
-  const interactions = readInteractions();
-  const totals = new Map<number, {
-    quantity: number;
-    lastReservedAt: number;
-    name?: string;
-    storeId?: number;
-    storeName?: string;
-  }>();
-  let changed = false;
-
-  orders.forEach((order) => {
-    if (NON_POSITIVE_ORDER_STATUSES.has(order.status)) return;
-
-    const orderItems = Array.isArray(order.orderItems)
-      ? order.orderItems
-      : Array.isArray(order.items)
-        ? order.items
-        : [];
-    const reservedAt = order.createdAt ? new Date(order.createdAt).getTime() : Date.now();
-
-    orderItems.forEach((item) => {
-      if (!item.productId) return;
-      const quantity = Math.max(Number(item.quantity || 1), 1);
-      const previous = totals.get(item.productId);
-      totals.set(item.productId, {
-        quantity: (previous?.quantity || 0) + quantity,
-        lastReservedAt: Math.max(previous?.lastReservedAt || 0, Number.isFinite(reservedAt) ? reservedAt : Date.now()),
-        name: item.productName || previous?.name,
-        storeId: order.storeId || previous?.storeId,
-        storeName: order.storeName || previous?.storeName,
-      });
-    });
-  });
-
-  totals.forEach((signal, productId) => {
-      const key = String(productId);
-      const current = interactions[key] || {
-        id: productId,
-        views: 0,
-        reservations: 0,
-        favorites: 0,
-      };
-      const next = {
-        ...current,
-        name: signal.name || current.name,
-        storeId: signal.storeId || current.storeId,
-        storeName: signal.storeName || current.storeName,
-        reservations: Math.max(current.reservations, signal.quantity),
-        lastReservedAt: Math.max(current.lastReservedAt || 0, signal.lastReservedAt),
-      };
-      if (JSON.stringify(next) !== JSON.stringify(current)) {
-        interactions[key] = next;
-        changed = true;
-      }
-  });
-
-  if (changed) writeInteractions(interactions);
-  return changed;
-};
-
-const calculateProductRecommendationScore = (
-  product: Product,
-  interactions: Record<string, ProductInteraction>
-) => {
-  const own = interactions[String(product.id)];
-  const storeAffinity = Object.values(interactions)
-    .filter((item) => item.storeId && item.storeId === product.storeId)
-    .reduce((score, item) => score + item.views * 2 + item.reservations * 18 + item.favorites * 10, 0);
-  const categoryAffinity = Object.values(interactions)
-    .filter((item) => item.categoryName && item.categoryName === product.categoryName)
-    .reduce((score, item) => score + item.views + item.reservations * 8, 0);
-
-  return (
-    (product.isFavorite ? 120 : 0) +
-    (own?.views || 0) * 8 +
-    (own?.reservations || 0) * 60 +
-    (own?.favorites || 0) * 40 +
-    storeAffinity +
-    categoryAffinity +
-    (product.closingSoon ? 12 : 0) +
-    Math.min(getProductDiscount(product), 60)
-  );
-};
-
-export const getProductRecommendationScore = (product: Product) =>
-  calculateProductRecommendationScore(product, readInteractions());
+export interface RecommendationHistory {
+  orders?: Order[];
+  favorites?: FavoritesResponse;
+  telegramId?: string | number;
+  favoriteOverrides?: Record<number, boolean>;
+}
 
 export const rankProductsForRecommendations = (
   products: Product[],
-  additionalScore: (product: Product) => number = () => 0
+  additionalScore: (product: Product) => number = () => 0,
+  history: RecommendationHistory = {},
 ) => {
-  const interactions = readInteractions();
-  const remaining = products
-    .map((product) => ({
-      product,
-      baseScore:
-        calculateProductRecommendationScore(product, interactions)
-        + additionalScore(product)
-        + (product.canReserve === false ? -1000 : 0),
-    }))
-    .sort((a, b) => b.baseScore - a.baseScore);
+  const dishes = new Map<string, number>();
+  const stores = new Map<number, number>();
+  const categories = new Map<string, number>();
+  const exact = new Map<number, number>();
+  function addInterest(id: number, name: string, storeId: number, category: string | undefined, weight: number, description?: string) {
+    exact.set(id, (exact.get(id) ?? 0) + weight);
+    stores.set(storeId, (stores.get(storeId) ?? 0) + weight);
+    if (category) categories.set(category, (categories.get(category) ?? 0) + weight);
+    for (const word of dishWords(name, description)) dishes.set(word, (dishes.get(word) ?? 0) + weight);
+  }
+  const now = Date.now();
+  for (const view of readViews(history.telegramId ?? telegramUserId())) {
+    const days = Math.max(0, (now - view.lastViewedAt) / 86400000);
+    if (days <= 90) addInterest(view.id, view.name, view.storeId, view.categoryName, Math.min(view.views, 4) * 10 / (1 + days / 30), view.description);
+  }
+  for (const order of history.orders ?? []) {
+    if (NON_POSITIVE_ORDER_STATUSES.has(order.status)) continue;
+    const days = Math.max(0, (now - Date.parse(order.createdAt)) / 86400000);
+    if (!Number.isFinite(days) || days > 90) continue;
+    for (const item of order.orderItems ?? order.items ?? []) {
+      addInterest(item.productId, item.productName ?? "", order.storeId, undefined, 44 / (1 + days / 30));
+    }
+  }
+  const favorites = new Map((history.favorites?.products ?? []).map(product => [product.id, product]));
+  for (const product of products) {
+    if (product.isFavorite) favorites.set(product.id, product);
+    else if (history.favoriteOverrides?.[product.id] === false) favorites.delete(product.id);
+  }
+  for (const product of favorites.values()) addInterest(product.id, product.name, product.storeId, product.categoryName, 50, product.description);
+  for (const store of history.favorites?.stores ?? []) stores.set(store.id, (stores.get(store.id) ?? 0) + 50);
+
+  const candidates = products.map((product, index) => {
+    const wordScores = Array.from(dishWords(product.name, product.description), word => dishes.get(word) ?? 0);
+    const score = Math.min(exact.get(product.id) ?? 0, 120)
+      + Math.min(Math.max(0, ...wordScores), 90)
+      + Math.min(stores.get(product.storeId) ?? 0, 80) * 0.35
+      + Math.min(categories.get(product.categoryName ?? "") ?? 0, 60) * 0.25
+      + additionalScore(product);
+    // The API order already includes favorites, discounts and server-side signals.
+    return { product, baseScore: score + 12 / (1 + index / 5) };
+  }).sort((a, b) => b.baseScore - a.baseScore);
   const ranked: Product[] = [];
   const storeCounts = new Map<number, number>();
   const categoryCounts = new Map<string, number>();
 
-  while (remaining.length > 0) {
-    let bestIndex = 0;
-    let bestScore = Number.NEGATIVE_INFINITY;
-    const candidateWindow = Math.min(remaining.length, 12);
-    for (let index = 0; index < candidateWindow; index += 1) {
-      const { product, baseScore } = remaining[index];
-      const storeCount = storeCounts.get(product.storeId) || 0;
-      const categoryKey = product.categoryName || String(product.categoryId || "unknown");
-      const categoryCount = categoryCounts.get(categoryKey) || 0;
-      const diversityPenalty = storeCount * 36 + categoryCount * 10;
-      const score = baseScore - diversityPenalty;
-      if (score > bestScore) {
-        bestScore = score;
-        bestIndex = index;
+  for (const remaining of [candidates.filter(item => canReserveProduct(item.product)), candidates.filter(item => !canReserveProduct(item.product))]) {
+    while (remaining.length > 0) {
+      let bestIndex = 0;
+      let bestScore = Number.NEGATIVE_INFINITY;
+      const candidateWindow = Math.min(remaining.length, 12);
+      for (let index = 0; index < candidateWindow; index += 1) {
+        const { product, baseScore } = remaining[index];
+        const storeCount = storeCounts.get(product.storeId) || 0;
+        const categoryKey = product.categoryName || String(product.categoryId || "unknown");
+        const categoryCount = categoryCounts.get(categoryKey) || 0;
+        const diversityPenalty = storeCount * 36 + categoryCount * 10;
+        const score = baseScore - diversityPenalty;
+        if (score > bestScore) {
+          bestScore = score;
+          bestIndex = index;
+        }
       }
-    }
 
-    const [selected] = remaining.splice(bestIndex, 1);
-    ranked.push(selected.product);
-    storeCounts.set(selected.product.storeId, (storeCounts.get(selected.product.storeId) || 0) + 1);
-    const categoryKey = selected.product.categoryName || String(selected.product.categoryId || "unknown");
-    categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) || 0) + 1);
+      const [selected] = remaining.splice(bestIndex, 1);
+      ranked.push(selected.product);
+      storeCounts.set(selected.product.storeId, (storeCounts.get(selected.product.storeId) || 0) + 1);
+      const categoryKey = selected.product.categoryName || String(selected.product.categoryId || "unknown");
+      categoryCounts.set(categoryKey, (categoryCounts.get(categoryKey) || 0) + 1);
+    }
   }
 
   return ranked;
@@ -295,7 +195,7 @@ export const shouldShowDecisionHelpPrompt = () => {
   if (!canShowDecisionHelpPrompt()) return false;
   try {
     const now = Date.now();
-    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(recentViewsKey(), [])
       .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
     const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
     return recentViews.length >= 4 && uniqueProductIds.size >= 3;
@@ -311,7 +211,7 @@ export const shouldCheckDecisionHelpServer = () => {
     const lastCheckedAt = Number(sessionStorage.getItem(HELP_SERVER_CHECKED_AT_KEY) || 0);
     if (lastCheckedAt && now - lastCheckedAt < HELP_SERVER_CHECK_COOLDOWN_MS) return false;
 
-    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(RECENT_VIEWS_KEY, [])
+    const recentViews = readJson<Array<{ productId: number; viewedAt: number }>>(recentViewsKey(), [])
       .filter((item) => now - item.viewedAt <= RECENT_VIEW_WINDOW_MS);
     const uniqueProductIds = new Set(recentViews.map((item) => item.productId));
     if (recentViews.length < 3 || uniqueProductIds.size < 2) return false;

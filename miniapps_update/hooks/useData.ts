@@ -149,7 +149,7 @@ export const useFeaturedProducts = (page = 0, size = 20) => {
   );
 };
 
-export const useRecommendedProducts = (page = 0, size = 20) => {
+export const useRecommendedProducts = (page = 0, size = 20, userId?: number) => {
   const queryFn = useCallback(() => {
     // Keep the home feed usable during rolling deployments where a cached
     // client bundle can briefly lag behind the hook bundle.
@@ -159,15 +159,16 @@ export const useRecommendedProducts = (page = 0, size = 20) => {
     }
 
     return apiClient.getFeaturedProducts(page, size);
-  }, [page, size]);
+  // A sign-in starts a new request even if the guest request is still pending.
+  }, [page, size, userId]);
 
   const defaultValue: PaginationResponse<Product> = {
     content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true,
   };
 
-  return useSafeQuery(queryFn, defaultValue, [page, size], {
+  return useSafeQuery(queryFn, defaultValue, [page, size, userId], {
     cacheTime: 60 * 1000,
-    refetchOnMount: false,
+    refetchOnMount: true,
     refreshInterval: CATALOG_REFRESH_INTERVAL,
   });
 };
