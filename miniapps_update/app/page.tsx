@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import BottomNav from "../components/BottomNav";
 import AppStoreLinks from "../components/AppStoreLinks";
+import HomeSearchResults from "../components/HomeSearchResults";
 import AppDownloadBanner from "../components/AppDownloadBanner";
 import ClosingSoonBadge from "../components/ClosingSoonBadge";
 import FavoriteToast from "../components/FavoriteToast";
@@ -424,6 +425,7 @@ export default function HomePage() {
         </div>
 
         <form
+          role="search"
           onSubmit={handleSearch}
           className="fs-home-search mt-4 flex h-12 items-center gap-2.5 rounded-xl border border-black/[0.07] bg-white px-3.5 shadow-[0_4px_16px_rgba(20,45,24,0.06)] transition-all focus-within:border-[#4CAD73]/50 focus-within:shadow-[0_5px_18px_rgba(76,173,115,0.14)] md:mt-6 md:h-14 md:max-w-3xl"
         >
@@ -433,6 +435,8 @@ export default function HomePage() {
             </svg>
           </button>
           <input
+            aria-label={t("searchPlaceholder")}
+            enterKeyHint="search"
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             className="min-w-0 flex-1 bg-transparent text-sm font-medium text-black outline-none placeholder:text-black/40 font-inter"
@@ -440,6 +444,8 @@ export default function HomePage() {
             type="search"
           />
         </form>
+
+        {searchQuery.trim() && <HomeSearchResults query={searchQuery.trim()} />}
 
         {authError && (
           <div className="mt-3 rounded-2xl border border-red-200 bg-red-50 p-3">

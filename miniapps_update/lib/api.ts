@@ -635,6 +635,30 @@ class ApiClient {
     }
   }
 
+  async getSearchCatalog(signal: AbortSignal) {
+    const loadProducts = async () => {
+      const products = new Map<number, Product>();
+      for (let page = 0; ; page++) {
+        const result = await this.makePublicRequest<PaginationResponse<Product>>(
+          `/products/featured?includeUnavailable=true&page=${page}&size=100`, { signal },
+        );
+        if (!Array.isArray(result?.content) || !Number.isInteger(result.totalPages)) {
+          throw new Error("Invalid product page");
+        }
+        for (const product of result.content) {
+          if (isProductDisplayableInMiniApp(product)) products.set(product.id, product);
+        }
+        if (result.last || page + 1 >= result.totalPages) return [...products.values()];
+      }
+    };
+    const [products, stores] = await Promise.all([
+      loadProducts(),
+      this.makePublicRequest<Store[]>("/stores/active", { signal }),
+    ]);
+    if (!Array.isArray(stores)) throw new Error("Invalid store list");
+    return { products, stores };
+  }
+
   async searchProducts(query: string, page = 0, size = 50, minPrice?: number, maxPrice?: number): Promise<PaginationResponse<Product>> {
     try {
       const priceParams = [

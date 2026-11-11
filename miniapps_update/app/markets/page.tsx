@@ -1,8 +1,9 @@
 "use client";
 
 import { includeSelectedCategoryGroup, matchesCatalogCategory } from "../../lib/catalogCategories";
+import { searchCatalog } from "../../lib/catalogSearch";
 import ProductContents from "../../components/ProductContents";
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { ArrowLeft, ChevronDown, Clock, Search, SlidersHorizontal, Star, X } from "lucide-react";
 import Link from "next/link";
@@ -66,21 +67,24 @@ function MarketsContent() {
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const query = searchParams.get("query")?.trim() || "";
+  const initialQuery = searchParams.get("query")?.trim() || "";
+  const [searchText, setSearchText] = useState(initialQuery);
+  useEffect(() => { setSearchText(initialQuery); }, [initialQuery]);
+  const query = searchText.trim();
   const categoryId = searchParams.get("categoryId")?.trim() || "";
   const notificationGroupId = searchParams.get("notificationGroupId")?.trim() || "";
   const view = searchParams.get("view")?.trim() || "";
   const showAllProducts = view === "products" || categoryId !== "";
-  const showSearch = !notificationGroupId && !showAllProducts;
-  const submitSearch = (value: string) => {
-    const nextQuery = value.trim();
-    if (nextQuery === query) return;
-    const params = new URLSearchParams(searchParams.toString());
-    if (nextQuery) params.set("query", nextQuery);
-    else params.delete("query");
-    const suffix = params.toString();
-    router.replace(suffix ? `/markets?${suffix}` : "/markets", { scroll: false });
+  const saveSearchUrl = () => {
+    const url = new URL(window.location.href);
+    if (query === (url.searchParams.get("query") || "")) return;
+    if (query) url.searchParams.set("query", query);
+    else url.searchParams.delete("query");
+    window.history.replaceState(null, "", url);
   };
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [limit, setLimit] = useState(24);
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [notificationGroup, setNotificationGroup] = useState<NotificationGroup | null>(null);
@@ -117,7 +121,7 @@ function MarketsContent() {
     : hasAppliedMaxPrice
       ? appliedMaxPriceValue
       : undefined;
-  const showProductFilters = showAllProducts || products.length > 0;
+  const showProductFilters = !notificationGroupId || products.length > 0;
   const showStoreFilters = stores.length > 0 && !showAllProducts;
   const isPriceFilterActive = minFilterValue !== undefined || maxFilterValue !== undefined;
   const activeFilterCount = [
@@ -207,13 +211,14 @@ function MarketsContent() {
   };
 
   useEffect(() => {
+    const controller = new AbortController();
     let isMounted = true;
     let pending = false;
     const loadStores = async (silent = false) => {
       if (pending) return;
       pending = true;
       try {
-        if (!silent) setIsLoading(true);
+        if (!silent) { setIsLoading(true); setLoadFailed(false); }
         if (notificationGroupId) {
           const group = await apiClient.getNotificationGroup(Number(notificationGroupId));
           if (!isMounted) return;
@@ -263,49 +268,13 @@ function MarketsContent() {
           return;
         }
 
-        if (query) {
-          const [storesResult, productsResult] = await Promise.all([
-            apiClient.searchStores(query, 0, 50),
-            apiClient.searchProducts(
-              query,
-              0,
-              50,
-              minFilterValue,
-              maxFilterValue,
-            ),
-          ]);
-          if (!isMounted) return;
-          setStores(storesResult.content);
-          setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
-          return;
-        }
-
-        if (showAllProducts) {
-          const [storesData, productsResult] = await Promise.all([
-            apiClient.getActiveStores(),
-            apiClient.getFeaturedProducts(
-              0,
-              200,
-              minFilterValue,
-              maxFilterValue,
-            ),
-          ]);
-          if (!isMounted) return;
-          setStores(storesData);
-          setProducts(sortProducts(productsResult.content.filter(isProductDisplayableInMiniApp)));
-          return;
-        }
-
-        const storesData = await apiClient.getActiveStores();
+        const catalog = await apiClient.getSearchCatalog(controller.signal);
         if (!isMounted) return;
-        setProducts([]);
-        setStores(
-          categoryId
-            ? storesData.filter((store) => String(store.category || "") === categoryId)
-            : storesData
-        );
+        setStores(catalog.stores);
+        setProducts(catalog.products);
+        setLoadFailed(false);
       } catch (error) {
-        console.error('Failed to load stores:', error);
+        if (isMounted) { setLoadFailed(true); console.error('Failed to load catalog:', error); }
       } finally {
         pending = false;
         if (isMounted) setIsLoading(false);
@@ -313,14 +282,13 @@ function MarketsContent() {
     };
 
     loadStores();
-    const unsubscribe = notificationGroupId || query || showAllProducts
-      ? subscribeToCatalogRefresh(() => loadStores(true))
-      : () => {};
+    const unsubscribe = subscribeToCatalogRefresh(() => loadStores(true));
     return () => {
       isMounted = false;
+      controller.abort();
       unsubscribe();
     };
-  }, [query, categoryId, notificationGroupId, showAllProducts, minFilterValue, maxFilterValue]);
+  }, [notificationGroupId, retryCount]);
 
   const formatOpeningHours = (store: Store) => {
     if (store.openingHours && store.closingHours) {
@@ -332,12 +300,18 @@ function MarketsContent() {
     return "9:00 - 22:00";
   };
 
-  const filteredStores = sortStores(stores.filter((store) => {
-    if (favoritesOnly && !store.isFavorite) return false;
-    return true;
-  }), sortMode);
-  const favoriteStores = filteredStores.filter((store) => store.isFavorite);
-  const regularStores = filteredStores.filter((store) => !store.isFavorite);
+  const matches = useMemo(() => searchCatalog(notificationGroupId ? "" : query, products, stores),
+    [notificationGroupId, query, products, stores]);
+  const productFiltersActive = isPriceFilterActive || !!selectedProductStoreId || !!selectedProductCategoryId || discountOnly;
+  const displayStores = !showAllProducts && !productFiltersActive;
+  const displayProducts = !!notificationGroupId || showAllProducts || !!query || productFiltersActive || favoritesOnly;
+  const filteredStores = displayStores
+    ? sortStores(matches.stores.filter(store => !favoritesOnly || store.isFavorite), sortMode)
+    : [];
+  const favoriteStores = filteredStores.filter(store => store.isFavorite);
+  const regularStores = filteredStores.filter(store => !store.isFavorite);
+  useEffect(() => { setLimit(24); }, [query, categoryId, selectedProductCategoryId, selectedProductStoreId,
+    minFilterValue, maxFilterValue, favoritesOnly, discountOnly, sortMode]);
   const productStoreOptions = Array.from(
     stores.reduce((map, store) => {
       map.set(String(store.id), store.name);
@@ -357,7 +331,7 @@ function MarketsContent() {
       return map;
     }, new Map<string, string>())
   ).sort(([, aName], [, bName]) => aName.localeCompare(bName, "ru")), selectedProductCategoryId, t("categoryStrawberry"));
-  const filteredProducts = sortProducts(products.filter((product) => {
+  const filteredProducts = sortProducts(matches.products.filter((product) => {
     const price = getProductPrice(product);
     if (minFilterValue !== undefined && price < minFilterValue) return false;
     if (maxFilterValue !== undefined && price > maxFilterValue) return false;
@@ -390,11 +364,7 @@ function MarketsContent() {
   ].filter(Boolean) as string[];
   const hasDiscountedProducts = products.some((product) => getProductDiscount(product) > 0);
   const canChooseProductStore = productStoreOptions.length > 1;
-  const visibleResultCount = showProductFilters && showStoreFilters
-    ? filteredProducts.length + filteredStores.length
-    : showProductFilters
-      ? filteredProducts.length
-      : filteredStores.length;
+  const visibleResultCount = (displayProducts ? filteredProducts.length : 0) + filteredStores.length;
 
   const FilterToggle = ({
     active,
@@ -578,13 +548,12 @@ function MarketsContent() {
             {notificationGroupId ? "Подборка FoodSave" : showAllProducts ? "Боксы" : t("search")}
           </h1>
         </div>
-        {showSearch && (
+        {!notificationGroupId && (
           <form
-            key={query}
             role="search"
             onSubmit={(event) => {
               event.preventDefault();
-              submitSearch(String(new FormData(event.currentTarget).get("query") || ""));
+              saveSearchUrl();
             }}
             className="mt-4 flex min-h-12 items-center gap-2 rounded-xl border border-black/[0.07] bg-white px-3 shadow-sm focus-within:border-[#4CAD73] md:max-w-3xl"
           >
@@ -595,13 +564,12 @@ function MarketsContent() {
               enterKeyHint="search"
               aria-label={t("searchPlaceholder")}
               placeholder={t("searchPlaceholder")}
-              defaultValue={query}
-              onChange={(event) => { if (!event.currentTarget.value) submitSearch(""); }}
+              value={searchText}
+              onChange={(event) => setSearchText(event.currentTarget.value)}
+              onBlur={saveSearchUrl}
               className="min-w-0 flex-1 bg-transparent py-3 text-base text-black outline-none placeholder:text-black/45"
             />
-            <button type="submit" className="min-h-11 shrink-0 px-2 text-sm font-semibold text-[#267348]">
-              {t("searchSubmit")}
-            </button>
+
           </form>
         )}
       </div>
@@ -810,11 +778,11 @@ function MarketsContent() {
               </>
             )}
 
-            {stores.length > 0 && query && (
+            {filteredStores.length > 0 && query && (
               <div className="flex items-baseline justify-between gap-3 pt-1">
                 <h2 className="text-lg font-bold text-black font-inter">{t("searchStores")}</h2>
                 <span className="text-xs font-medium text-black/45 font-inter">
-                  {filteredStores.length} из {stores.length}
+                  {filteredStores.length}
                 </span>
               </div>
             )}
@@ -840,37 +808,38 @@ function MarketsContent() {
             {!showAllProducts && regularStores.map((store) => (
               <StoreCard key={store.id} store={store} />
             ))}
-            {!showAllProducts && stores.length > 0 && filteredStores.length === 0 && (
+            {displayStores && matches.stores.length > 0 && filteredStores.length === 0 && favoritesOnly && filteredProducts.length > 0 && (
               <div className="border-y border-black/[0.06] py-5 text-center">
                 <p className="text-sm font-medium text-black/50 font-inter">По этим фильтрам заведений не найдено</p>
               </div>
             )}
 
-            {products.length > 0 && (
+            {displayProducts && filteredProducts.length > 0 && (
               <>
                 <div className="flex items-baseline justify-between gap-3 pt-3">
                   <h2 className="text-lg font-bold text-black font-inter">{t("searchBoxes")}</h2>
                   <span className="text-xs font-medium text-black/45 font-inter">
-                    {filteredProducts.length} из {products.length}
+                    {filteredProducts.length}
                   </span>
                 </div>
                 <div className="fs-catalog-grid grid grid-cols-2 gap-4">
-                  {filteredProducts.map((product) => (
+                  {filteredProducts.slice(0, limit).map((product) => (
                     <ProductCard key={product.id} product={product} />
                   ))}
                 </div>
-                {filteredProducts.length === 0 && (
-                  <div className="border-y border-black/[0.06] py-5 text-center">
-                    <p className="text-sm font-medium text-black/50 font-inter">В этом диапазоне цены боксов не найдены</p>
-                  </div>
+                {filteredProducts.length > limit && (
+                  <button type="button" className="w-full rounded-xl bg-[#EDF7F0] py-3 font-semibold text-[#267348]" onClick={() => setLimit(value => value + 24)}>
+                    {t("searchMore")}
+                  </button>
                 )}
               </>
             )}
             
-            {stores.length === 0 && products.length === 0 && (
+            {loadFailed && <button type="button" role="alert" className="p-3 text-sm" onClick={() => setRetryCount(value => value + 1)}>{t("searchRetry")}</button>}
+            {!loadFailed && visibleResultCount === 0 && (
               <div className="text-center py-12">
                 <p className="text-black/50 font-inter">
-                  {query ? t("searchEmpty") : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
+                  {query || activeFilterCount ? t("searchEmpty") : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
                 </p>
               </div>
             )}
