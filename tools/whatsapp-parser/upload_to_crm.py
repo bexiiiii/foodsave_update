@@ -17,6 +17,8 @@
 result.json — то, что выводит parse_daily.py (можно просто перенаправить >result.json)
 """
 import argparse
+from pate_branches import location_words, pate_branch
+from publication import publish_product
 from price_safety import price_error
 import json
 import os
@@ -125,6 +127,16 @@ def resolve_store_id(store_name_raw, stores, store_aliases):
     alias = store_aliases.get(key)
     candidates = [(s["id"], s["name"]) for s in stores]
     target = alias if alias else store_name_raw
+    branch = pate_branch(store_name_raw)
+    if branch:
+        candidates = [(sid, name) for sid, name in candidates if pate_branch(name) == branch]
+        if len(candidates) != 1:
+            exact = [(sid, name) for sid, name in candidates if location_words(name) == location_words(target)]
+            if len(exact) != 1:
+                return None, None, 0.0
+            candidates = exact
+        sid, name = candidates[0]
+        return sid, name, 1.0
     sid, sname, score = best_name_match(target, candidates)
     return sid, sname, score
 
@@ -231,7 +243,7 @@ def main():
         # storeId
         store_id = card.get("storeId")
         store_label = card.get("storeName", "")
-        if store_id is None and stores:
+        if store_id is None:
             sid, sname, score = resolve_store_id(store_label, stores, store_aliases)
             if sid and score >= 0.5:
                 store_id = sid
@@ -274,11 +286,10 @@ def main():
             continue
 
         try:
-            r = client.create_product(payload, cfg.get("create_endpoint", "/products"))
-            if r.status_code in (200, 201):
-                report.append({**card, "result": "ok", "response": r.json(), "categoryMatch": category_match})
-            else:
-                report.append({**card, "result": "failed", "status_code": r.status_code, "response_text": r.text, "payload": payload, "categoryMatch": category_match})
+            result = publish_product(client, card, payload, cfg.get("create_endpoint", "/products"))
+            if result["result"] == "skipped":
+                skipped += 1
+            report.append({**card, **result, "categoryMatch": category_match})
         except Exception as e:
             report.append({**card, "result": "error", "reason": str(e)})
 

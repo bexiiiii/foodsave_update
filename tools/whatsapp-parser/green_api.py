@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 """Helpers for GREEN-API WhatsApp webhooks."""
+import fcntl
 import json
 import threading
 import time
@@ -180,7 +181,8 @@ def build_publication_reply(parse_summary, upload_report, auto_upload):
     ok = upload_summary.get("ok", 0)
     skipped = upload_summary.get("skipped", 0)
     failed = upload_summary.get("failed", 0)
-    total = upload_summary.get("total", parse_summary.get("total", 0))
+    total = parse_summary.get("total", upload_summary.get("total", 0))
+    unparsed = max(0, total - upload_summary.get("total", 0))
     lines = [
         "✅ Боксы обработаны.",
         f"Опубликовано: {ok} из {total}",
@@ -189,6 +191,8 @@ def build_publication_reply(parse_summary, upload_report, auto_upload):
         lines.append(f"Пропущено на проверку: {skipped}")
     if failed:
         lines.append(f"Ошибки: {failed}")
+    if unparsed:
+        lines.append(f"Не удалось разобрать: {unparsed}")
     if ok == total and total:
         lines.append("Все боксы опубликованы.")
     return "\n".join(lines)
@@ -203,14 +207,23 @@ class WebhookStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
 
     def seen(self, id_message):
-        if not id_message or not self.path.exists():
+        if not id_message:
             return False
-        needle = f'"idMessage": "{id_message}"'
+        needle = json.dumps(id_message, ensure_ascii=False)
         try:
             with self.path.open(encoding="utf-8") as f:
-                return any(needle in line for line in f)
-        except OSError:
+                fcntl.flock(f, fcntl.LOCK_SH)
+                for line in f:
+                    if needle not in line:
+                        continue
+                    event = json.loads(line)
+                    result = event.get("result") or {}
+                    message = event.get("message") or {}
+                    if message.get("idMessage") == id_message and result.get("ok") and not result.get("ignored"):
+                        return True
+        except FileNotFoundError:
             return False
+        return False
 
     def claim(self, id_message):
         """Atomically claim an incoming message for processing in this server."""
@@ -232,7 +245,9 @@ class WebhookStore:
     def append(self, event):
         record = {"receivedAt": int(time.time()), **event}
         with self.path.open("a", encoding="utf-8") as f:
+            fcntl.flock(f, fcntl.LOCK_EX)
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
+            f.flush()
 
 
 def card_fingerprint(card):

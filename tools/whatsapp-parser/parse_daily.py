@@ -14,6 +14,7 @@ catalog.json — мастер-каталог (пример: catalog_paste.json),
 строим из PDF/реального меню и потом только дополняем.
 """
 import re
+from pate_branches import location_words, pate_branch, photo_matches_branch
 from price_safety import safe_item_parser, safe_card_parser
 import json
 import sys
@@ -245,7 +246,11 @@ def parse_store_header(line: str):
     without_discount = re.sub(r"[:()]", " ", without_discount)
     normalized = normalize(without_discount)
     tokens = set(normalized.split())
-    if tokens & STORE_WORDS:
+    if pate_branch(without_discount):
+        return location_words(without_discount), discount
+    # Brand names also occur in products, e.g. "Чизкейк Пате 1шт".
+    pate_header = re.fullmatch(r"пате(?: [а-яa-z]+)*(?: \d{1,3}[а-яa-z]?)?", normalized)
+    if tokens & (STORE_WORDS - {"пате", "толе", "би", "туран"}) or pate_header:
         return normalized, discount
     if discount is not None and normalized and not re.search(r"\d", normalized):
         return normalized, discount
@@ -282,6 +287,8 @@ def parse_lines(raw_text: str, default_store=None):
 
         header = parse_store_header(line)
         if header:
+            if not current_lines and header == (current_store, current_discount) and current_store in seen_store_headers:
+                continue
             flush()
             current_store, current_discount = header
             current_lines = []
@@ -637,6 +644,27 @@ def parse_bundle_lines(store, lines, category_name=None, expiry_days=DEFAULT_EXP
     return cards, consumed
 
 
+def pate_product_name_matches(name, match, catalog):
+    # A price/size match alone cannot distinguish two different pastries.
+    def words(value):
+        tokens = normalize(apply_name_replacements(value)).split()
+        return {t for t in tokens if t not in SIZE_SYNONYMS and t not in {"пор", "порция", "шт", "с"}}
+
+    query = words(name)
+    if not query:
+        return False
+    candidates = []
+    for item in catalog:
+        labels = [words(label) for label in [item["canonical"], *item.get("aliases", [])]]
+        if query in labels:
+            candidates.append((2, item))
+        elif any(query <= label for label in labels):
+            candidates.append((1, item))
+    best = max((score for score, _ in candidates), default=0)
+    winners = [item for score, item in candidates if score == best]
+    return len(winners) == 1 and winners[0] is match
+
+
 def build_card(store, parsed, catalog, header_discount=None, block_reasons=None, expiry_days=DEFAULT_EXPIRY_DAYS, category_name=None):
     block_reasons = block_reasons or []
     name_raw = parsed["name"]
@@ -646,10 +674,16 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
     size = parsed.get("size") or extract_size(name_raw)
     desired_size = size or ("порция" if parsed.get("qtyUnit") == "пор" else None)
     match, score, ranked = best_match(name_raw, catalog, original_price=orig, desired_size=desired_size)
+    branch = pate_branch(store)
+    uncertain_product = branch and match is not None and not pate_product_name_matches(name_raw, match, catalog)
+    if uncertain_product:
+        match = None
     size_label, size_data = find_size_data(match, size, orig, parsed.get("qtyUnit"))
     catalog_confirmed = bool(match and size_data and orig is not None and size_data.get("price") == orig)
 
     review_reasons = list(dict.fromkeys(block_reasons + parsed.get("reviewReasons", [])))
+    if uncertain_product:
+        review_reasons.append("проверить название и фото товара")
     if parsed.get("assumedFromCatalog"):
         if match and size_data and header_discount is not None:
             orig = size_data["price"]
@@ -702,6 +736,9 @@ def build_card(store, parsed, catalog, header_discount=None, block_reasons=None,
     review_reasons = list(dict.fromkeys(review_reasons))
 
     resolved_image = image or find_partner_image(name_raw, store)
+    if branch and resolved_image and not photo_matches_branch(resolved_image, branch):
+        resolved_image = None
+        review_reasons.append("проверить фото товара для филиала")
     return {
         "storeName": store,
         "storeId": STORE_IDS.get(normalize(store)),

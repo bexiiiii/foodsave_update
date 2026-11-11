@@ -37,8 +37,25 @@ class GreenApiWebhookTest(unittest.TestCase):
             self.assertFalse(store.claim("message-1"))
             store.append({"message": {"idMessage": "message-1"}, "result": {"ok": True}})
             store.release("message-1")
-
             self.assertFalse(store.claim("message-1"))
+
+    def test_only_processed_message_marks_its_id_as_seen(self):
+        with tempfile.TemporaryDirectory() as directory:
+            store = WebhookStore(Path(directory) / "events.jsonl")
+            store.append({"message": {"idMessage": "other", "raw": {"idMessage": "id"}},
+                          "result": {"ok": True}})
+            store.append({"message": {"idMessage": "id"}, "result": {"ok": True, "ignored": True}})
+            self.assertFalse(store.seen("id"))
+            with store.path.open("a") as log:
+                log.write('{"message":{"idMessage":"id"},"result":{"ok":true}}\n')
+            self.assertTrue(store.seen("id"))
+
+    def test_partial_parse_reports_missing_item(self):
+        reply = build_publication_reply({"total": 2}, {"summary": {"ok": 1, "total": 1}}, True)
+        self.assertIn("Опубликовано: 1 из 2", reply)
+        self.assertIn("Не удалось разобрать: 1", reply)
+        self.assertNotIn("Все боксы опубликованы", reply)
+
     def test_extracts_group_chat_name(self):
         message = extract_green_api_message(
             {

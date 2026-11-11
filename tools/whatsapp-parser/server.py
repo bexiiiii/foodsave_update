@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """Local web UI for parsing Pâté WhatsApp messages."""
 import json
-from price_safety import price_error
 import mimetypes
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -18,6 +18,8 @@ from green_api import (
     verify_webhook_token,
 )
 from parse_daily import process
+from price_safety import price_error
+from publication import publish_product
 from upload_to_crm import CrmClient, resolve_store_id
 
 
@@ -136,6 +138,7 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"error": str(exc)}, status=500)
 
     def handle_green_api_webhook(self, parsed):
+        handler_started_at = time.time()
         claimed_message_id = None
         try:
             cfg = load_config()
@@ -165,7 +168,7 @@ class Handler(BaseHTTPRequestHandler):
                         "typeMessage": message.get("typeMessage"),
                     },
                 }
-                store.append({"message": message, "result": result})
+                store.append({"handlerStartedAt": handler_started_at, "message": message, "result": result})
                 return self.send_json(result)
 
             text = message.get("text")
@@ -197,7 +200,9 @@ class Handler(BaseHTTPRequestHandler):
                 )
                 media = message.get("media") or {}
                 download_url = media.get("downloadUrl")
-                if download_url and len(items) == 1:
+                mime = (media.get("mimeType") or "").lower()
+                is_photo = mime.startswith("image/") or (not mime and media.get("type") == "imageMessage")
+                if download_url and is_photo and len(items) == 1 and not items[0].get("error"):
                     items[0]["images"] = [download_url]
                 items, duplicates = deduplicate_cards(items)
                 result["parse"] = summarize_items(items)
@@ -206,7 +211,9 @@ class Handler(BaseHTTPRequestHandler):
                     result["duplicateItems"] = len(duplicates)
                 publishable_items = [item for item in items if not item.get("error")]
                 if publishable_items:
-                    upload_report = upload_cards(publishable_items, dry_run=dry_run, force=force)
+                    upload_report = upload_cards(
+                        publishable_items, dry_run=dry_run, force=force, source_message_id=message_id,
+                    )
                     result["upload"] = upload_report
                     result["autoUpload"] = auto_upload
                 if items:
@@ -216,11 +223,11 @@ class Handler(BaseHTTPRequestHandler):
                 result["parse"] = {"total": 0, "ok": 0, "review": 0, "stores": 0}
                 result["note"] = "no text/caption to parse"
 
-            store.append({"message": message, "result": result})
+            store.append({"handlerStartedAt": handler_started_at, "message": message, "result": result})
             return self.send_json(result)
         except Exception as exc:
             try:
-                WebhookStore(WEBHOOK_LOG_PATH).append({"error": str(exc)})
+                WebhookStore(WEBHOOK_LOG_PATH).append({"handlerStartedAt": handler_started_at, "error": str(exc)})
             except Exception:
                 pass
             return self.send_json({"ok": False, "error": str(exc)}, status=500)
@@ -290,7 +297,7 @@ def main():
     server.serve_forever()
 
 
-def upload_cards(cards, dry_run=False, force=False):
+def upload_cards(cards, dry_run=False, force=False, source_message_id=None):
     cfg = load_config()
     images_dir = ROOT / cfg.get("images_dir", "./images")
     store_aliases = cfg.get("store_aliases", {})
@@ -313,6 +320,7 @@ def upload_cards(cards, dry_run=False, force=False):
             images_dir=images_dir,
             dry_run=dry_run,
             force=force,
+            source_message_id=source_message_id,
         )
         report.append(result)
 
@@ -386,7 +394,7 @@ def prepare_images(card, client, images_dir, dry_run=False):
     return prepared
 
 
-def upload_one_card(card, client, cfg, categories, stores, store_aliases, images_dir, dry_run=False, force=False):
+def upload_one_card(card, client, cfg, categories, stores, store_aliases, images_dir, dry_run=False, force=False, source_message_id=None):
     label = card.get("name") or card.get("rawLine_name") or card.get("rawLine") or "unknown"
     if card.get("error"):
         return {"result": "skipped", "name": label, "reason": "не распознана строка"}
@@ -399,7 +407,7 @@ def upload_one_card(card, client, cfg, categories, stores, store_aliases, images
     store_id = card.get("storeId")
     store_label = card.get("storeName", "")
     store_match = None
-    if store_id is None and stores:
+    if store_id is None:
         sid, sname, score = resolve_store_id(store_label, stores, store_aliases)
         if sid and score >= 0.5:
             store_id = sid
@@ -438,18 +446,8 @@ def upload_one_card(card, client, cfg, categories, stores, store_aliases, images
         }
 
     try:
-        response = client.create_product(payload, cfg.get("create_endpoint", "/products"))
-        if response.status_code in (200, 201):
-            return {"result": "ok", "name": label, "response": response.json(), "storeMatch": store_match, "categoryMatch": category_match}
-        return {
-            "result": "failed",
-            "name": label,
-            "status_code": response.status_code,
-            "response_text": response.text,
-            "payload": payload,
-            "storeMatch": store_match,
-            "categoryMatch": category_match,
-        }
+        result = publish_product(client, card, payload, cfg.get("create_endpoint", "/products"), source_message_id)
+        return {**result, "name": label, "storeMatch": store_match, "categoryMatch": category_match}
     except Exception as exc:
         return {"result": "error", "name": label, "reason": str(exc)}
 
