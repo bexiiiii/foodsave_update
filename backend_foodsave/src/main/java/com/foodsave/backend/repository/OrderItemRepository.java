@@ -16,6 +16,21 @@ import com.foodsave.backend.domain.enums.OrderStatus;
 public interface OrderItemRepository extends JpaRepository<OrderItem, Long> {
     
     List<OrderItem> findByOrder(Order order);
+
+    interface PurchasedDish {
+        Long getOrderId();
+        Long getStoreId();
+        String getDishName();
+        String getDescription();
+    }
+
+    @Query("""
+            SELECT DISTINCT o.id AS orderId, o.store.id AS storeId, p.name AS dishName, p.description AS description
+            FROM OrderItem i JOIN i.order o JOIN i.product p
+            WHERE o.user.id = :userId AND o.status IN :statuses AND o.createdAt >= :since
+            """)
+    List<PurchasedDish> findPurchasedDishes(@Param("userId") Long userId,
+            @Param("statuses") Set<OrderStatus> statuses, @Param("since") java.time.LocalDateTime since);
     
     @Query("SELECT oi FROM OrderItem oi WHERE oi.order = :order AND oi.product = :product")
     OrderItem findByOrderAndProduct(

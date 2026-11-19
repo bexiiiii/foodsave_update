@@ -15,6 +15,7 @@ public class NotificationSettingsDTO {
     private boolean smsEnabled;
     private boolean orderUpdates;
     private boolean promotions;
+    private Boolean nearbyOnly;
     private boolean systemUpdates;
     private Long userId;
 
@@ -26,6 +27,7 @@ public class NotificationSettingsDTO {
         dto.setSmsEnabled(settings.isSmsEnabled());
         dto.setOrderUpdates(settings.isOrderUpdates());
         dto.setPromotions(settings.isPromotions());
+        dto.setNearbyOnly(settings.isNearbyOnly());
         dto.setSystemUpdates(settings.isSystemUpdates());
         dto.setUserId(settings.getUser().getId());
         return dto;

@@ -1,7 +1,8 @@
 package com.foodsave.backend.controller;
 
 import com.foodsave.backend.dto.telegram.TelegramUpdate;
-import com.foodsave.backend.service.TelegramWebhookService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.foodsave.backend.service.TelegramIngressService;
 import com.foodsave.backend.service.TelegramStoreManagerBotService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,7 +26,7 @@ import java.security.MessageDigest;
 @Slf4j
 public class TelegramWebhookController {
 
-    private final TelegramWebhookService telegramWebhookService;
+    private final TelegramIngressService telegramIngressService;
     private final TelegramStoreManagerBotService telegramStoreManagerBotService;
 
     @Value("${telegram.webhook.secret:}")
@@ -37,15 +38,16 @@ public class TelegramWebhookController {
     @PostMapping("/webhook")
     public ResponseEntity<Void> handleWebhook(
             @RequestHeader(value = "X-Telegram-Bot-Api-Secret-Token", required = false) String secret,
-            @RequestBody TelegramUpdate update) {
+            @RequestBody JsonNode payload) {
         if (!validSecret(clientWebhookSecret, secret)) {
             log.warn("Rejected client bot webhook with invalid secret");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        Long chatId = extractChatId(update);
-        Long userId = extractUserId(update);
-        log.info("Client bot webhook received: chatId={}, userId={}", chatId, userId);
-        telegramWebhookService.handleUpdate(update);
+        try {
+            telegramIngressService.receive(payload);
+        } catch (org.springframework.web.server.ResponseStatusException rejected) {
+            return ResponseEntity.status(rejected.getStatusCode()).build();
+        }
         return ResponseEntity.ok().build();
     }
 

@@ -2,6 +2,7 @@ package com.foodsave.backend.service;
 
 import com.foodsave.backend.domain.enums.*;
 import com.foodsave.backend.dto.ProductDTO;
+import com.foodsave.backend.dto.telegram.TelegramLocation;
 import com.foodsave.backend.dto.analytics.ProductEventRequest;
 import com.foodsave.backend.dto.communications.NotificationGroupResponse;
 import com.foodsave.backend.dto.communications.NotificationScheduleSettingDTO;
@@ -13,8 +14,10 @@ import com.foodsave.backend.exception.AccessDeniedException;
 import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.web.util.HtmlUtils;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,7 +33,10 @@ import java.util.stream.Collectors;
 public class NotificationGroupService {
 
     private static final ZoneId DEFAULT_ZONE = ZoneId.of("Asia/Almaty");
-    private static final long SCHEDULER_LOCK_ID = 884202608031130L;
+    private static final double NEARBY_RADIUS_KM = 2.0;
+    @Value("${telegram.ingress.test-chat-id:0}")
+    private long personalWalkTestChatId;
+
 
     private final NotificationGroupRepository groupRepository;
     private final NotificationGroupItemRepository itemRepository;
@@ -40,9 +46,13 @@ public class NotificationGroupService {
     private final NotificationSettingsRepository notificationSettingsRepository;
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final NearbyWalkProductRepository walkProducts;
+    private final OrderItemRepository orderItemRepository;
     private final TelegramBotService telegramBotService;
     private final ProductEventService productEventService;
-    private final JdbcTemplate jdbcTemplate;
+    private final NotificationRepository notificationRepository;
+    private final FavoriteRepository favoriteRepository;
+    private final TransactionTemplate transactions;
     private final AuthorizationService authorizationService;
 
     @Transactional
@@ -54,22 +64,34 @@ public class NotificationGroupService {
         List<User> users = userRepository.findByTelegramUserTrue();
         if (users.isEmpty()) return;
 
-        NotificationScheduleSetting setting = resolveSetting(NotificationWindowType.LUNCH, null);
-        LocalDateTime scheduledAt = resolveNextScheduledAt(setting);
+        NotificationScheduleSetting lunch = resolveSetting(NotificationWindowType.LUNCH, null);
+        NotificationScheduleSetting evening = resolveSetting(NotificationWindowType.EVENING, null);
+        LocalDateTime lunchAt = resolveNextScheduledAt(lunch);
+        LocalDateTime eveningAt = resolveNextScheduledAt(evening);
 
+        users.sort(Comparator.comparing(User::getId));
         for (User user : users) {
-            if (!isMarketingEnabled(user)) continue;
-            UserNotificationPreferences prefs = getOrCreatePreferences(user);
-            if (!prefs.isTelegramNotificationsEnabled() || !prefs.isLunchDigestEnabled()) continue;
+            if (!user.isEnabled() || !user.isActive() || user.isBlacklisted()) continue;
+            NotificationSettings settings = notificationSettingsRepository.findByUser(user).orElse(null);
+            if (settings != null && !settings.isPromotions()) continue;
+            boolean nearby = settings != null && settings.isNearbyOnly();
+            UserNotificationPreferences prefs = preferencesFor(user);
+            if (!prefs.isTelegramNotificationsEnabled()) continue;
+            if (nearby && (!prefs.isNearbyOffersEnabled()
+                    || !Double.isFinite(nearbyDistance(user, product.getStore(), LocalDateTime.now())))) continue;
+            boolean lunchEnabled = lunch.isEnabled() && prefs.isLunchDigestEnabled();
+            boolean useEvening = nearby && evening.isEnabled() && prefs.isEveningDigestEnabled()
+                    && (!lunchEnabled || eveningAt.isBefore(lunchAt));
+            if (!useEvening && !lunchEnabled) continue;
+            NotificationScheduleSetting setting = useEvening ? evening : lunch;
+            LocalDateTime scheduledAt = useEvening ? eveningAt : lunchAt;
 
-            NotificationGroup group = groupRepository
-                    .findFirstByUserAndTimeWindowAndScheduledAtAndStatusIn(
-                            user,
-                            setting.getNotificationWindowType(),
-                            scheduledAt,
-                            List.of(NotificationGroupStatus.COLLECTING, NotificationGroupStatus.SCHEDULED)
-                    )
-                    .orElseGet(() -> createGroup(user, setting, scheduledAt));
+            String key = user.getId() + ":" + setting.getNotificationWindowType() + ":" + scheduledAt;
+            String window = setting.getNotificationWindowType().name();
+            groupRepository.ensureScheduled(user.getId(), window, scheduledAt,
+                    nearby ? "NEARBY_OFFERS" : "NEW_BOX", window.toLowerCase(Locale.ROOT) + "-" + scheduledAt.toLocalDate(), key);
+            NotificationGroup group = groupRepository.lockForCollection(key).orElse(null);
+            if (group == null || group.getStatus() != NotificationGroupStatus.SCHEDULED) continue;
             if (itemRepository.existsByNotificationGroupAndBoxId(group, product.getId())) continue;
 
             NotificationGroupItem item = new NotificationGroupItem();
@@ -82,9 +104,8 @@ public class NotificationGroupService {
             item.setOriginalPrice(product.getOriginalPrice());
             item.setDiscountPercent(product.getDiscountPercentage() != null ? product.getDiscountPercentage().intValue() : 0);
             item.setPickupEndAt(product.getExpiryDate());
-            group.getItems().add(item);
+            group.getItems().add(itemRepository.save(item));
             recalculateGroup(group);
-            groupRepository.save(group);
         }
     }
 
@@ -93,31 +114,18 @@ public class NotificationGroupService {
         NotificationGroup group = groupRepository.findWithItemsById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Notification group not found"));
         requireGroupAccess(group);
-        List<Long> ids = group.getItems().stream()
-                .map(NotificationGroupItem::getBox)
-                .filter(Objects::nonNull)
-                .map(Product::getId)
-                .toList();
-        if (ids.isEmpty()) {
-            return NotificationGroupResponse.fromEntity(group);
-        }
-        Set<Long> availableIds = productRepository.findActiveAvailableByIds(
-                        ids, ProductAvailability.visibilityCutoff(), ProductAvailability.currentTimeText()).stream()
-                .map(Product::getId)
-                .collect(Collectors.toSet());
-        group.setItems(group.getItems().stream()
-                .filter(item -> item.getBox() != null && availableIds.contains(item.getBox().getId()))
-                .collect(Collectors.toCollection(ArrayList::new)));
-        return NotificationGroupResponse.fromEntity(group);
+        return NotificationGroupResponse.fromEntity(group, filterAvailableItems(group, group.getTriggerType() == NotificationTriggerType.NEARBY_OFFERS));
     }
 
     @Transactional
     public void markOpened(Long id) {
         groupRepository.findById(id).ifPresent(group -> {
             requireGroupAccess(group);
-            if (group.getOpenedAt() == null) {
-                group.setOpenedAt(LocalDateTime.now());
-                groupRepository.save(group);
+            if (group.getOpenedAt() != null) return;
+            group.setOpenedAt(LocalDateTime.now());
+            groupRepository.save(group);
+            if (group.getTriggerType() == NotificationTriggerType.NEARBY_OFFERS) {
+                notificationRepository.findByOfferGroupIdAndUser(id, group.getUser()).ifPresent(n -> n.setRead(true));
             }
             NotificationFrequencyState state = getOrCreateFrequencyState(group.getUser());
             state.setLastOpenedAt(LocalDateTime.now());
@@ -147,77 +155,120 @@ public class NotificationGroupService {
     }
 
     public void processDueGroups() {
-        if (!tryLock()) {
-            log.debug("Notification scheduler skipped: lock is held by another instance");
-            return;
-        }
-        try {
-            List<NotificationGroup> dueGroups = groupRepository.findDueGroups(
-                    NotificationGroupStatus.SCHEDULED, LocalDateTime.now(), PageRequest.of(0, 100));
-            for (NotificationGroup group : dueGroups) {
-                try {
-                    sendGroup(group.getId());
-                } catch (Exception e) {
-                    log.error("Notification group {} processing failed", group.getId(), e);
-                }
+        List<NotificationGroup> due = groupRepository.findDueGroups(NotificationGroupStatus.SCHEDULED,
+                LocalDateTime.now(DEFAULT_ZONE), PageRequest.of(0, 100));
+        for (NotificationGroup group : due) {
+            // Commit the claim before calling Telegram: a second worker must not send the same offer.
+            if (groupRepository.changeStatus(group.getId(), NotificationGroupStatus.SCHEDULED,
+                    NotificationGroupStatus.PROCESSING) != 1) continue;
+            try {
+                transactions.executeWithoutResult(status -> sendClaimedGroup(group.getId()));
+            } catch (Exception ex) {
+                groupRepository.changeStatus(group.getId(), NotificationGroupStatus.PROCESSING, NotificationGroupStatus.FAILED);
+                log.error("Notification group {} processing failed", group.getId(), ex);
             }
-        } finally {
-            unlock();
         }
     }
 
-    @Transactional
-    public void sendGroup(Long groupId) {
+    private void sendClaimedGroup(Long groupId) {
         NotificationGroup group = groupRepository.findWithItemsById(groupId)
                 .orElseThrow(() -> new EntityNotFoundException("Notification group not found"));
-        if (group.getStatus() != NotificationGroupStatus.SCHEDULED) return;
-        group.setStatus(NotificationGroupStatus.PROCESSING);
-        groupRepository.save(group);
-
-        try {
-            List<NotificationGroupItem> availableItems = filterAvailableItems(group);
-            group.setItems(new ArrayList<>(availableItems));
-            recalculateGroup(group);
-
-            NotificationScheduleSetting setting = resolveSetting(group.getTimeWindow(), group.getCityId());
-            if (availableItems.isEmpty() || !passesMinimums(group, setting) || !canSendMarketing(group.getUser(), setting)) {
+        List<NotificationGroupItem> availableItems = filterAvailableItems(group, false);
+        User user = userRepository.lockForNotificationDelivery(group.getUser().getId()).orElseThrow();
+        boolean nearby = notificationSettingsRepository.findByUser(user)
+                .map(NotificationSettings::isNearbyOnly).orElse(false);
+        if (!nearby && group.getTriggerType() == NotificationTriggerType.NEARBY_OFFERS) {
+            group.setStatus(NotificationGroupStatus.CANCELLED);
+            return;
+        }
+        String language = resolveLanguage(user);
+        NearbyOffer offer = null;
+        if (nearby) {
+            var savedPreferences = preferencesRepository.findByUser(user);
+            UserNotificationPreferences prefs = savedPreferences.orElseGet(UserNotificationPreferences::new);
+            String selected = savedPreferences.map(UserNotificationPreferences::getLanguage).orElse(language);
+            language = Locale.forLanguageTag(selected.replace('_', '-')).getLanguage();
+            offer = prefs.isNearbyOffersEnabled() ? selectNearby(user, availableItems,
+                    favoriteRepository.findFavoriteStoreIds(user.getId()),
+                    new NearbyDishHistory(orderItemRepository.findPurchasedDishes(user.getId(),
+                            Set.of(OrderStatus.PICKED_UP, OrderStatus.COMPLETED, OrderStatus.DELIVERED),
+                            LocalDateTime.now().minusDays(90))), LocalDateTime.now()) : null;
+            if (offer == null) {
                 group.setStatus(NotificationGroupStatus.CANCELLED);
-                groupRepository.save(group);
                 return;
             }
+            group.setTriggerType(NotificationTriggerType.NEARBY_OFFERS);
+            availableItems = List.of(offer.item());
+        }
+        Set<Long> retainedIds = availableItems.stream().map(NotificationGroupItem::getId).collect(Collectors.toSet());
+        group.getItems().removeIf(item -> !retainedIds.contains(item.getId()));
+        recalculateGroup(group);
 
-            String text = buildMessage(group, resolveLanguage(group.getUser()));
-            String deepLink = buildMiniAppDeepLink("notification_" + group.getId());
-            group.setDeepLink(deepLink);
-            boolean sent = telegramBotService.sendMessage(group.getUser().getTelegramUserId(),
-                    new TelegramBotService.TelegramMessagePayload(text, null, resolveButtonText(group), deepLink));
-            if (!sent) {
-                group.setStatus(NotificationGroupStatus.FAILED);
-                group.setFailedAt(LocalDateTime.now());
-                group.setErrorMessage("Telegram API returned failure");
-                groupRepository.save(group);
-                return;
-            }
-
-            group.setStatus(NotificationGroupStatus.SENT);
-            group.setSentAt(LocalDateTime.now());
+        NotificationScheduleSetting setting = resolveSetting(group.getTimeWindow(), group.getCityId());
+        LocalDateTime localNow = LocalDateTime.now(DEFAULT_ZONE);
+        boolean missedWindow = nearby && (!localNow.toLocalDate().equals(group.getScheduledAt().toLocalDate())
+                || localNow.toLocalTime().isAfter(setting.getEndTime()));
+        if (missedWindow || !setting.isEnabled() || !user.isActive() || !user.isEnabled() || user.isBlacklisted()
+                || availableItems.isEmpty() || (!nearby && !passesMinimums(group, setting)) || !canSendMarketing(group.getUser(), setting)) {
+            group.setStatus(NotificationGroupStatus.CANCELLED);
             groupRepository.save(group);
-            updateFrequencyAfterSent(group.getUser());
-            productEventService.trackAsync(new ProductEventRequest(
-                    ProductEventType.NOTIFICATION_SENT, null, group.getUser().getTelegramUserId(),
-                    null, null, null, null, group.getCityId(), group.getDistrictId(),
-                    ProductEventSource.telegram_notification, null, group.getCampaignId(), null,
-                    null, group.getId(), deepLink, "notification_" + group.getId(),
-                    null, "backend", null, null, null, resolveLanguage(group.getUser()),
-                    "notification-sent-" + group.getId(), Map.of("notificationGroupId", group.getId())
-            ));
-        } catch (Exception e) {
+            return;
+        }
+
+        String text;
+        String deepLink = buildMiniAppDeepLink("notification_" + group.getId());
+        group.setDeepLink(deepLink);
+        if (nearby) {
+            String reason = offer.reason().name();
+            int variant = notificationRepository.findFirstByUserAndNearbyReasonOrderByIdDesc(user, reason)
+                    .map(Notification::getNearbyVariant).map(last -> (last + 1) % NearbyOffer.VARIANTS).orElse(0);
+            OfferCopy copy = offer.copy(language, variant);
+            Notification notice = new Notification();
+            notice.setUser(user);
+            notice.setType("NEARBY_BOX");
+            notice.setOfferGroupId(groupId);
+            notice.setNearbyReason(reason);
+            notice.setNearbyVariant(variant);
+            notice.setTitle(copy.title());
+            notice.setMessage(copy.body());
+            notificationRepository.save(notice);
+            text = HtmlUtils.htmlEscape(copy.title() + "\n" + copy.body(), java.nio.charset.StandardCharsets.UTF_8.name());
+        } else {
+            text = buildMessage(group, language);
+        }
+        var message = new TelegramBotService.TelegramMessagePayload(text, null,
+                nearby ? offer.button(language) : resolveButtonText(group), deepLink);
+        var delivery = telegramBotService.sendMarketingMessage(user.getTelegramUserId(), message, nearby);
+        if (delivery.recipientUnavailable()) {
+            var preferences = preferencesRepository.findByUser(user).orElseGet(() -> {
+                var created = new UserNotificationPreferences();
+                created.setUser(user);
+                return created;
+            });
+            preferences.setTelegramDeliveryFailure(delivery.name());
+            preferencesRepository.save(preferences);
+        }
+        if (delivery != TelegramBotService.DeliveryResult.SENT) {
+            if (nearby) updateFrequencyAfterSent(user); // The offer is already in the Mini App inbox.
             group.setStatus(NotificationGroupStatus.FAILED);
             group.setFailedAt(LocalDateTime.now());
-            group.setErrorMessage(e.getMessage());
+            group.setErrorMessage("Telegram delivery: " + delivery.name());
             groupRepository.save(group);
-            throw e;
+            return;
         }
+
+        group.setStatus(NotificationGroupStatus.SENT);
+        group.setSentAt(LocalDateTime.now());
+        groupRepository.save(group);
+        updateFrequencyAfterSent(group.getUser());
+        productEventService.trackAsync(new ProductEventRequest(
+                ProductEventType.NOTIFICATION_SENT, null, group.getUser().getTelegramUserId(),
+                null, null, null, null, group.getCityId(), group.getDistrictId(),
+                ProductEventSource.telegram_notification, null, group.getCampaignId(), null,
+                null, group.getId(), deepLink, "notification_" + group.getId(),
+                null, "backend", null, null, null, language,
+                "notification-sent-" + group.getId(), Map.of("notificationGroupId", group.getId())
+        ));
     }
 
     @Transactional
@@ -249,20 +300,6 @@ public class NotificationGroupService {
         return NotificationScheduleSettingDTO.fromEntity(scheduleRepository.save(setting));
     }
 
-    private NotificationGroup createGroup(User user, NotificationScheduleSetting setting, LocalDateTime scheduledAt) {
-        NotificationGroup group = new NotificationGroup();
-        group.setUser(user);
-        group.setCityId(setting.getCityId());
-        group.setStatus(NotificationGroupStatus.SCHEDULED);
-        group.setScheduledAt(scheduledAt);
-        group.setTimeWindow(setting.getNotificationWindowType());
-        group.setTriggerType(setting.getNotificationWindowType() == NotificationWindowType.LAST_CHANCE
-                ? NotificationTriggerType.LAST_CHANCE : NotificationTriggerType.NEW_BOX);
-        group.setCampaignId(setting.getNotificationWindowType().name().toLowerCase(Locale.ROOT) + "-" + LocalDate.now(DEFAULT_ZONE));
-        group.setIdempotencyKey(user.getId() + ":" + setting.getNotificationWindowType() + ":" + scheduledAt);
-        return groupRepository.save(group);
-    }
-
     private void recalculateGroup(NotificationGroup group) {
         Map<Long, Integer> byPartner = new HashMap<>();
         int totalBoxes = 0;
@@ -284,7 +321,7 @@ public class NotificationGroupService {
         group.setMaximumDiscount(maxDiscount);
     }
 
-    private List<NotificationGroupItem> filterAvailableItems(NotificationGroup group) {
+    private List<NotificationGroupItem> filterAvailableItems(NotificationGroup group, boolean requireOriginalBranch) {
         List<Long> boxIds = group.getItems().stream()
                 .map(NotificationGroupItem::getBox)
                 .filter(Objects::nonNull)
@@ -298,8 +335,12 @@ public class NotificationGroupService {
                 .collect(Collectors.toMap(Product::getId, Function.identity()));
         return group.getItems().stream()
                 .filter(item -> item.getBox() != null && products.containsKey(item.getBox().getId()))
+                .filter(item -> !requireOriginalBranch || item.getBranch() != null && item.getBranch().getId()
+                        .equals(products.get(item.getBox().getId()).getStore().getId()))
                 .peek(item -> {
                     Product product = products.get(item.getBox().getId());
+                    item.setBranch(product.getStore());
+                    item.setPartner(product.getStore());
                     item.setAvailableQuantity(product.getStockQuantity());
                     item.setPrice(product.getPrice());
                     item.setOriginalPrice(product.getOriginalPrice());
@@ -307,6 +348,199 @@ public class NotificationGroupService {
                     item.setPickupEndAt(product.getExpiryDate());
                 })
                 .toList();
+    }
+
+    boolean walkMessagesEnabled(User user) {
+        var prefs = preferencesFor(user);
+        return isMarketingEnabled(user) && prefs.isTelegramNotificationsEnabled() && prefs.isNearbyOffersEnabled();
+    }
+
+    record WalkDelivery(long groupId, TelegramBotService.TelegramMessagePayload message) {}
+
+    private boolean canSendWalkNotification(User user, NotificationScheduleSetting setting) {
+        if (personalWalkTestChatId <= 0 || !Long.valueOf(personalWalkTestChatId).equals(user.getTelegramUserId())) {
+            return canSendMarketing(user, setting);
+        }
+        // An explicitly started personal test may bypass the unattended-marketing cooldown.
+        // Keep opt-in and quiet hours, without resetting the user's stored frequency state.
+        var prefs = preferencesRepository.findByUser(user).orElseGet(UserNotificationPreferences::new);
+        LocalTime now = LocalTime.now(resolveZone(prefs.getTimezone()));
+        return walkMessagesEnabled(user)
+                && !isWithinQuietHours(now, prefs.getQuietHoursStart(), prefs.getQuietHoursEnd())
+                && !isWithinQuietHours(now, setting.getQuietHoursStart(), setting.getQuietHoursEnd());
+    }
+
+    WalkDelivery prepareWalkDelivery(User user, TelegramLocation fix, NearbyWalk walk) {
+        var setting = resolveSetting(NotificationWindowType.LUNCH, null);
+        var prefs = preferencesFor(user);
+        if (!prefs.isNearbyOffersEnabled() || !setting.isEnabled() || !canSendWalkNotification(user, setting)) return null;
+        // A bounding box restricts the query to local branches; selectNearby checks the exact radius.
+        double lat = fix.latitude(), lon = fix.longitude();
+        double deltaLat = NEARBY_RADIUS_KM / 110.0;
+        double deltaLon = deltaLat / Math.max(0.001, Math.cos(Math.toRadians(lat)));
+        LocalDateTime now = LocalDateTime.now();
+        User point = new User();
+        point.setLastLatitude(lat);
+        point.setLastLongitude(lon);
+        point.setLastLocationAccuracyMeters(fix.accuracy());
+        point.setLastLocationUpdatedAt(now);
+        List<NotificationGroupItem> items = walkProducts.findWalkCandidates(lat - deltaLat, lat + deltaLat,
+                        lon - deltaLon, lon + deltaLon).stream()
+                .filter(ProductAvailability::isAvailable)
+                .map(p -> {
+                    var item = new NotificationGroupItem();
+                    item.setPartner(p.getStore());
+                    item.setBranch(p.getStore());
+                    item.setBox(p);
+                    item.setPrice(p.getPrice());
+                    item.setOriginalPrice(p.getOriginalPrice());
+                    item.setAvailableQuantity(p.getStockQuantity());
+                    item.setPickupEndAt(p.getExpiryDate());
+                    return item;
+                }).toList();
+        if (items.isEmpty()) return null;
+        var history = new NearbyDishHistory(orderItemRepository.findPurchasedDishes(user.getId(),
+                Set.of(OrderStatus.PICKED_UP, OrderStatus.COMPLETED, OrderStatus.DELIVERED), now.minusDays(90)));
+        var offer = selectNearby(point, items, favoriteRepository.findFavoriteStoreIds(user.getId()), history, now);
+        if (offer == null) return null;
+
+        var group = new NotificationGroup();
+        group.setUser(user);
+        group.setScheduledAt(LocalDateTime.now(DEFAULT_ZONE));
+        group.setStatus(NotificationGroupStatus.PROCESSING);
+        group.setTriggerType(NotificationTriggerType.NEARBY_OFFERS);
+        group.setCampaignId("nearby-walk");
+        group.setIdempotencyKey("walk:" + user.getId() + ":" + walk.getCommandId());
+        offer.item().setNotificationGroup(group);
+        group.getItems().add(offer.item());
+        recalculateGroup(group);
+        groupRepository.save(group);
+        String link = buildMiniAppDeepLink("notification_" + group.getId());
+        group.setDeepLink(link);
+        String reason = offer.reason().name();
+        int variant = notificationRepository.findFirstByUserAndNearbyReasonOrderByIdDesc(user, reason)
+                .map(Notification::getNearbyVariant).map(last -> (last + 1) % NearbyOffer.VARIANTS).orElse(0);
+        var copy = offer.copy(walk.getLanguage(), variant);
+        var notice = new Notification();
+        notice.setUser(user);
+        notice.setType("NEARBY_BOX");
+        notice.setOfferGroupId(group.getId());
+        notice.setNearbyReason(reason);
+        notice.setNearbyVariant(variant);
+        notice.setTitle(copy.title());
+        notice.setMessage(copy.body());
+        notificationRepository.save(notice);
+        updateFrequencyAfterSent(user);
+        return new WalkDelivery(group.getId(), new TelegramBotService.TelegramMessagePayload(
+                HtmlUtils.htmlEscape(copy.title() + "\n" + copy.body(), java.nio.charset.StandardCharsets.UTF_8.name()), null, offer.button(walk.getLanguage()), link));
+    }
+
+    @Transactional
+    public void finishWalkDelivery(long id, boolean accepted) {
+        var group = groupRepository.findById(id).orElseThrow();
+        if (accepted) {
+            group.setSentAt(LocalDateTime.now());
+            group.setStatus(NotificationGroupStatus.SENT);
+        } else {
+            group.setFailedAt(LocalDateTime.now());
+            group.setErrorMessage("Telegram delivery unconfirmed");
+            group.setStatus(NotificationGroupStatus.FAILED);
+        }
+    }
+
+    static double nearbyDistance(User user, Store store, LocalDateTime now) {
+        LocalDateTime fix = user.getLastLocationUpdatedAt();
+        Double accuracy = user.getLastLocationAccuracyMeters();
+        if (fix == null || fix.isAfter(now) || fix.isBefore(now.minusHours(24)) || store == null
+                || !coordinate(user.getLastLatitude(), 90) || !coordinate(user.getLastLongitude(), 180)
+                || !coordinate(store.getLatitude(), 90) || !coordinate(store.getLongitude(), 180)
+                || (accuracy != null && (!Double.isFinite(accuracy) || accuracy < 0 || accuracy > 500))) {
+            return Double.POSITIVE_INFINITY;
+        }
+        double lat = Math.toRadians(user.getLastLatitude());
+        double otherLat = Math.toRadians(store.getLatitude());
+        double dLon = Math.toRadians(store.getLongitude() - user.getLastLongitude());
+        double h = Math.pow(Math.sin((otherLat - lat) / 2), 2)
+                + Math.cos(lat) * Math.cos(otherLat) * Math.pow(Math.sin(dLon / 2), 2);
+        double km = 12742 * Math.asin(Math.sqrt(Math.min(1, h)));
+        return km + (accuracy == null ? 0 : accuracy / 1000) <= NEARBY_RADIUS_KM ? km : Double.POSITIVE_INFINITY;
+    }
+
+    private static boolean coordinate(Double value, int limit) {
+        return value != null && Double.isFinite(value) && Math.abs(value) <= limit;
+    }
+
+    static NearbyOffer selectNearby(User user, List<NotificationGroupItem> items, Set<Long> favoriteStores, NearbyDishHistory history, LocalDateTime now) {
+        return items.stream().filter(item -> item.getBox() != null && ReportMoney.validAmount(item.getPrice())
+                        && item.getPrice().signum() > 0 && item.getAvailableQuantity() > 0 && item.getBranch() != null)
+                .map(item -> new NearbyOffer(item, nearbyDistance(user, item.getBranch(), now),
+                        favoriteStores.contains(item.getBranch().getId())))
+                .filter(offer -> Double.isFinite(offer.km()) && !NearbyDishHistory.dishText(
+                        offer.item().getBox().getName(), offer.item().getBox().getDescription()).isBlank())
+                .min(Comparator.<NearbyOffer>comparingInt(o -> history.dishScore(o.item().getBox())).reversed()
+                        .thenComparing(Comparator.<NearbyOffer>comparingInt(o -> history.storeFrequency(o.item().getBranch().getId())).reversed())
+                        .thenComparing(NearbyOffer::favorite, Comparator.reverseOrder())
+                        .thenComparingDouble(NearbyOffer::km).thenComparing(offer -> offer.item().getBox().getId()))
+                .orElse(null);
+    }
+
+    record OfferCopy(String title, String body) {}
+
+    enum NearbyReason { FAVORITE, LAST, DEAL, CLOSE, NEARBY }
+
+    record NearbyOffer(NotificationGroupItem item, double km, boolean favorite) {
+        NearbyReason reason() {
+            if (favorite) return NearbyReason.FAVORITE;
+            if (item.getAvailableQuantity() == 1) return NearbyReason.LAST;
+            BigDecimal original = item.getOriginalPrice();
+            if (ReportMoney.validAmount(original) && original.compareTo(item.getPrice().multiply(BigDecimal.valueOf(2))) >= 0)
+                return NearbyReason.DEAL;
+            return km <= 0.3 ? NearbyReason.CLOSE : NearbyReason.NEARBY;
+        }
+
+        private long metres() {
+            return Math.max(50, Math.round(km * 20) * 50);
+        }
+
+        static final int VARIANTS = 3;
+
+        OfferCopy copy(String language, int variant) {
+            Locale locale = switch (language) {
+                case "kk", "en" -> Locale.forLanguageTag(language);
+                default -> Locale.ROOT;
+            };
+            ResourceBundle bundle = ResourceBundle.getBundle("notifications.nearby", locale,
+                    ResourceBundle.Control.getNoFallbackControl(ResourceBundle.Control.FORMAT_PROPERTIES));
+            NearbyReason reason = reason();
+            String key = reason.name() + "." + variant;
+            String last = reason == NearbyReason.FAVORITE && item.getAvailableQuantity() == 1
+                    ? " " + bundle.getString("last") : "";
+            String dish = shortText(NearbyDishHistory.dishText(item.getBox().getName(), item.getBox().getDescription()), 110);
+            String title = bundle.getString("title").formatted(dish, money(item.getPrice()));
+            String body = bundle.getString(key + ".body").formatted(shortText(item.getBranch().getName(), 85),
+                    metres(), reason == NearbyReason.DEAL ? money(item.getOriginalPrice()) : "", last);
+            return new OfferCopy(title, body);
+        }
+
+        private static String shortText(String text, int limit) {
+            String value = text.replaceAll("(?U)\\s+", " ").strip();
+            if (value.codePointCount(0, value.length()) <= limit) return value;
+            return value.substring(0, value.offsetByCodePoints(0, limit - 1)).stripTrailing() + "…";
+        }
+
+        private static String money(BigDecimal amount) {
+            String[] parts = amount.stripTrailingZeros().toPlainString().split("\\.");
+            String whole = String.format(Locale.US, "%,d", amount.toBigInteger()).replace(',', ' ');
+            return whole + (parts.length == 2 ? "." + parts[1] : "") + " ₸";
+        }
+
+        String button(String language) {
+            return switch (language) {
+                case "kk" -> "Боксты көру";
+                case "en" -> "View box";
+                default -> "Посмотреть бокс";
+            };
+        }
     }
 
     private boolean passesMinimums(NotificationGroup group, NotificationScheduleSetting setting) {
@@ -319,7 +553,7 @@ public class NotificationGroupService {
     private boolean canSendMarketing(User user, NotificationScheduleSetting setting) {
         if (user == null || user.getTelegramUserId() == null) return false;
         if (!isMarketingEnabled(user)) return false;
-        UserNotificationPreferences prefs = getOrCreatePreferences(user);
+        UserNotificationPreferences prefs = preferencesFor(user);
         if (!prefs.isTelegramNotificationsEnabled()) return false;
 
         ZoneId zone = resolveZone(prefs.getTimezone());
@@ -338,7 +572,8 @@ public class NotificationGroupService {
         if (state.getSuppressedUntil() != null && state.getSuppressedUntil().isAfter(LocalDateTime.now(zone))) {
             return false;
         }
-        int maxPerDay = prefs.getMaximumMessagesPerDay() != null ? prefs.getMaximumMessagesPerDay() : setting.getMaximumMessagesPerUserPerDay();
+        int maxPerDay = setting.getMaximumMessagesPerUserPerDay();
+        if (prefs.getMaximumMessagesPerDay() != null) maxPerDay = Math.min(maxPerDay, prefs.getMaximumMessagesPerDay());
         if (state.getConsecutiveUnopenedCount() != null && state.getConsecutiveUnopenedCount() >= 5) {
             maxPerDay = Math.min(maxPerDay, 1);
         }
@@ -375,7 +610,7 @@ public class NotificationGroupService {
                         Collectors.summingInt(item -> item.getAvailableQuantity() != null ? item.getAvailableQuantity() : 0)))
                 .entrySet().stream()
                 .limit(5)
-                .map(entry -> "• " + entry.getKey() + " — " + entry.getValue() + " бокса")
+                .map(entry -> "• " + HtmlUtils.htmlEscape(entry.getKey()) + " — " + entry.getValue() + " бокса")
                 .toList();
 
         String partners = String.join("\n", partnerLines);
@@ -384,10 +619,10 @@ public class NotificationGroupService {
             case EVENING -> "🔥 Вечерний FoodSave Drop\n\n" + partners
                     + "\n\nВсего " + group.getTotalBoxes() + " боксов со скидкой до "
                     + group.getMaximumDiscount() + "%.\nУспейте забрать сегодня.";
-            case LAST_CHANCE -> "⏳ Последний шанс на сегодня\n\nРядом осталось "
+            case LAST_CHANCE -> "⏳ Последний шанс на сегодня\n\nОсталось "
                     + group.getTotalBoxes() + " боксов.\nНекоторые предложения скоро закончатся.";
             default -> "🍽 Что забрать на обед?\n\n" + partners
-                    + "\n\nЦены от " + price + "\nРядом с вами доступно " + group.getTotalBoxes() + " боксов.";
+                    + "\n\nЦены от " + price + "\nВ подборке доступно " + group.getTotalBoxes() + " боксов.";
         };
     }
 
@@ -450,18 +685,14 @@ public class NotificationGroupService {
     }
 
     private boolean isMarketingEnabled(User user) {
+        if (preferencesRepository.findByUser(user).map(p -> p.getTelegramDeliveryFailure() != null).orElse(false)) return false;
         return notificationSettingsRepository.findByUser(user)
                 .map(NotificationSettings::isPromotions)
                 .orElse(true);
     }
 
-    private UserNotificationPreferences getOrCreatePreferences(User user) {
-        return preferencesRepository.findByUser(user).orElseGet(() -> {
-            UserNotificationPreferences prefs = new UserNotificationPreferences();
-            prefs.setUser(user);
-            prefs.setLanguage(resolveLanguage(user));
-            return preferencesRepository.save(prefs);
-        });
+    private UserNotificationPreferences preferencesFor(User user) {
+        return preferencesRepository.findByUser(user).orElseGet(UserNotificationPreferences::new);
     }
 
     private NotificationFrequencyState getOrCreateFrequencyState(User user) {
@@ -492,19 +723,6 @@ public class NotificationGroupService {
             return !now.isBefore(start) && now.isBefore(end);
         }
         return !now.isBefore(start) || now.isBefore(end);
-    }
-
-    private boolean tryLock() {
-        Boolean locked = jdbcTemplate.queryForObject("SELECT pg_try_advisory_lock(?)", Boolean.class, SCHEDULER_LOCK_ID);
-        return Boolean.TRUE.equals(locked);
-    }
-
-    private void unlock() {
-        try {
-            jdbcTemplate.queryForObject("SELECT pg_advisory_unlock(?)", Boolean.class, SCHEDULER_LOCK_ID);
-        } catch (Exception e) {
-            log.warn("Failed to release notification scheduler lock", e);
-        }
     }
 
     private String formatPrice(BigDecimal value) {

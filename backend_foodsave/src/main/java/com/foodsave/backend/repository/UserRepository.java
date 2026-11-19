@@ -28,6 +28,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
     List<User> findByRole(@Param("role") UserRole role);
 
     List<User> findByTelegramUserTrue();
+
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> lockForNotificationDelivery(@Param("id") Long id);
     
     @Query("SELECT u FROM User u JOIN u.stores s WHERE s.id = :storeId")
     List<User> findByStoreId(@Param("storeId") Long storeId);

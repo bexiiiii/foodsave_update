@@ -48,30 +48,51 @@ public class TelegramBotService {
         return sendMessageWithToken(botToken, chatId, message);
     }
 
+    // Telegram has no idempotency key for sendMessage. Keep the inbox copy if delivery is uncertain.
+    public boolean sendOfferOnce(Long chatId, TelegramMessagePayload message) {
+        return sendMessageWithToken(botToken, chatId, message, true, 1);
+    }
+
     public boolean sendManagerMessage(Long chatId, TelegramMessagePayload message) {
         return sendMessageWithToken(resolveManagerBotToken(), chatId, message);
     }
 
     public boolean sendMessageWithoutLinkPreview(Long chatId, TelegramMessagePayload message) {
-        return sendMessageWithToken(botToken, chatId, message, true);
+        return sendMessageWithToken(botToken, chatId, message, true, 3);
     }
 
     public boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message) {
-        return sendMessageWithToken(token, chatId, message, false);
+        return sendMessageWithToken(token, chatId, message, false, 3);
     }
 
-    private boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message, boolean disableLinkPreview) {
+    public enum DeliveryResult {
+        SENT, BLOCKED, DEACTIVATED, CHAT_NOT_FOUND, FAILED;
+        public boolean recipientUnavailable() {
+            return this == BLOCKED || this == DEACTIVATED || this == CHAT_NOT_FOUND;
+        }
+    }
+
+    public DeliveryResult sendMarketingMessage(Long chatId, TelegramMessagePayload message, boolean once) {
+        return deliverMessage(botToken, chatId, message, once, once ? 1 : 3);
+    }
+
+    private boolean sendMessageWithToken(String token, Long chatId, TelegramMessagePayload message, boolean disableLinkPreview, int maxAttempts) {
+        return deliverMessage(token, chatId, message, disableLinkPreview, maxAttempts) == DeliveryResult.SENT;
+    }
+
+    private DeliveryResult deliverMessage(String token, Long chatId, TelegramMessagePayload message,
+                                         boolean disableLinkPreview, int maxAttempts) {
         if (token == null || token.isBlank()) {
             log.warn("Telegram bot token is not configured");
-            return false;
+            return DeliveryResult.FAILED;
         }
         if (chatId == null) {
             log.warn("Cannot send Telegram message without chat id");
-            return false;
+            return DeliveryResult.FAILED;
         }
         if (message == null || (message.text() == null && message.imageUrl() == null)) {
             log.warn("Telegram message payload is empty");
-            return false;
+            return DeliveryResult.FAILED;
         }
 
         boolean hasImage = message.imageUrl() != null && !message.imageUrl().isBlank();
@@ -112,7 +133,7 @@ public class TelegramBotService {
         }
 
         Exception lastError = null;
-        for (int attempt = 1; attempt <= 3; attempt++) {
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 ResponseEntity<String> response = getRestTemplate().postForEntity(url, payload, String.class);
                 if (!response.getStatusCode().is2xxSuccessful()
@@ -122,13 +143,18 @@ public class TelegramBotService {
                 }
                 log.debug("Telegram {} status: {} chatId={} attempt={}",
                         endpoint, response.getStatusCode().value(), chatId, attempt);
-                return true;
+                return DeliveryResult.SENT;
             } catch (Exception e) {
                 lastError = e;
+                DeliveryResult unavailable = recipientFailure(e);
+                if (unavailable.recipientUnavailable()) {
+                    log.info("Telegram recipient unavailable: {}", unavailable);
+                    return unavailable;
+                }
                 if (isPermanentTelegramError(e)) {
                     break;
                 }
-                if (attempt < 3) {
+                if (attempt < maxAttempts) {
                     log.warn("Telegram {} failed for chatId={} attempt={}, retrying",
                             endpoint, chatId, attempt, e);
                     sleepBeforeRetry(attempt);
@@ -137,7 +163,23 @@ public class TelegramBotService {
         }
 
         log.error("Failed to send Telegram {} to chatId={} after retries", endpoint, chatId, lastError);
-        return false;
+        return DeliveryResult.FAILED;
+    }
+
+    static DeliveryResult recipientFailure(Exception error) {
+        if (!(error instanceof HttpClientErrorException http)) return DeliveryResult.FAILED;
+        int code = http.getStatusCode().value();
+        String description;
+        try {
+            description = new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readTree(http.getResponseBodyAsString()).path("description").asText("");
+        } catch (Exception malformed) {
+            return DeliveryResult.FAILED;
+        }
+        if (code == 403 && description.equals("Forbidden: bot was blocked by the user")) return DeliveryResult.BLOCKED;
+        if (code == 403 && description.equals("Forbidden: user is deactivated")) return DeliveryResult.DEACTIVATED;
+        if (code == 400 && description.equals("Bad Request: chat not found")) return DeliveryResult.CHAT_NOT_FOUND;
+        return DeliveryResult.FAILED;
     }
 
     private boolean isPermanentTelegramError(Exception error) {

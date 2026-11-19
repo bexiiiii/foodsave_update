@@ -41,8 +41,10 @@ import java.math.BigDecimal;
 public class TelegramWebhookService {
 
     private final TelegramBotService telegramBotService;
+    private final NearbyWalkService nearbyWalkService;
     private final ObjectMapper objectMapper;
     private final UserRepository userRepository;
+    private final com.foodsave.backend.repository.UserNotificationPreferencesRepository deliveryPreferences;
     private final OrderRepository orderRepository;
     private final ProductService productService;
     private final TelegramOrderNotificationService telegramOrderNotificationService;
@@ -69,6 +71,15 @@ public class TelegramWebhookService {
             log.warn("Update is null!");
             return;
         }
+
+        var incoming = update.message();
+        if (incoming != null && incoming.from() != null && incoming.chat() != null
+                && "private".equals(incoming.chat().type()) && incoming.from().id() != null
+                && incoming.from().id().equals(incoming.chat().id())) {
+            deliveryPreferences.clearDeliveryFailure(incoming.from().id());
+        }
+
+        if (nearbyWalkService.handle(update) || update.editedMessage() != null) return;
 
         log.info("Update details: message={}, callbackQuery={}", 
             update.message() != null, 

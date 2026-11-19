@@ -15,6 +15,8 @@ public class NotificationDTO {
     private String title;
     private String message;
     private String type;
+
+    private Long offerGroupId;
     private boolean read;
     private LocalDateTime createdAt;
     private Long userId;
@@ -25,6 +27,7 @@ public class NotificationDTO {
         dto.setTitle(notification.getTitle());
         dto.setMessage(notification.getMessage());
         dto.setType(notification.getType());
+        dto.setOfferGroupId(notification.getOfferGroupId());
         dto.setRead(notification.isRead());
         dto.setCreatedAt(notification.getCreatedAt());
         dto.setUserId(notification.getUser().getId());

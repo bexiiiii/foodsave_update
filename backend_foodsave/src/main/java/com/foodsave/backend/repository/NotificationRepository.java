@@ -14,6 +14,10 @@ import java.util.Optional;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
+    Optional<Notification> findFirstByUserAndNearbyReasonOrderByIdDesc(User user, String nearbyReason);
+
+    Optional<Notification> findByOfferGroupIdAndUser(Long offerGroupId, User user);
+
     // Найти уведомления пользователя с пагинацией
     Page<Notification> findByUser_Id(Long userId, Pageable pageable);
 

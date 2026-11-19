@@ -78,6 +78,12 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.getNotificationSettings());
     }
 
+    @PutMapping("/settings/language")
+    public ResponseEntity<Void> updateLanguage(@RequestParam String language) {
+        notificationService.updateLanguage(language);
+        return ResponseEntity.noContent().build();
+    }
+
     @PutMapping("/settings")
     // @RequirePermission(Permission.USER_UPDATE)
     @Operation(summary = "Update notification settings")

@@ -6,6 +6,8 @@ import com.foodsave.backend.dto.TelegramBroadcastRequest;
 import com.foodsave.backend.entity.Notification;
 import com.foodsave.backend.entity.NotificationSettings;
 import com.foodsave.backend.entity.User;
+import com.foodsave.backend.entity.UserNotificationPreferences;
+import com.foodsave.backend.repository.UserNotificationPreferencesRepository;
 import com.foodsave.backend.exception.ApiException;
 import com.foodsave.backend.exception.ResourceNotFoundException;
 import com.foodsave.backend.repository.NotificationRepository;
@@ -29,6 +31,7 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final NotificationSettingsRepository settingsRepository;
+    private final UserNotificationPreferencesRepository preferencesRepository;
     private final SecurityUtils securityUtils;
     private final UserRepository userRepository;
     private final TelegramBotService telegramBotService;
@@ -74,6 +77,17 @@ public class NotificationService {
         notificationRepository.deleteAll(notifications);
     }
 
+    public void updateLanguage(String language) {
+        if (!List.of("kk", "en", "ru").contains(language)) {
+            throw new ApiException("Unsupported language", HttpStatus.BAD_REQUEST);
+        }
+        User user = userRepository.lockForNotificationDelivery(securityUtils.getCurrentUser().getId()).orElseThrow();
+        var preferences = preferencesRepository.findByUser(user).orElseGet(UserNotificationPreferences::new);
+        preferences.setUser(user);
+        preferences.setLanguage(language);
+        preferencesRepository.save(preferences);
+    }
+
     public NotificationSettingsDTO getNotificationSettings() {
         User currentUser = securityUtils.getCurrentUser();
         NotificationSettings settings = settingsRepository.findByUser(currentUser)
@@ -91,6 +105,9 @@ public class NotificationService {
         settings.setSmsEnabled(settingsDTO.isSmsEnabled());
         settings.setOrderUpdates(settingsDTO.isOrderUpdates());
         settings.setPromotions(settingsDTO.isPromotions());
+        if (settingsDTO.getNearbyOnly() != null) {
+            settings.setNearbyOnly(settingsDTO.getNearbyOnly());
+        }
         settings.setSystemUpdates(settingsDTO.isSystemUpdates());
 
         return NotificationSettingsDTO.fromEntity(settingsRepository.save(settings));

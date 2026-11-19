@@ -28,6 +28,10 @@ public record NotificationGroupResponse(
         List<Item> items
 ) {
     public static NotificationGroupResponse fromEntity(NotificationGroup group) {
+        return fromEntity(group, group.getItems());
+    }
+
+    public static NotificationGroupResponse fromEntity(NotificationGroup group, List<NotificationGroupItem> items) {
         return new NotificationGroupResponse(
                 group.getId(),
                 group.getStatus(),
@@ -43,7 +47,7 @@ public record NotificationGroupResponse(
                 group.getScheduledAt(),
                 group.getSentAt(),
                 group.getOpenedAt(),
-                group.getItems().stream().map(Item::fromEntity).toList()
+                items.stream().map(Item::fromEntity).toList()
         );
     }
 

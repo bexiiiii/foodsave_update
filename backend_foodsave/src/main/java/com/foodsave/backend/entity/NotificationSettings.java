@@ -30,6 +30,9 @@ public class NotificationSettings {
     @Column(nullable = false)
     private boolean promotions;
 
+    @Column(name = "nearby_only", nullable = false, columnDefinition = "boolean default false")
+    private boolean nearbyOnly;
+
     @Column(nullable = false)
     private boolean systemUpdates;
 

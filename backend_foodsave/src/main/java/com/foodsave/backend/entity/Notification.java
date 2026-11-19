@@ -29,6 +29,12 @@ public class Notification {
     @Column(nullable = false)
     private String type;
 
+    private String nearbyReason;
+    private Integer nearbyVariant;
+
+    @Column(name = "offer_group_id")
+    private Long offerGroupId;
+
     @Column(nullable = false)
     private boolean read;
 

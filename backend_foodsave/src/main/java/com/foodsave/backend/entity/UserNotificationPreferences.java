@@ -22,6 +22,7 @@ public class UserNotificationPreferences extends BaseEntity {
     private User user;
 
     private boolean telegramNotificationsEnabled = true;
+    private String telegramDeliveryFailure;
     private boolean lunchDigestEnabled = true;
     private boolean eveningDigestEnabled = true;
     private boolean lastChanceEnabled = true;
