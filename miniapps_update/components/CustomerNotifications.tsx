@@ -1,12 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "../hooks/useTranslation";
 import { getAuthToken } from "../lib/api";
 
 const apiBase = process.env.NEXT_PUBLIC_API_URL || "https://foodsave.kz/api";
 const cancellationType = "ORDER_CANCELLED_BY_STAFF";
 const supportUrl = "https://t.me/FoodSave_kz";
-interface CustomerNotification { id: number; title: string; message: string; type: string; read: boolean; createdAt: string; }
+interface CustomerNotification { id: number; title: string; message: string; type: string; read: boolean; createdAt: string; offerGroupId?: number; }
 
 function token() { try { return getAuthToken(); } catch { return null; } }
 export function parseNotifications(value: unknown): CustomerNotification[] {
@@ -116,6 +117,7 @@ export default function CustomerCancellationNotice() {
 }
 
 export function NotificationsInbox() {
+  const { t } = useTranslation();
   const { items, loading, error, signedIn, pending, markRead } = useCustomerNotifications();
   return <main className="fs-notification-list"><style>{styles}</style>
     {loading && <p className="fs-notification-empty" role="status">Загружаем уведомления…</p>}
@@ -125,7 +127,10 @@ export function NotificationsInbox() {
     {items.map(item => <article key={item.id} className="fs-surface fs-notification" data-unread={!item.read}>
       {item.createdAt && <time>{new Date(item.createdAt).toLocaleString("ru-RU", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}</time>}
       <h2>{item.title}</h2><p>{item.message}</p>
-      <div className="fs-notification-actions">{item.type === cancellationType && <SupportLink />}{!item.read && <button className="fs-notification-read" disabled={pending !== null} onClick={() => void markRead(item.id)}>{pending === item.id ? "Сохраняем…" : "Прочитано"}</button>}</div>
+      <div className="fs-notification-actions">
+        {item.type === "NEARBY_BOX" && typeof item.offerGroupId === "number" && Number.isSafeInteger(item.offerGroupId) && item.offerGroupId > 0 &&
+          <a className="fs-notification-support" href={`/markets?notificationGroupId=${item.offerGroupId}`}>{t("nearbyOpen")}</a>}
+        {item.type === cancellationType && <SupportLink />}{!item.read && <button className="fs-notification-read" disabled={pending !== null} onClick={() => void markRead(item.id)}>{pending === item.id ? "Сохраняем…" : "Прочитано"}</button>}</div>
     </article>)}
   </main>;
 }

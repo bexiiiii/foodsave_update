@@ -13,6 +13,10 @@ function load(relativePath, globals = {}) {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
   vm.runInNewContext(compiled, {
+    require: name => {
+      assert.equal(name, './language');
+      return load('lib/language.ts', globals);
+    },
     exports, process: { env: { NODE_ENV: 'test' } }, console, Intl, Date, ...globals,
   });
   return exports;
@@ -111,4 +115,23 @@ test('transient refresh failure permits a later retry', async () => {
   await tick();
   assert.equal(calls, 2);
   stop();
+});
+
+test('nearby notification language follows the Mini App default and later selections', async () => {
+  const storage = new Map([['authToken', 'test-token']]);
+  const calls = [];
+  const { apiClient } = load('lib/api.ts', {
+    window: { location: { hostname: 'localhost' } },
+    localStorage: { getItem: key => storage.get(key) ?? null },
+    fetch: async (url, options) => {
+      calls.push([new URL(url).searchParams.get('language'), options.headers.Authorization]);
+      return { ok: true, status: 204 };
+    },
+  });
+  await apiClient.syncNotificationLanguage();
+  storage.set('language', 'en');
+  await Promise.all([apiClient.syncNotificationLanguage(), apiClient.syncNotificationLanguage()]);
+  storage.set('language', 'ru');
+  await apiClient.syncNotificationLanguage();
+  assert.deepEqual(calls, [['kk', 'Bearer test-token'], ['en', 'Bearer test-token'], ['ru', 'Bearer test-token']]);
 });

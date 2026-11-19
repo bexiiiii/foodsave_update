@@ -1,3 +1,5 @@
+import { getStoredLanguage, type Language } from './language';
+
 // API client configuration
 const getApiBaseUrl = (): string => {
   // Check if we have an explicit API URL
@@ -89,6 +91,7 @@ export interface NotificationSettings {
   smsEnabled: boolean;
   orderUpdates: boolean;
   promotions: boolean;
+  nearbyOnly?: boolean;
   systemUpdates: boolean;
 }
 
@@ -306,6 +309,8 @@ class ApiClient {
   private baseURL: string;
   private token: string | null = null;
   private activeRequests = new Map<string, Promise<unknown>>(); // Cache for preventing duplicate requests
+  private languageSync: Promise<void> = Promise.resolve();
+  private syncedLanguage: { token: string; language: Language } | null = null;
   private isAuthenticating = false; // Flag to prevent multiple auth attempts
 
   constructor() {
@@ -326,11 +331,13 @@ class ApiClient {
     this.token = token;
     if (typeof window !== 'undefined') {
       localStorage.setItem('authToken', token);
+      void this.syncNotificationLanguage().catch(console.warn);
     }
   }
 
   clearToken() {
     this.token = null;
+    this.syncedLanguage = null;
     this.isAuthenticating = false; // Reset authentication flag
     if (typeof window !== 'undefined') {
       localStorage.removeItem('authToken');
@@ -529,7 +536,9 @@ class ApiClient {
     if (!this.token) {
       throw new Error('No authentication token available');
     }
-    return this.makeRequest<User>('/auth/me');
+    const user = await this.makeRequest<User>('/auth/me');
+    void this.syncNotificationLanguage().catch(console.warn);
+    return user;
   }
 
   async updateMyLocation(latitude: number, longitude: number, accuracyMeters?: number): Promise<User> {
@@ -933,11 +942,26 @@ class ApiClient {
     });
   }
 
+  syncNotificationLanguage(): Promise<void> {
+    const token = this.token;
+    if (!token) return Promise.resolve();
+    // Serialize writes so a slow earlier choice cannot overwrite a later one.
+    this.languageSync = this.languageSync.catch(() => {}).then(async () => {
+      if (this.token !== token) return;
+      const language = getStoredLanguage();
+      if (this.syncedLanguage?.token === token && this.syncedLanguage.language === language) return;
+      await this.makeRequest<void>(`/notifications/settings/language?language=${language}`, { method: 'PUT' });
+      this.syncedLanguage = { token, language };
+    });
+    return this.languageSync;
+  }
+
   async getNotificationSettings(): Promise<NotificationSettings> {
     return this.makeRequest<NotificationSettings>('/notifications/settings');
   }
 
   async updateNotificationSettings(data: NotificationSettings): Promise<NotificationSettings> {
+    if (data.nearbyOnly) await this.syncNotificationLanguage();
     return this.makeRequest<NotificationSettings>('/notifications/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
@@ -974,12 +998,12 @@ class ApiClient {
   }
 
   async getNotificationGroup(id: number): Promise<NotificationGroup> {
-    return this.makePublicRequest<NotificationGroup>(`/notifications/groups/${id}`);
+    return this.makeRequest<NotificationGroup>(`/notifications/groups/${id}`);
   }
 
   async markNotificationGroupOpened(id: number): Promise<void> {
     try {
-      await this.makePublicRequest(`/notifications/groups/${id}/opened`, { method: 'POST' });
+      await this.makeRequest(`/notifications/groups/${id}/opened`, { method: 'POST' });
     } catch (error) {
       console.warn('Notification open event ignored:', error);
     }

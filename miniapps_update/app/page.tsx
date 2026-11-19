@@ -127,7 +127,7 @@ const getCategoryTranslationKey = (name?: string) => {
 
 export default function HomePage() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const { user, isLoading: authLoading, login, error: authError } = useAuth();
   const { getTelegramInitData } = useTelegram();
   const [searchQuery, setSearchQuery] = useState("");
@@ -144,7 +144,6 @@ export default function HomePage() {
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [locationStatus, setLocationStatus] = useState<"idle" | "loading" | "ready" | "denied" | "unsupported">("idle");
   const [locationFeedback, setLocationFeedback] = useState<string | null>(null);
-  const [locationSavedForUserId, setLocationSavedForUserId] = useState<number | null>(null);
 
   const categories = groupCatalogCategories(safeArray(categoriesResponse).filter((category: Category) => category.active));
   const featuredProducts = useMemo(() => rankProductsForRecommendations(safeArray(featuredProductsResponse?.content)
@@ -228,20 +227,6 @@ export default function HomePage() {
   }, [user, userLocation]);
 
   useEffect(() => {
-    if (!user?.id || !userLocation || locationSavedForUserId === user.id) return;
-
-    syncUserLocation(
-      userLocation.latitude,
-      userLocation.longitude,
-      userLocation.accuracyMeters,
-    )
-      .then(() => setLocationSavedForUserId(user.id))
-      .catch((error) => {
-        console.error("Failed to sync saved user location:", error);
-      });
-  }, [user, userLocation, locationSavedForUserId]);
-
-  useEffect(() => {
     const sessionId = sessionStorage.getItem("foodsaveSessionId") || crypto.randomUUID();
     sessionStorage.setItem("foodsaveSessionId", sessionId);
     apiClient.trackEvent({
@@ -293,7 +278,6 @@ export default function HomePage() {
           nextLocation.longitude,
           nextLocation.accuracyMeters,
         )
-          .then(() => setLocationSavedForUserId(user.id))
           .catch((error) => console.error("Failed to sync current user location:", error));
       }
     } catch (error) {
@@ -441,6 +425,22 @@ export default function HomePage() {
             <p className="text-sm text-red-600">{authError}</p>
           </div>
         )}
+        <a href={`https://t.me/FoodSave_bot?start=walk_${language}`}
+          onClick={event => {
+            const tg = window.Telegram?.WebApp;
+            if (!tg?.initData || !tg.openTelegramLink) return;
+            try {
+              tg.openTelegramLink(event.currentTarget.href);
+              event.preventDefault();
+              tg.close?.();
+            } catch { /* The anchor handles clients without the Telegram bridge. */ }
+          }}
+          className="mt-3 flex min-h-14 items-center gap-3 rounded-2xl border border-black/[0.06] bg-white px-4 py-3 text-left text-[#1B2A22]">
+          <LocateFixed aria-hidden="true" className="h-5 w-5 shrink-0 text-[#367e53]" />
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{t("walkLink")}</span>
+            <span className="block text-xs text-black/60">{t("walkHint")}</span></span>
+          <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-black/45" />
+        </a>
       </header>
 
       <AppDownloadBanner />
@@ -527,6 +527,8 @@ export default function HomePage() {
             {t("map")}
           </Link>
         </div>
+
+
 
         <section className="mt-8 md:mt-10">
           <div className="mb-4 flex items-center justify-between">

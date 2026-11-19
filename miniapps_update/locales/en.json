@@ -1,4 +1,6 @@
 {
+  "walkLink": "Find a box on your walk",
+  "walkHint": "Share your live location in the bot to find nearby boxes",
   "welcome": "Welcome,",
   "userName": "User",
   "foodWithDiscount": "Food with discount",
@@ -101,5 +103,12 @@
   "filterSortPrefix": "First",
   "filterReset": "Reset",
   "filterShow": "Show",
-  "filterClose": "Close filters"
+  "filterClose": "Close filters",
+  "nearbyAlerts": "Only boxes nearby",
+  "nearbyAlertsHint": "Get boxes within 2 km of your last location. Your location is used for one day.",
+  "nearbyLocationError": "Allow precise location and try again.",
+  "nearbySaveError": "Could not save notification settings.",
+  "nearbyOpen": "View box",
+  "nearbyGone": "This box is no longer available.",
+  "nearbyCatalog": "See other boxes"
 }

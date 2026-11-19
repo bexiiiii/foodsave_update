@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useContext } from 'react';
+import { createContext, useContext, useEffect } from 'react';
+import { apiClient } from '../lib/api';
 import { useTelegram } from '../hooks/useTelegram';
 import { RegistrationModal } from '../components/RegistrationModal';
 
@@ -8,6 +9,12 @@ const TelegramContext = createContext<any>(null);
 
 export const TelegramProvider = ({ children }: { children: React.ReactNode }) => {
   const telegram = useTelegram();
+
+  useEffect(() => {
+    const retryLanguageSync = () => { void apiClient.syncNotificationLanguage().catch(console.warn); };
+    window.addEventListener('online', retryLanguageSync);
+    return () => window.removeEventListener('online', retryLanguageSync);
+  }, []);
 
   return (
     <TelegramContext.Provider value={telegram}>

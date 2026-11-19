@@ -63,7 +63,7 @@ const sortStores = (items: Store[], sortMode: CatalogSortMode = "recommended") =
   });
 
 function MarketsContent() {
-  const { } = useTelegram(); // Initialize Telegram singleton
+  const { getTelegramInitData } = useTelegram();
   const { t } = useTranslation();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -220,11 +220,20 @@ function MarketsContent() {
       try {
         if (!silent) { setIsLoading(true); setLoadFailed(false); }
         if (notificationGroupId) {
-          const group = await apiClient.getNotificationGroup(Number(notificationGroupId));
+          const id = Number(notificationGroupId);
+          if (!Number.isSafeInteger(id) || id <= 0) throw new Error("Invalid notification group");
+          const initData = getTelegramInitData();
+          if (!silent && initData) await apiClient.authenticateWithTelegram(initData);
+          if (!isMounted) return;
+          const group = await apiClient.getNotificationGroup(id);
           if (!isMounted) return;
           setNotificationGroup(group);
-          if (!silent) await apiClient.markNotificationGroupOpened(Number(notificationGroupId));
+          if (!silent) await apiClient.markNotificationGroupOpened(id);
           if (!isMounted) return;
+          if (!silent && group.triggerType === "NEARBY_OFFERS" && group.items.length === 1 && group.items[0].boxId) {
+            router.replace(`/details/${group.items[0].boxId}`);
+            return;
+          }
           const groupedStores = new Map<number, Store>();
           group.items.forEach((item) => {
             if (!groupedStores.has(item.partnerId)) {
@@ -288,7 +297,7 @@ function MarketsContent() {
       controller.abort();
       unsubscribe();
     };
-  }, [notificationGroupId, retryCount]);
+  }, [notificationGroupId, retryCount, getTelegramInitData, router]);
 
   const formatOpeningHours = (store: Store) => {
     if (store.openingHours && store.closingHours) {
@@ -786,7 +795,7 @@ function MarketsContent() {
                 </span>
               </div>
             )}
-            {notificationGroup && (
+            {notificationGroup && notificationGroup.triggerType !== "NEARBY_OFFERS" && (
               <div className="rounded-2xl bg-[#FFF1F1] p-4">
                 <p className="text-sm font-semibold text-[#E5484D] font-inter">Доступно сейчас</p>
                 <h2 className="mt-1 text-xl font-bold text-black font-inter">
@@ -839,8 +848,10 @@ function MarketsContent() {
             {!loadFailed && visibleResultCount === 0 && (
               <div className="text-center py-12">
                 <p className="text-black/50 font-inter">
-                  {query || activeFilterCount ? t("searchEmpty") : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
+                  {notificationGroup?.triggerType === "NEARBY_OFFERS" && !products.length ? t("nearbyGone") : query || activeFilterCount ? t("searchEmpty") : showAllProducts ? "Боксы не найдены" : "Заведения не найдены"}
                 </p>
+                {notificationGroup?.triggerType === "NEARBY_OFFERS" && !products.length &&
+                  <Link className="mt-3 inline-flex rounded-xl bg-[#EDF7F0] px-4 py-3 font-semibold text-[#267348]" href="/">{t("nearbyCatalog")}</Link>}
               </div>
             )}
           </div>

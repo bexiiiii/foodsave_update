@@ -14,7 +14,7 @@ function mount({ data = [item], token = 'test-token', inbox = false, fail = fals
   const react = { useState(initial) { const i=cursor++; if (!(i in slots)) slots[i]=initial; return [slots[i], value => slots[i]=typeof value==='function'?value(slots[i]):value]; }, useEffect(fn) { if (!mounted) effects.push(fn); } };
   const window = { location: { pathname: inbox?'/notifications':'/' }, setInterval(fn) { interval=fn;return 1; }, clearInterval() {}, addEventListener(n,fn) { listeners.set(n,fn); }, removeEventListener() {}, dispatchEvent(e) { listeners.get(e.type)?.(); } };
   if (telegram) window.Telegram = {WebApp: telegram};
-  vm.runInNewContext(code,{exports, require:n=>n==='react'?react:n==='../lib/api'?{getAuthToken:()=>auth}:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},process:{env:{NEXT_PUBLIC_API_URL:'/api'}},window,document:{visibilityState:'visible',addEventListener(){},removeEventListener(){}},AbortController,Event,
+  vm.runInNewContext(code,{exports, require:n=>n==='../hooks/useTranslation'?{useTranslation:()=>({t:()=> 'Посмотреть бокс'})}:n==='react'?react:n==='../lib/api'?{getAuthToken:()=>auth}:{jsx:(type,props)=>({type,props}),jsxs:(type,props)=>({type,props})},process:{env:{NEXT_PUBLIC_API_URL:'/api'}},window,document:{visibilityState:'visible',addEventListener(){},removeEventListener(){}},AbortController,Event,
     fetch:async(url,options)=>{calls.push({url,options});if(fail)throw Error('offline');if(options.method==='PUT')data=data.map(n=>({...n,read:true}));return {ok:true,json:async()=>data};}});
   const render=()=>{cursor=0;return inbox?exports.NotificationsInbox():exports.default();};render();effects.forEach(fn=>fn());mounted=true;
   return {render, exports, calls, poll:()=>interval(), setToken:v=>{auth=v;}};
@@ -68,4 +68,16 @@ test('inbox read action marks the selected notification and keeps its support li
   assert.ok(app.calls.some(c=>c.url==='/api/notifications/7/read'&&c.options.method==='PUT'));
   assert.equal(elements(app.render(),'button').some(b=>b.props.children==='Прочитано'),false);
   assert.ok(supportLink(app.render()));
+});
+
+test('nearby inbox action opens only a valid local offer group and leaves order alerts alone', async () => {
+  for (const group of [42, undefined, 0, -1, '42/other']) {
+    const offer = {...item, type:'NEARBY_BOX', offerGroupId:group};
+    const inbox = mount({inbox:true, data:[offer]});
+    const popup = mount({data:[offer]});
+    await tick();
+    const links = elements(inbox.render(),'a');
+    assert.deepEqual(links.map(link=>link.props.href), group === 42 ? ['/markets?notificationGroupId=42'] : []);
+    assert.equal(popup.render(),null);
+  }
 });

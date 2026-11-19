@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslation } from "../../hooks/useTranslation";
+import { requestCurrentLocation } from "../../lib/location";
 import { Check, ChevronRight, Loader2, User } from "lucide-react";
 import Link from "next/link";
 import BackButton from "../../components/BackButton";
@@ -12,6 +14,9 @@ import { apiClient, NotificationSettings } from "../../lib/api";
 
 export default function ProfilePage() {
   const { user } = useAuth();
+  const { t } = useTranslation();
+  const [savingAlerts, setSavingAlerts] = useState(false);
+  const [alertError, setAlertError] = useState("");
   const { } = useTelegram(); // Initialize Telegram singleton
   const [name, setName] = useState("");
   const [settings, setSettings] = useState<NotificationSettings | null>(null);
@@ -20,7 +25,11 @@ export default function ProfilePage() {
 
   useEffect(() => {
     setName(user?.firstName || "");
-    apiClient.getNotificationSettings().then(setSettings).catch(() => setSettings(null));
+    let active = true;
+    setSettings(null);
+    if (user) apiClient.getNotificationSettings().then(value => { if (active) setSettings(value); })
+      .catch(() => { if (active) setAlertError(t("nearbySaveError")); });
+    return () => { active = false; };
   }, [user]);
 
   const saveProfile = async () => {
@@ -35,14 +44,22 @@ export default function ProfilePage() {
     }
   };
 
-  const togglePromotions = async () => {
-    if (!settings) return;
-    const next = { ...settings, promotions: !settings.promotions };
-    setSettings(next);
+  const toggleAlerts = async (key: "promotions" | "nearbyOnly") => {
+    if (!settings || savingAlerts) return;
+    setSavingAlerts(true);
+    setAlertError("");
     try {
-      setSettings(await apiClient.updateNotificationSettings(next));
-    } catch {
-      setSettings(settings);
+      if (key === "nearbyOnly" && !settings.nearbyOnly) {
+        const location = await requestCurrentLocation();
+        if ((location.accuracyMeters ?? 0) > 500) throw new Error("LOCATION_UNAVAILABLE");
+        await apiClient.updateMyLocation(location.latitude, location.longitude, location.accuracyMeters);
+      }
+      setSettings(await apiClient.updateNotificationSettings({ ...settings, [key]: !settings[key] }));
+    } catch (error) {
+      setAlertError(t(error instanceof Error && error.message.startsWith("LOCATION_")
+        ? "nearbyLocationError" : "nearbySaveError"));
+    } finally {
+      setSavingAlerts(false);
     }
   };
 
@@ -169,12 +186,26 @@ export default function ProfilePage() {
             <span className="text-base font-medium text-black font-inter">Стать партнёром</span>
             <ChevronRight className="w-5 h-5 text-black" />
           </a>
-          <button type="button" onClick={togglePromotions} className="flex w-full items-center justify-between border-t border-black/[0.06] px-5 py-4 text-left active:bg-[#F7FAF8]">
+          <button type="button" role="switch" aria-checked={!!settings?.promotions} disabled={!settings || savingAlerts} onClick={() => void toggleAlerts("promotions")} className="flex w-full items-center justify-between border-t border-black/[0.06] px-5 py-4 text-left active:bg-[#F7FAF8]">
             <span className="text-base font-medium text-black font-inter">Уведомления о новых боксах</span>
             <span className={`h-6 w-11 rounded-full p-1 transition-colors ${settings?.promotions ? "bg-[#4CAD73]" : "bg-gray-300"}`}>
               <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${settings?.promotions ? "translate-x-5" : "translate-x-0"}`} />
             </span>
           </button>
+          {settings?.promotions && typeof settings.nearbyOnly === "boolean" && (
+            <button type="button" role="switch" aria-checked={settings.nearbyOnly}
+              disabled={savingAlerts} onClick={() => void toggleAlerts("nearbyOnly")}
+              className="flex w-full items-center justify-between gap-4 border-t border-black/[0.06] px-5 py-4 text-left active:bg-[#F7FAF8]">
+              <span>
+                <span className="block text-base font-medium text-black">{t("nearbyAlerts")}</span>
+                <span className="mt-1 block text-sm leading-5 text-black/60">{t("nearbyAlertsHint")}</span>
+              </span>
+              <span aria-hidden="true" className={`h-6 w-11 shrink-0 rounded-full p-1 transition-colors ${settings.nearbyOnly ? "bg-[#4CAD73]" : "bg-gray-300"}`}>
+                <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${settings.nearbyOnly ? "translate-x-5" : "translate-x-0"}`} />
+              </span>
+            </button>
+          )}
+          {alertError && <p role="alert" className="px-5 pb-4 text-sm text-[#853b34]">{alertError}</p>}
         </div>
         <AppStoreLinks />
         <section aria-label="Поддержка проекта" style={{ maxWidth: 280, margin: '40px auto 0', textAlign: 'center' }}>

@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { apiClient } from '../lib/api';
+import { getStoredLanguage, type Language } from '../lib/language';
 
 // Import translation files
 import enTranslations from '../locales/en.json';
@@ -11,30 +13,20 @@ const translations = {
   kk: kkTranslations
 };
 
-export type Language = 'en' | 'ru' | 'kk';
+export type { Language } from '../lib/language';
 
 export const useTranslation = () => {
   const [language, setLanguage] = useState<Language>('kk'); // Изменено на казахский по умолчанию
 
   useEffect(() => {
-    // Try to get language from localStorage or default to Kazakh
-    let savedLang: Language = 'kk'; // Изменено на казахский по умолчанию
-    
-    if (typeof window !== 'undefined') {
-      // Try to get from localStorage
-      const storedLang = localStorage.getItem('language') as Language;
-      if (storedLang && ['en', 'ru', 'kk'].includes(storedLang)) {
-        savedLang = storedLang;
-      }
-    }
-    
-    setLanguage(savedLang);
+    setLanguage(getStoredLanguage());
   }, []);
 
   const changeLanguage = (newLanguage: Language) => {
     setLanguage(newLanguage);
     if (typeof window !== 'undefined') {
       localStorage.setItem('language', newLanguage);
+      void apiClient.syncNotificationLanguage().catch(console.warn);
     }
   };
 
