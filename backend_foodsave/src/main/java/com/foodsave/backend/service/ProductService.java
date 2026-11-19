@@ -8,6 +8,8 @@ import com.foodsave.backend.dto.ProductGalleryImageDTO;
 import com.foodsave.backend.dto.ProductDTO;
 import com.foodsave.backend.dto.ProductStatsDTO;
 import com.foodsave.backend.exception.InsufficientStockException;
+import com.foodsave.backend.exception.ApiException;
+import org.springframework.http.HttpStatus;
 import com.foodsave.backend.repository.ProductRepository;
 import com.foodsave.backend.repository.StoreRepository;
 import com.foodsave.backend.repository.CategoryRepository;
@@ -727,8 +729,13 @@ public class ProductService {
         Product product = productRepository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new EntityNotFoundException("Product not found"));
 
-        // Re-check all availability rules while holding the row lock so a stale
-        // mini-app screen cannot reserve an expired box or a box after closing.
+        // Check the branch schedule under the stock lock, independently of optional
+        // sale/pickup deadlines and the catalogue's advance-publication rules.
+        if (!ProductAvailability.isStoreOpen(product.getStore())) {
+            throw new ApiException("Заведение закрыто. Забронировать бокс можно в часы работы", HttpStatus.CONFLICT);
+        }
+
+        // Re-check product availability while holding the row lock.
         if (!ProductAvailability.isAvailable(product)) {
             throw new IllegalStateException("Этот продукт недоступен для бронирования");
         }
