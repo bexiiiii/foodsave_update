@@ -1,3 +1,5 @@
+export type ProductStatus = 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING' | 'EXPIRED' | 'HIDDEN';
+
 export type ProductImageType = 'COVER' | 'INSIDE' | 'OUTSIDE';
 
 export interface ProductGalleryImage {
@@ -22,7 +24,8 @@ export interface ProductDTO {
   images?: string[];
   galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
-  status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
+  status: ProductStatus;
+  availabilityState?: 'AVAILABLE' | 'RESERVED' | 'SOLD_OUT' | 'UNAVAILABLE';
   active: boolean;
   orderCount?: number;
   averageRating?: number;
@@ -43,7 +46,7 @@ export interface ProductCreateRequest {
   images?: string[];
   galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
-  status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
+  status: ProductStatus;
   active: boolean;
 }
 
@@ -59,7 +62,7 @@ export interface ProductUpdateRequest {
   images?: string[];
   galleryImages?: ProductGalleryImage[];
   expiryDate?: string;
-  status?: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
+  status?: ProductStatus;
   active?: boolean;
 }
 

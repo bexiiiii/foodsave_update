@@ -27,9 +27,10 @@ import { categoryApi } from '@/services/api/categories';
 import { ProductDTO, ProductCreateRequest, ProductUpdateRequest, ProductStats, ProductGalleryImage, ProductImageType } from '@/types/product';
 import { StoreDTO, CategoryDTO, PageableResponse } from '@/types/api';
 import { ValidationError } from '@/utils/validation';
+import { adminProductStatus } from '@/utils/adminProductFilters';
 import { formatCurrency } from '@/utils/currency';
 import { FileUploadService } from '@/services/fileUploadService';
-import { ClipboardDocumentIcon, PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChartBarIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ClockIcon, XMarkIcon, ClipboardDocumentIcon, PlusIcon, MagnifyingGlassIcon, PencilIcon, TrashIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 import { RoleGuard } from '@/components/auth/RoleGuard';
 import { Permission } from '@/types/permission';
 
@@ -43,7 +44,7 @@ interface ProductFormData {
     categoryId: number | null;
     galleryImages: Array<ProductGalleryImage & { file?: File }>;
     expiryDate: string;
-    status: 'AVAILABLE' | 'OUT_OF_STOCK' | 'DISCONTINUED' | 'PENDING';
+    status: ProductDTO['status'];
     active: boolean;
 }
 
@@ -51,8 +52,24 @@ const PRODUCT_STATUSES = [
     { value: 'AVAILABLE', label: 'В наличии', color: 'bg-green-100 text-green-800' },
     { value: 'OUT_OF_STOCK', label: 'Нет в наличии', color: 'bg-red-100 text-red-800' },
     { value: 'DISCONTINUED', label: 'Снят с производства', color: 'bg-gray-100 text-gray-800' },
+    { value: 'HIDDEN', label: 'Скрыт', color: 'bg-gray-100 text-gray-800' },
+    { value: 'EXPIRED', label: 'Истёк срок', color: 'bg-gray-100 text-gray-800' },
     { value: 'PENDING', label: 'В ожидании', color: 'bg-yellow-100 text-yellow-800' }
 ];
+
+const DISPLAY_STATUSES = [
+    ...PRODUCT_STATUSES,
+    { value: 'RESERVED', label: 'Забронировано', color: 'fs-reserved-badge' },
+];
+
+function productStatusView(product: ProductDTO) {
+    const value = adminProductStatus(product);
+    const badge = DISPLAY_STATUSES.find(status => status.value === value)
+        ?? { label: 'Неизвестный статус', color: 'bg-gray-100 text-gray-800' };
+    if (value === 'RESERVED') return { ...badge, value, icon: ClockIcon, marker: 'fs-reserved-marker' };
+    if (value === 'AVAILABLE') return { ...badge, value, icon: CheckIcon, marker: 'bg-green-500' };
+    return { ...badge, value, icon: XMarkIcon, marker: 'bg-red-500' };
+}
 
 const getDefaultProductFormData = (): ProductFormData => ({
     name: '',
@@ -202,7 +219,15 @@ export default function ProductsPage() {
     useEffect(() => {
         if (!mounted) return;
         const timer = setTimeout(() => { void fetchProducts(); }, searchQuery.trim() ? 250 : 0);
-        return () => { clearTimeout(timer); productsRequest.current += 1; };
+        const onReturn = () => {
+            if (document.visibilityState === 'visible') void fetchProducts();
+        };
+        document.addEventListener('visibilitychange', onReturn);
+        return () => {
+            clearTimeout(timer);
+            document.removeEventListener('visibilitychange', onReturn);
+            productsRequest.current += 1;
+        };
     }, [currentPage, filterStore, filterCategory, filterStatus, searchQuery, mounted]);
 
     useEffect(() => {
@@ -539,21 +564,6 @@ export default function ProductsPage() {
         }
     };
 
-    const getStatusBadge = (status: string) => {
-        const statusConfig = PRODUCT_STATUSES.find(s => s.value === status) || PRODUCT_STATUSES[0];
-        return (
-            <Badge className={`${statusConfig.color} border-0`}>
-                {statusConfig.label}
-            </Badge>
-        );
-    };
-
-    // Whether the product actually shows up for customers in the mini app right
-    // now — not just the "active" toggle, but also stock/status, matching the
-    // mini app's own visibility check.
-    const isVisibleInMiniApp = (product: ProductDTO) =>
-        product.active !== false && product.status === 'AVAILABLE' && (product.stockQuantity ?? 0) > 0;
-
     const filteredProducts = products;
 
     const formatDate = (dateString?: string) => {
@@ -706,7 +716,7 @@ export default function ProductsPage() {
                                 className="w-full h-10 px-3 rounded-md border border-gray-300 bg-white dark:bg-gray-800 dark:border-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                             >
                                 <option value="all">Все статусы</option>
-                                {PRODUCT_STATUSES.map((status) => (
+                                {DISPLAY_STATUSES.map((status) => (
                                     <option key={status.value} value={status.value}>
                                         {status.label}
                                     </option>
@@ -758,8 +768,9 @@ export default function ProductsPage() {
                                             </TableCell>
                                         </TableRow>
                                     ) : (
-                                        filteredProducts.map((product) => (
-                                            <TableRow key={product.id}>
+                                        filteredProducts.map((product) => {
+                                            const status = productStatusView(product);
+                                            return <TableRow key={product.id}>
                                                 <TableCell>
                                                     <div className="flex items-center space-x-3">
                                                         <div className="relative w-10 h-10 flex-shrink-0">
@@ -777,19 +788,10 @@ export default function ProductsPage() {
                                                                 </div>
                                                             )}
                                                             <span
-                                                                title={isVisibleInMiniApp(product) ? 'Виден в мини-аппе' : 'Не виден в мини-аппе'}
-                                                                className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow ${isVisibleInMiniApp(product) ? 'bg-green-500' : 'bg-red-500'
-                                                                    }`}
+                                                                title={status.label}
+                                                                className={`absolute -top-1.5 -left-1.5 w-5 h-5 rounded-full flex items-center justify-center border-2 border-white shadow ${status.marker}`}
                                                             >
-                                                                {isVisibleInMiniApp(product) ? (
-                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                                                    </svg>
-                                                                ) : (
-                                                                    <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
-                                                                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                                                                    </svg>
-                                                                )}
+                                                                <status.icon className="w-3 h-3 text-white" strokeWidth={3} aria-hidden="true" />
                                                             </span>
                                                         </div>
                                                         <div>
@@ -840,7 +842,10 @@ export default function ProductsPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    {getStatusBadge(product.status)}
+                                                    <Badge variant={status.value === 'RESERVED' ? "outline" : "default"} className={`${status.color} gap-1 border-0`}>
+                                                        {status.value === 'RESERVED' && <ClockIcon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
+                                                        {status.label}
+                                                    </Badge>
                                                 </TableCell>
                                                 <TableCell>
                                                     <p className="text-sm text-gray-600">
@@ -875,8 +880,8 @@ export default function ProductsPage() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
-                                            </TableRow>
-                                        ))
+                                            </TableRow>;
+                                        })
                                     )}
                                 </TableBody>
                             </Table>

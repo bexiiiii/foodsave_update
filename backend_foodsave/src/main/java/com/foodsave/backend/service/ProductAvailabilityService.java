@@ -20,7 +20,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ProductAvailabilityService {
 
-    private static final Set<OrderStatus> ACTIVE_RESERVATION_STATUSES = Collections.unmodifiableSet(
+    static final Set<OrderStatus> ACTIVE_RESERVATION_STATUSES = Collections.unmodifiableSet(
             EnumSet.of(OrderStatus.CREATED, OrderStatus.PENDING, OrderStatus.CONFIRMED,
                     OrderStatus.PREPARING, OrderStatus.READY_FOR_PICKUP,
                     OrderStatus.OUT_FOR_DELIVERY));

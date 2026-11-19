@@ -51,3 +51,15 @@ test('current error clears stale rows and an out-of-range page moves back',async
  assert.equal(f.state.errors,1);assert.equal(f.state.products.length,0);
  f.ctx.currentPage=3;const second=f.run();f.pending[1].resolve({content:[],totalPages:2});await second;assert.equal(f.state.page,1);
 });
+
+test('last reserved unit has its own status; withdrawals, partial bookings and cancelled orders stay distinct', () => {
+ const box = {status: 'AVAILABLE', active: true, stockQuantity: 0, availabilityState: 'RESERVED'};
+ assert.equal(exported.adminProductStatus(box), 'RESERVED');
+ assert.equal(exported.adminProductStatus({...box, status: 'OUT_OF_STOCK'}), 'RESERVED');
+ assert.equal(exported.adminProductStatus({...box, stockQuantity: 2}), 'AVAILABLE');
+ assert.equal(exported.adminProductStatus({...box, availabilityState: 'SOLD_OUT'}), 'OUT_OF_STOCK');
+ assert.equal(exported.adminProductStatus({...box, active: false}), 'OUT_OF_STOCK');
+ for (const status of ['DISCONTINUED', 'HIDDEN', 'EXPIRED']) {
+   assert.equal(exported.adminProductStatus({...box, status}), status);
+ }
+});

@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /** Admin filters run before pagination; customer catalogue visibility rules do not apply. */
 @Service
@@ -25,7 +26,7 @@ public class AdminProductFilterQuery {
     }
 
     public Page<Long> findIds(UserRole role, Long userId, String query, Long storeId,
-                              Long categoryId, ProductStatus status, int page, int size) {
+                              Long categoryId, String status, int page, int size) {
         if (userId == null || (role != UserRole.SUPER_ADMIN && role != UserRole.STORE_OWNER
                 && role != UserRole.STORE_MANAGER)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN);
@@ -50,7 +51,7 @@ public class AdminProductFilterQuery {
             where.append(" AND p.category_id = :categoryId"); params.addValue("categoryId", categoryId);
         }
         if (status != null) {
-            where.append(" AND p.status = :status"); params.addValue("status", status.name());
+            appendStatusFilter(where, params, status);
         }
         String search = query == null ? "" : query.strip().toLowerCase(Locale.ROOT);
         if (!search.isEmpty()) {
@@ -63,5 +64,49 @@ public class AdminProductFilterQuery {
         List<Long> ids = jdbc.queryForList("SELECT p.id" + where
                 + " ORDER BY p.created_at DESC NULLS LAST, p.id DESC LIMIT :limit OFFSET :offset", params, Long.class);
         return new PageImpl<>(ids, pageable, total == null ? 0 : total);
+    }
+
+    /** Only call for IDs from the authorised admin page. The marker and the filter share this predicate. */
+    public Set<Long> reservedOnPage(List<Long> ids) {
+        if (ids.isEmpty()) return Set.of();
+        var params = new MapSqlParameterSource("ids", ids);
+        var where = new StringBuilder(" FROM products p WHERE p.deleted_at IS NULL AND p.id IN (:ids)");
+        appendStatusFilter(where, params, "RESERVED");
+        return Set.copyOf(jdbc.queryForList("SELECT p.id" + where, params, Long.class));
+    }
+
+    private static void appendStatusFilter(StringBuilder where, MapSqlParameterSource params, String status) {
+        String stockEligible = " AND p.status IN ('AVAILABLE', 'OUT_OF_STOCK')";
+        String emptyStock = "COALESCE(p.stock_quantity, 0) <= 0";
+        String hasReservation = """
+                EXISTS (SELECT 1 FROM order_items i JOIN orders o ON o.id = i.order_id
+                        WHERE i.product_id = p.id AND o.status IN (:reservationStatuses))
+                """;
+        switch (status) {
+            case "RESERVED", "OUT_OF_STOCK" -> {
+                params.addValue("reservationStatuses", ProductAvailabilityService.ACTIVE_RESERVATION_STATUSES
+                        .stream().map(Enum::name).toList());
+                where.append(stockEligible);
+                if (status.equals("RESERVED")) {
+                    where.append(" AND ").append(emptyStock).append(" AND p.active AND ").append(hasReservation);
+                } else {
+                    where.append(" AND (p.status = 'OUT_OF_STOCK' OR ").append(emptyStock).append(")")
+                            .append(" AND NOT (").append(emptyStock).append(" AND p.active AND ").append(hasReservation).append(")");
+                }
+            }
+            case "AVAILABLE" -> where.append(" AND p.status = 'AVAILABLE' AND p.active AND p.stock_quantity > 0");
+            case "HIDDEN" -> where.append(" AND (p.status = 'HIDDEN' OR (p.status = 'AVAILABLE' AND NOT p.active AND p.stock_quantity > 0))");
+            default -> {
+                if (!"PENDING".equals(status)) {
+                    try {
+                        ProductStatus.valueOf(status);
+                    } catch (IllegalArgumentException e) {
+                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid product status");
+                    }
+                }
+                where.append(" AND p.status = :status");
+                params.addValue("status", status);
+            }
+        }
     }
 }

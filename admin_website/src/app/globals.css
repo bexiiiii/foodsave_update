@@ -781,3 +781,13 @@ span.flatpickr-weekday,
 .dark .text-gray-900 {
   @apply text-white;
 }
+
+.fs-reserved-badge,
+.fs-reserved-marker {
+  background-color: #facc15;
+  color: #342900;
+}
+
+.fs-reserved-marker svg {
+  color: inherit;
+}

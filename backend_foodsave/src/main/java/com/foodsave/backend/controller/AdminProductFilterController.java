@@ -1,7 +1,8 @@
 package com.foodsave.backend.controller;
 
-import com.foodsave.backend.domain.enums.ProductStatus;
 import com.foodsave.backend.dto.ProductDTO;
+import com.foodsave.backend.domain.enums.ProductAvailabilityState;
+import org.springframework.transaction.annotation.Isolation;
 import com.foodsave.backend.security.SecurityUtil;
 import com.foodsave.backend.service.AdminProductFilterQuery;
 import com.foodsave.backend.service.ProductService;
@@ -24,15 +25,25 @@ public class AdminProductFilterController {
 
     @GetMapping("/api/products/admin-filter")
     @PreAuthorize("hasAnyRole('SUPER_ADMIN', 'STORE_OWNER', 'STORE_MANAGER')")
-    @Transactional(readOnly = true)
+    @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public Page<ProductDTO> find(
             @RequestParam(name = "query", defaultValue = "") String query,
             @RequestParam(name = "storeId", required = false) Long storeId,
             @RequestParam(name = "categoryId", required = false) Long categoryId,
-            @RequestParam(name = "status", required = false) ProductStatus status,
+            @RequestParam(name = "status", required = false) String status,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "20") int size) {
-        return filters.findIds(SecurityUtil.getCurrentUserRole(), SecurityUtil.getCurrentUserId(),
-                query, storeId, categoryId, status, page, size).map(products::getProductById);
+        var ids = filters.findIds(SecurityUtil.getCurrentUserRole(), SecurityUtil.getCurrentUserId(),
+                query, storeId, categoryId, status, page, size);
+        var reserved = filters.reservedOnPage(ids.getContent());
+        return ids.map(id -> {
+            ProductDTO dto = products.getProductById(id);
+            if (reserved.contains(id)) {
+                dto.setAvailabilityState(ProductAvailabilityState.RESERVED);
+            } else if (dto.getAvailabilityState() == ProductAvailabilityState.RESERVED) {
+                dto.setAvailabilityState(ProductAvailabilityState.SOLD_OUT);
+            }
+            return dto;
+        });
     }
 }
